@@ -1,0 +1,12 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto"
+      xmlns:tools="http://schemas.android.com/tools"
+      tools:context="tech.kaomidev.cinemaclub.ui.main.MainActivity">
+
+    <item android:id="@+id/action_search"
+          android:title="@string/action_search"
+          android:icon="@drawable/ic_search_gray_24dp"
+          android:orderInCategory="100"
+          app:showAsAction="collapseActionView|ifRoom"
+          app:actionViewClass="androidx.appcompat.widget.SearchView" />
+</menu>
