@@ -6,7 +6,7 @@ This is a native android application based on Kotlin using Android's Jetpack fra
 It's aims to use modern Android APIs to deliver knowledge and better coding experience.
 It uses the [TMDB api](https://www.themoviedb.org/) via Glide and Retrofit.
 
-<img src="assets/screenshot_01.png)" width="150" /><img src="assets/screenshot_02.png" width="150" /><img src="assets/screenshot_03.png" width="150" />
+<img src="assets/screenshot_01.png" width="150" /><img src="assets/screenshot_02.png" width="150" /><img src="assets/screenshot_03.png" width="150" />
 
 ## Installation
 
