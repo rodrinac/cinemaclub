@@ -2,6 +2,8 @@
 
 > Native movie search Android application
 
+[![GitHub version](https://badge.fury.io/gh/josersi%2Fcinemaclub.svg)](https://badge.fury.io/gh/josersi%2Fcinemaclub)
+
 This is a native android application based on Kotlin using Android's Jetpack framework and guidelines.
 It's aims to use modern Android APIs to deliver knowledge and better coding experience.
 It uses the [TMDB api](https://www.themoviedb.org/) via Glide and Retrofit.
