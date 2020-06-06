@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Club de Cine</string>
+    <string name="action_search">Buscar</string>
+    <string name="action_settings">Opciones</string>
+    <string name="empty_info">Sin información para mostrar</string>
+    <string name="title_discover">Destacados</string>
+    <string name="title_favorites">Favoritos</string>
+    <string name="search_hint">Buscar películas</string>
+    <string name="search_result">Mostrando resultados para  <i>%1$s</i></string>
+    <string name="title_profile">Perfil</string>
+    <string name="movie_saved">Película eliminada de la lista de favoritos</string>
+    <string name="movie_unsaved">Película agregada a la lista de favoritos</string>
+</resources>
