@@ -1,12 +1,9 @@
 package tech.kaomidev.cinemaclub.utils
 
-import android.content.Context
 import android.content.res.Resources
 import android.util.DisplayMetrics
 import androidx.core.os.ConfigurationCompat
-import com.google.android.material.chip.Chip
 import okhttp3.Cache
-import tech.kaomidev.cinemaclub.R
 import tech.kaomidev.cinemaclub.app.KApplication
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -36,9 +33,4 @@ object Units {
     fun pixelsToDp(px: Float): Float {
         return px / (resources.displayMetrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT.toFloat())
     }
-}
-
-fun chipOf(context: Context, text: String) = Chip(context).apply {
-    this.text = text
-    this.setChipBackgroundColorResource(R.color.colorAccentLight)
 }

@@ -7,13 +7,8 @@ import tech.kaomidev.cinemaclub.database.DatabaseController
 import tech.kaomidev.cinemaclub.database.datasource.LocalGenreDataSource
 import tech.kaomidev.cinemaclub.domain.repository.GenreRepository
 import tech.kaomidev.cinemaclub.domain.repository.MovieRepository
-import tech.kaomidev.cinemaclub.network.Tmdb
-import tech.kaomidev.cinemaclub.network.datasource.RemoteGenreDataSource
-import tech.kaomidev.cinemaclub.network.datasource.RemoteMovieDataSource
 
 val domainModule = module {
-
-    single { Tmdb.api }
 
     single {
         Room.databaseBuilder(androidContext(), DatabaseController::class.java, "app-db")
@@ -23,20 +18,9 @@ val domainModule = module {
 
     single { get<DatabaseController>().genreDao() }
 
-    single {
-        RemoteGenreDataSource(
-            get()
-        )
-    }
 
     single {
         LocalGenreDataSource(
-            get()
-        )
-    }
-
-    single {
-        RemoteMovieDataSource(
             get()
         )
     }
