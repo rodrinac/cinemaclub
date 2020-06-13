@@ -114,10 +114,10 @@ class MovieDetailsActivity : AppCompatActivity() {
     }
 
     private fun setupChipGroup(genres: List<Genre>) {
-        genres.take(3).forEach { genre -> movieGenresView.addView(chipOf(this, genre.name!!)) }
+        genres.take(3).forEach { genre -> movieGenresView.addView(makeChip(genre.name!!)) }
 
         if (genres.size > 3) {
-            val chipAll = chipOf(this, "•••")
+            val chipAll = makeChip("•••")
 
             chipAll.setOnClickListener {
                 val builder = AlertDialog.Builder(this)

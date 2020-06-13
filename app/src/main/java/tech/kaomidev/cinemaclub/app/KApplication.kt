@@ -4,6 +4,7 @@ import android.app.Application
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import tech.kaomidev.cinemaclub.di.modules.domainModule
+import tech.kaomidev.cinemaclub.di.modules.networkModule
 import tech.kaomidev.cinemaclub.di.modules.viewModule
 import java.io.File
 
@@ -15,7 +16,7 @@ class KApplication: Application() {
 
         startKoin {
             androidContext(application)
-            modules(listOf(domainModule, viewModule))
+            modules(listOf(networkModule, domainModule, viewModule))
         }
     }
 

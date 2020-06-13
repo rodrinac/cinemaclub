@@ -15,6 +15,8 @@ import androidx.core.graphics.drawable.DrawableCompat
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.request.RequestOptions
+import com.google.android.material.chip.Chip
+import tech.kaomidev.cinemaclub.R
 
 fun Context.hasNetwork(): Boolean {
     val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -61,3 +63,7 @@ fun Activity.getExtraLong(key: String): Lazy<Long> = lazy {
 
 inline fun <reified T : Activity> Context.getIntent() = Intent(this, T::class.java)
 
+fun Context.makeChip(text: String) = Chip(this).apply {
+    this.text = text
+    this.setChipBackgroundColorResource(R.color.colorAccentLight)
+}
