@@ -8,7 +8,7 @@ import androidx.paging.PagedListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.android.synthetic.main.movie_item_portrait.view.*
 import tech.kaomidev.cinemaclub.R
-import tech.kaomidev.cinemaclub.data.movie.Movie
+import tech.kaomidev.cinemaclub.domain.entity.Movie
 import tech.kaomidev.cinemaclub.ui.shared.MovieItemDiffCallback
 import tech.kaomidev.cinemaclub.utils.inflateView
 import tech.kaomidev.cinemaclub.utils.loadUrl

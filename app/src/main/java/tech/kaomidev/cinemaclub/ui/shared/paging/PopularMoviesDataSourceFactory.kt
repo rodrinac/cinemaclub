@@ -2,8 +2,8 @@ package tech.kaomidev.cinemaclub.ui.shared.paging
 
 import androidx.paging.DataSource
 import kotlinx.coroutines.CoroutineScope
-import tech.kaomidev.cinemaclub.data.movie.Movie
-import tech.kaomidev.cinemaclub.data.movie.MovieRepository
+import tech.kaomidev.cinemaclub.domain.entity.Movie
+import tech.kaomidev.cinemaclub.domain.repository.MovieRepository
 
 class PopularMoviesDataSourceFactory(
     private val movieRepository: MovieRepository,

@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import kotlinx.android.synthetic.main.activity_search.*
 import org.koin.android.ext.android.inject
 import tech.kaomidev.cinemaclub.R
-import tech.kaomidev.cinemaclub.data.movie.Movie
+import tech.kaomidev.cinemaclub.domain.entity.Movie
 import tech.kaomidev.cinemaclub.ui.moviedetails.MovieDetailsActivity
 import tech.kaomidev.cinemaclub.ui.shared.GridSpacingItemDecoration
 import tech.kaomidev.cinemaclub.ui.shared.adapters.LandscapeMovieListAdapter

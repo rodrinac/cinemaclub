@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.LivePagedListBuilder
 import androidx.paging.PagedList
-import tech.kaomidev.cinemaclub.data.movie.Movie
-import tech.kaomidev.cinemaclub.data.movie.MovieRepository
+import tech.kaomidev.cinemaclub.domain.entity.Movie
+import tech.kaomidev.cinemaclub.domain.repository.MovieRepository
 import tech.kaomidev.cinemaclub.ui.shared.paging.SearchMoviesDataSource
 import tech.kaomidev.cinemaclub.ui.shared.paging.SearchMoviesDataSourceFactory
 

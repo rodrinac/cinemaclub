@@ -12,7 +12,7 @@ import kotlinx.android.synthetic.main.movie_item_landscape.view.*
 import kotlinx.android.synthetic.main.movie_item_portrait.view.poster
 import kotlinx.android.synthetic.main.movie_item_portrait.view.title
 import tech.kaomidev.cinemaclub.R
-import tech.kaomidev.cinemaclub.data.movie.Movie
+import tech.kaomidev.cinemaclub.domain.entity.Movie
 import tech.kaomidev.cinemaclub.ui.shared.MovieItemDiffCallback
 import tech.kaomidev.cinemaclub.utils.inflateView
 import tech.kaomidev.cinemaclub.utils.loadUrl
