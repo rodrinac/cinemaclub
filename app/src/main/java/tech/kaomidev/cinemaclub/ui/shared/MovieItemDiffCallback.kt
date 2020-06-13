@@ -1,7 +1,7 @@
 package tech.kaomidev.cinemaclub.ui.shared
 
 import androidx.recyclerview.widget.DiffUtil
-import tech.kaomidev.cinemaclub.data.movie.Movie
+import tech.kaomidev.cinemaclub.domain.entity.Movie
 
 object MovieItemDiffCallback: DiffUtil.ItemCallback<Movie>() {
     override fun areItemsTheSame(oldItem: Movie, newItem: Movie): Boolean {

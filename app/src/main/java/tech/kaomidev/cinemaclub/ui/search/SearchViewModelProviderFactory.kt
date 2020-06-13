@@ -2,7 +2,7 @@ package tech.kaomidev.cinemaclub.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import tech.kaomidev.cinemaclub.data.movie.MovieRepository
+import tech.kaomidev.cinemaclub.domain.repository.MovieRepository
 
 class SearchViewModelProviderFactory(private val repository: MovieRepository) : ViewModelProvider.Factory {
 

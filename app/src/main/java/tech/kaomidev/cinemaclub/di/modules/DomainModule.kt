@@ -3,13 +3,13 @@ package tech.kaomidev.cinemaclub.di.modules
 import androidx.room.Room
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
-import tech.kaomidev.cinemaclub.data.genre.GenreRepository
-import tech.kaomidev.cinemaclub.data.genre.LocalGenreDataSource
-import tech.kaomidev.cinemaclub.data.genre.OnlineGenreDataSource
-import tech.kaomidev.cinemaclub.data.movie.MovieRepository
-import tech.kaomidev.cinemaclub.data.movie.OnlineMovieDataSource
 import tech.kaomidev.cinemaclub.database.DatabaseController
+import tech.kaomidev.cinemaclub.database.datasource.LocalGenreDataSource
+import tech.kaomidev.cinemaclub.domain.repository.GenreRepository
+import tech.kaomidev.cinemaclub.domain.repository.MovieRepository
 import tech.kaomidev.cinemaclub.network.Tmdb
+import tech.kaomidev.cinemaclub.network.datasource.RemoteGenreDataSource
+import tech.kaomidev.cinemaclub.network.datasource.RemoteMovieDataSource
 
 val domainModule = module {
 
@@ -23,13 +23,35 @@ val domainModule = module {
 
     single { get<DatabaseController>().genreDao() }
 
-    single { OnlineGenreDataSource(get()) }
+    single {
+        RemoteGenreDataSource(
+            get()
+        )
+    }
 
-    single { LocalGenreDataSource(get()) }
+    single {
+        LocalGenreDataSource(
+            get()
+        )
+    }
 
-    single { OnlineMovieDataSource(get()) }
+    single {
+        RemoteMovieDataSource(
+            get()
+        )
+    }
 
-    single { GenreRepository(get(), get()) }
+    single {
+        GenreRepository(
+            get(),
+            get()
+        )
+    }
 
-    single { MovieRepository(get(), get()) }
+    single {
+        MovieRepository(
+            get(),
+            get()
+        )
+    }
 }

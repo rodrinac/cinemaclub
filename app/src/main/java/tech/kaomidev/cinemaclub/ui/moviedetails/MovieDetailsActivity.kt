@@ -16,8 +16,8 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_movie_details.*
 import org.koin.android.ext.android.inject
 import tech.kaomidev.cinemaclub.R
-import tech.kaomidev.cinemaclub.data.genre.Genre
-import tech.kaomidev.cinemaclub.data.movie.Movie
+import tech.kaomidev.cinemaclub.domain.entity.Genre
+import tech.kaomidev.cinemaclub.domain.entity.Movie
 import tech.kaomidev.cinemaclub.utils.*
 
 class MovieDetailsActivity : AppCompatActivity() {

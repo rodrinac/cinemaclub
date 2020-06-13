@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import kotlinx.android.synthetic.main.fragment_discover_movies.*
 import org.koin.android.ext.android.inject
 import tech.kaomidev.cinemaclub.R
-import tech.kaomidev.cinemaclub.data.movie.Movie
+import tech.kaomidev.cinemaclub.domain.entity.Movie
 import tech.kaomidev.cinemaclub.ui.moviedetails.MovieDetailsActivity
 import tech.kaomidev.cinemaclub.ui.shared.GridSpacingItemDecoration
 import tech.kaomidev.cinemaclub.ui.shared.adapters.PortraitMovieListAdapter

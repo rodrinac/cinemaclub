@@ -3,7 +3,7 @@ package tech.kaomidev.cinemaclub.ui.moviedetails
 import androidx.annotation.IntRange
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import tech.kaomidev.cinemaclub.data.movie.MovieRepository
+import tech.kaomidev.cinemaclub.domain.repository.MovieRepository
 
 class MovieDetailsViewModelProviderFactory(private val repository: MovieRepository) : ViewModelProvider.Factory {
 
