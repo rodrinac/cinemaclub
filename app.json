@@ -21,8 +21,14 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "android": {
+      "enableDangerousExperimentalLeanBuilds": true
+    },
     "ios": {
       "supportsTablet": true
-    }
+    },
+    "androidNavigationBar": {
+     "backgroundColor": "#2e2a27"
+   }
   }
 }
