@@ -2,20 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { Text, KeyboardAvoidingView, Platform, View, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FlatList, TouchableOpacity } from 'react-native-gesture-handler';
+import { useNavigation } from '@react-navigation/native';
 
-import tmdb, { TmdbDiscoverMovieResponse } from '../../api/tmdb';
+import tmdb, { TmdbMovieList, TmdbMovie } from '../../api/tmdb';
 import VerticalMovieCard from '../../components/VerticalMovieCard';
+import Theme from '../../theme';
 
 const Home = () => {
-
-  const [movieList, setMovieList] = useState<TmdbDiscoverMovieResponse>();
+  const navigation = useNavigation();
+  
+  const [movieList, setMovieList] = useState<TmdbMovieList>();
   const [pageToLoad, setPageToLoad] = useState(1);
 
   useEffect(() => {
     async function requestDiscoverMovies() {
-      const response = await tmdb.get<TmdbDiscoverMovieResponse>('discover/movie', {
+      const response = await tmdb.get<TmdbMovieList>('discover/movie', {
         params: {
-          language: "en-US",
           page: pageToLoad,
           sortBy: "popularity.desc"
         }
@@ -27,8 +29,16 @@ const Home = () => {
       setMovieList({...responseData, results: currentMovieList.concat(responseData.results)});     
     }
 
-    requestDiscoverMovies();
+    try {
+      requestDiscoverMovies();
+    } catch(e) {
+      console.log(e);
+    }
   }, [pageToLoad]);
+
+  function handleMoviePosterPress(movie: TmdbMovie) {
+    navigation.navigate('MovieDetail', { movieId: movie.id })
+  }
 
   return (
     <KeyboardAvoidingView behavior={ Platform.OS === 'ios' ? 'padding' : undefined } style={{flex: 1}}>
@@ -46,9 +56,9 @@ const Home = () => {
           <FlatList 
             data={movieList.results}
             numColumns={2}
-            renderItem={({item}) => <VerticalMovieCard movie={item} />}
+            renderItem={({item}) => <VerticalMovieCard movie={item} onPosterPress={() => handleMoviePosterPress(item)} />}
             keyExtractor={item => item.id.toString()}
-            onEndReached={ () => setPageToLoad(pageToLoad + 1) }
+            onEndReached={() => setPageToLoad(pageToLoad + 1)}
             onEndReachedThreshold={0.2}
           />
         }
@@ -57,7 +67,7 @@ const Home = () => {
         <TouchableOpacity style={styles.footerNavItem}>
           <Feather name="grid" color="#fff" size={24} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.footerNavItem}>
+        <TouchableOpacity style={styles.footerNavItem} onPress={() => navigation.navigate('SearchMovie')}>
           <Feather name="search" color="#fff" size={24} />
         </TouchableOpacity>        
       </View>
@@ -69,23 +79,24 @@ export default Home;
 
 const styles = StyleSheet.create({
   header: {
-    paddingLeft: 22
+    paddingLeft: 22,
+    backgroundColor: Theme.colors.primary
   },
   main: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: '#eceef2'
+    backgroundColor: Theme.colors.background
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: '#2e2a27'
+    backgroundColor: Theme.colors.primary
   },
   footerNavItem: {
     margin: 12,
   },
   title: {
-    color: '#322153',
+    color: Theme.colors.accent,
     fontSize: 32,
     fontFamily: 'Ubuntu_700Bold',
     maxWidth: 260,
@@ -97,12 +108,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   menuItem: {
-    color: '#d0d0d1',
+    color: Theme.colors.accentLighter,
     marginEnd: 12,
     fontFamily: 'Roboto_400Regular',
     fontWeight: 'bold'
   },
   menuItemActive: {
-    color: '#19181d',
+    color: Theme.colors.accent,
   }
 });
