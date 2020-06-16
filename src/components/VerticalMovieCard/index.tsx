@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Image, View, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { TmdbMovie } from '../../api/tmdb';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 
 interface Props {
-  movie: TmdbMovie
+  movie: TmdbMovie,
+  onPosterPress?: () => void;
 }
 
-const VerticalMovieCard: React.FC<Props> = ({movie}) => {
+const VerticalMovieCard: React.FC<Props> = ({movie, onPosterPress}) => {
   
   const [bookmarked, setBookmarked] = useState(false);
 
@@ -17,17 +19,19 @@ const VerticalMovieCard: React.FC<Props> = ({movie}) => {
 
   return (
     <View style={styles.container}>
-      <Feather 
+      <Ionicons 
         style={styles.bookmark}
-        name="bookmark"
+        name="ios-bookmark"
         color={bookmarked ? '#ffd700' : '#FFF'}
         onPress={() => setBookmarked(!bookmarked)}
       />
-      <Image 
-        style={styles.poster}
-        source={{uri: `https://image.tmdb.org/t/p/w342${movie.poster_path}`}}
-        resizeMode="cover"
-        borderRadius={12} />
+      <TouchableOpacity onPress={onPosterPress}>
+        <Image 
+          style={styles.poster}
+          source={{uri: `https://image.tmdb.org/t/p/w342${movie.poster_path}`}}
+          resizeMode="cover"
+          borderRadius={12} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -40,8 +44,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginVertical: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.3)'
+    backgroundColor: 'transparent'
   },
   bookmark: {
     position: 'absolute',
