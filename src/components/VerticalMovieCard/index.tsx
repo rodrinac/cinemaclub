@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Image, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { TmdbMovie } from '../../api/tmdb';
 import { TouchableOpacity } from 'react-native-gesture-handler';
+import SvgUri from "expo-svg-uri";
+
+import { TmdbMovie } from '../../api/tmdb';
 import database from '../../api/database';
 
 interface Props {
@@ -32,6 +34,10 @@ const VerticalMovieCard: React.FC<Props> = ({movie, onPosterPress}) => {
     await fetchBookmarkStatus();
   }
 
+  const posterUrl = movie.poster_path
+    ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
+    : 'https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg';
+
   return (
     <View style={styles.container}>
       <Ionicons 
@@ -42,11 +48,18 @@ const VerticalMovieCard: React.FC<Props> = ({movie, onPosterPress}) => {
         onPress={changeBookmarkStatus}
       />
       <TouchableOpacity onPress={onPosterPress}>
-        <Image 
-          style={styles.poster}
-          source={{uri: `https://image.tmdb.org/t/p/w342${movie.poster_path}`}}
-          resizeMode="cover"
-          borderRadius={12} />
+        { movie.poster_path
+          ? (<Image 
+              style={styles.poster}
+              source={{uri: posterUrl}}
+              resizeMode="cover"
+              borderRadius={12} />)
+          : (<SvgUri
+              width="200" 
+              height="200" 
+              source={require("../../assets/blue_square_2.svg")}
+              style={styles.poster}/>)
+        }
       </TouchableOpacity>
     </View>
   );

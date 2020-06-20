@@ -5,7 +5,7 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import api, { TmdbMovieList, TmdbMovie } from '../../api/tmdb';
-import VerticalMovieCard from '../../components/VerticalMovieCard';
+import HorizontalMovieCard from '../../components/HorizontalMovieCard';
 import Theme from '../../theme';
 
 interface PageToLoad {
@@ -29,16 +29,27 @@ const SearchMovie = () => {
       const response = await api.get<TmdbMovieList>('search/movie', {
         params: {
           query: pageToLoad.searchQuery,
-          page: pageToLoad.number
+          page: pageToLoad.number,
+          append_to_response: 'credits'
         }
       });
        
       setFoundMovies(response.data);
 
       const responseData = response.data;
-      const currentMovieList = foundMovies?.results || [];
 
-      setFoundMovies({...responseData, results: currentMovieList.concat(responseData.results)});     
+      const ids = new Set<number>();
+
+      const movieList = (foundMovies?.results || []).concat(responseData.results).filter(movie => {
+        if (ids.has(movie.id)) {
+          return false;
+        }
+
+        ids.add(movie.id);
+        return true;
+      });
+
+      setFoundMovies({...responseData, results: movieList });     
     }
 
     if (pageToLoad.number > 0 && (!foundMovies || pageToLoad.number <= foundMovies.total_pages)) {
@@ -100,8 +111,7 @@ const SearchMovie = () => {
         { foundMovies &&
           <FlatList
             data={foundMovies.results}
-            numColumns={2}
-            renderItem={({item}) => <VerticalMovieCard movie={item} onPosterPress={() => handleMoviePosterPress(item)} />}
+            renderItem={({item}) => <HorizontalMovieCard movie={item} onPosterPress={() => handleMoviePosterPress(item)} />}
             keyExtractor={item => item.id.toString()}
             onEndReached={() => setPageToLoad({...pageToLoad, number: pageToLoad.number + 1})}
             onEndReachedThreshold={0.2}
@@ -155,6 +165,7 @@ const styles = StyleSheet.create({
   main: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: Theme.colors.background
+    backgroundColor: Theme.colors.background,
+    paddingHorizontal: 12
   },
 });

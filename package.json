@@ -18,6 +18,7 @@
     "expo": "~37.0.3",
     "expo-linear-gradient": "~8.1.0",
     "expo-sqlite": "~8.1.0",
+    "expo-svg-uri": "^1.1.0",
     "expo-web-browser": "~8.2.1",
     "react": "~16.9.0",
     "react-dom": "~16.9.0",
@@ -25,7 +26,9 @@
     "react-native-gesture-handler": "^1.6.1",
     "react-native-safe-area-context": "0.7.3",
     "react-native-screens": "~2.2.0",
-    "react-native-web": "~0.11.7"
+    "react-native-svg": "11.0.1",
+    "react-native-web": "~0.11.7",
+    "smart-request-balancer": "^2.1.1"
   },
   "devDependencies": {
     "@babel/core": "^7.8.6",
