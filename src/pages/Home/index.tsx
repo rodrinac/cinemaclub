@@ -8,32 +8,45 @@ import tmdb, { TmdbMovieList, TmdbMovie } from '../../api/tmdb';
 import VerticalMovieCard from '../../components/VerticalMovieCard';
 import Theme from '../../theme';
 
+enum Filter {
+  NOW = 'popularity.asc',
+  POPULAR = 'popularity.desc',
+  UPCOMMING = 'release_date.desc'
+}
+
+interface PageToLoad {
+  number: number,
+  sortBy: Filter
+}
+
 const Home = () => {
   const navigation = useNavigation();
   
   const [movieList, setMovieList] = useState<TmdbMovieList>();
-  const [pageToLoad, setPageToLoad] = useState(1);
+  const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
+    number: 1,
+    sortBy: Filter.POPULAR
+  });
 
   useEffect(() => {
     async function requestDiscoverMovies() {
       const response = await tmdb.get<TmdbMovieList>('discover/movie', {
         params: {
-          page: pageToLoad,
-          sortBy: "popularity.desc"
+          page: pageToLoad.number,
+          sortBy: pageToLoad.sortBy
         }
       });
 
       const responseData = response.data;
-      const currentMovieList = movieList?.results || [];
+      
+      const loadedMovies = responseData.results;
 
-      setMovieList({...responseData, results: currentMovieList.concat(responseData.results)});     
+      const currentMovieList = pageToLoad.number === 1 ? [] : (movieList?.results || []);
+
+      setMovieList({...responseData, results: currentMovieList.concat(loadedMovies)});     
     }
 
-    try {
-      requestDiscoverMovies();
-    } catch(e) {
-      console.log(e);
-    }
+    requestDiscoverMovies();
   }, [pageToLoad]);
 
   function handleMoviePosterPress(movie: TmdbMovie) {
@@ -45,9 +58,21 @@ const Home = () => {
       <View style={styles.header}>
         <Text style={styles.title}>DISCOVER</Text>
         <View style={styles.menu}>
-          <Text style={styles.menuItem}>Now</Text>
-          <Text style={[styles.menuItem, styles.menuItemActive]}>Popular</Text>
-          <Text style={styles.menuItem}>Upcomming</Text>
+          <Text 
+            style={[styles.menuItem, pageToLoad.sortBy === Filter.NOW ? styles.menuItemActive : {}]}
+            onPress={() => setPageToLoad({ number: 1, sortBy: Filter.NOW})}>
+              Now
+          </Text>
+          <Text
+            style={[styles.menuItem, pageToLoad.sortBy === Filter.POPULAR ? styles.menuItemActive : {}]}
+            onPress={() => setPageToLoad({ number: 1, sortBy: Filter.POPULAR})}>
+              Popular
+          </Text>
+          <Text
+            style={[styles.menuItem,  pageToLoad.sortBy === Filter.UPCOMMING ? styles.menuItemActive : {}]}
+            onPress={() => setPageToLoad({ number: 1, sortBy: Filter.UPCOMMING})}>
+              Upcomming
+          </Text>
           <Text style={styles.menuItem}>{' '}</Text>
         </View>
       </View>
@@ -58,7 +83,7 @@ const Home = () => {
             numColumns={2}
             renderItem={({item}) => <VerticalMovieCard movie={item} onPosterPress={() => handleMoviePosterPress(item)} />}
             keyExtractor={item => item.id.toString()}
-            onEndReached={() => setPageToLoad(pageToLoad + 1)}
+            onEndReached={() => setPageToLoad({...pageToLoad, number: pageToLoad.number + 1})}
             onEndReachedThreshold={0.2}
           />
         }
@@ -98,7 +123,7 @@ const styles = StyleSheet.create({
   title: {
     color: Theme.colors.accent,
     fontSize: 32,
-    fontFamily: 'Ubuntu_700Bold',
+    fontFamily: 'RobotoCondensed_700Bold',
     maxWidth: 260,
     marginTop: 64,
   },

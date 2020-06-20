@@ -950,6 +950,11 @@
   dependencies:
     "@types/hammerjs" "^2.0.36"
 
+"@expo-google-fonts/roboto-condensed@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@expo-google-fonts/roboto-condensed/-/roboto-condensed-0.1.0.tgz#09e2aad0f5c03e53ae871a4857486da3e0daee62"
+  integrity sha512-gF0O9nb+B1iNNb2u83Qn67g2Sw2A4KqXhoZmNV4+nOFGFcPJ86IbbvaJQ61DvcE9/QdV61DH0FeJKvLmaRi9jA==
+
 "@expo-google-fonts/roboto@^0.1.0":
   version "0.1.0"
   resolved "https://registry.yarnpkg.com/@expo-google-fonts/roboto/-/roboto-0.1.0.tgz#2897dc09db4ceb9f5ba337103090e1d70236e811"
