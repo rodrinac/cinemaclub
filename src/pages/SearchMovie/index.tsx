@@ -1,39 +1,66 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Platform, KeyboardAvoidingView, StyleSheet, NativeSyntheticEvent, TextInputSubmitEditingEventData, Picker, Modal, Alert } from 'react-native';
-import { TextInput, TouchableOpacity, TouchableHighlight, FlatList } from 'react-native-gesture-handler';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Text, Platform, KeyboardAvoidingView, StyleSheet, NativeSyntheticEvent, TextInputSubmitEditingEventData, Picker, Modal, Alert, PermissionsAndroid } from 'react-native';
+import { TextInput, TouchableOpacity, FlatList } from 'react-native-gesture-handler';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
-import api, { TmdbGenre, TmdbMovieList, TmdbGenreList } from '../../api/tmdb';
+import api, { TmdbMovieList, TmdbMovie } from '../../api/tmdb';
 import VerticalMovieCard from '../../components/VerticalMovieCard';
 import Theme from '../../theme';
 
+interface PageToLoad {
+  number: number,
+  searchQuery: string
+}
+
 const SearchMovie = () => {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedGenre, setSelectedGenre] = useState<number>(0);
-  const [genres, setGenres] = useState<TmdbGenre[]>([]);
+  const navigation = useNavigation();
+
   const [foundMovies, setFoundMovies] = useState<TmdbMovieList>();
 
-  useEffect(() => {
-    async function requestMovieGenres() {
-      const response = await api.get<TmdbGenreList>('genre/movie/list');
+  const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
+    number: 0,
+    searchQuery: ''
+  });
 
-      setGenres(response.data.genres);      
+  useEffect(() => {
+    async function requestSearchMovies() {
+
+      const response = await api.get<TmdbMovieList>('search/movie', {
+        params: {
+          query: pageToLoad.searchQuery,
+          page: pageToLoad.number
+        }
+      });
+       
+      setFoundMovies(response.data);
+
+      const responseData = response.data;
+      const currentMovieList = foundMovies?.results || [];
+
+      setFoundMovies({...responseData, results: currentMovieList.concat(responseData.results)});     
     }
-    
-    requestMovieGenres();
-  }, []);
+
+    if (pageToLoad.number > 0 && (!foundMovies || pageToLoad.number <= foundMovies.total_pages)) {
+      requestSearchMovies();
+    }
+  }, [pageToLoad]);
 
   async function handleSubmitEditing(event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) {
     const searchQuery = event.nativeEvent.text;
-    
-    const response = await api.get<TmdbMovieList>('search/movie', {
-      params: {
-        query: searchQuery,
-        page: 1
-      }
+
+    if (searchQuery.trim().length < 1) {
+      return;
+    }
+
+    setPageToLoad({
+      number: 1,
+      searchQuery
     });
-     
-    setFoundMovies(response.data);
+  }
+
+  function handleMoviePosterPress(movie: TmdbMovie) {
+    navigation.navigate('MovieDetail', { movieId: movie.id });
   }
 
   return (
@@ -42,45 +69,31 @@ const SearchMovie = () => {
       style={{flex: 1}}>
         
       <View style={styles.header}>
+        <View style={styles.nav}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="ios-arrow-round-back" size={24} color="#FFF"/>
+          </TouchableOpacity>
+          <TouchableOpacity>
+            <Ionicons 
+              name="ios-options"
+              color="#FFF"            
+              size={24}
+              />
+            </TouchableOpacity>
+        </View>
         <Text style={styles.title}>SEARCH</Text>
         <View style={styles.search}>
           <TextInput 
             style={styles.searchInput}            
             placeholder="🔍 Search a movie"
-            onSubmitEditing={handleSubmitEditing}/>
-          <TouchableOpacity style={styles.searchFilter} onPress={() => setModalVisible(true)}>          
+            onSubmitEditing={handleSubmitEditing}
+            autoFocus />
+          <TouchableOpacity style={styles.searchFilter} onPress={() => {}}>          
             <MaterialCommunityIcons 
               name="filter-outline"
               color={Theme.colors.accentLighter}
               size={36} />
           </TouchableOpacity>
-          <Modal
-            animationType="slide"
-            transparent={false}
-            visible={modalVisible}
-            onRequestClose={() => setModalVisible(false)}>
-            <View style={{ marginTop: 22 }}>
-              <View>
-                <Picker
-                  mode="dropdown"
-                  selectedValue={selectedGenre}
-                  style={{ height: 50, width: 100 }}
-                  onValueChange={(itemValue, itemIndex) => setSelectedGenre(itemValue)}>
-                  <Picker.Item label="All" value={0} />
-                  {genres.map(genre => (
-                    <Picker.Item
-                      key={genre.id}
-                      label={genre.name} 
-                      value={genre.id}
-                    />))}
-                </Picker>
-
-                <TouchableHighlight onPress={() => setModalVisible(false)}>
-                  <Text>Hide Modal</Text>
-                </TouchableHighlight>
-              </View>
-            </View>
-          </Modal>
         </View>
       </View>
       <View style={styles.main}>
@@ -88,9 +101,9 @@ const SearchMovie = () => {
           <FlatList
             data={foundMovies.results}
             numColumns={2}
-            renderItem={({item}) => <VerticalMovieCard movie={item} onPosterPress={() => {}} />}
+            renderItem={({item}) => <VerticalMovieCard movie={item} onPosterPress={() => handleMoviePosterPress(item)} />}
             keyExtractor={item => item.id.toString()}
-            onEndReached={() => {}}
+            onEndReached={() => setPageToLoad({...pageToLoad, number: pageToLoad.number + 1})}
             onEndReachedThreshold={0.2}
           />
         }
@@ -106,10 +119,18 @@ const styles = StyleSheet.create({
     paddingLeft: 22,
     backgroundColor: Theme.colors.primary
   },
+  nav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    position: 'absolute',
+    top: 32,
+    left: 32,
+    right: 32
+  },
   title: {
     color: Theme.colors.accent,
     fontSize: 32,
-    fontFamily: 'Ubuntu_700Bold',
+    fontFamily: 'RobotoCondensed_700Bold',
     maxWidth: 260,
     marginTop: 64,
   },

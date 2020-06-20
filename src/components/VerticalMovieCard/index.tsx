@@ -1,21 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { Image, View, StyleSheet } from 'react-native';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { TmdbMovie } from '../../api/tmdb';
 import { TouchableOpacity } from 'react-native-gesture-handler';
+import database from '../../api/database';
 
 interface Props {
-  movie: TmdbMovie,
+  movie: TmdbMovie;
   onPosterPress?: () => void;
 }
 
 const VerticalMovieCard: React.FC<Props> = ({movie, onPosterPress}) => {
   
-  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarked, setBookmarked] = useState<boolean>();
 
-  useEffect(() => {
-    setBookmarked(Math.floor(Math.random() * 2) === 1);
-  }, []);
+  useEffect(() => { 
+    fetchBookmarkStatus();
+  }, [])
+  
+  async function fetchBookmarkStatus() {
+    setBookmarked(await database.existsBookmark(movie));
+  }
+
+  async function changeBookmarkStatus() {
+    if (bookmarked) {
+      await database.removeBookmark(movie);
+    } else {
+      await database.addBookmark(movie);
+    }
+
+    await fetchBookmarkStatus();
+  }
 
   return (
     <View style={styles.container}>
@@ -23,7 +38,8 @@ const VerticalMovieCard: React.FC<Props> = ({movie, onPosterPress}) => {
         style={styles.bookmark}
         name="ios-bookmark"
         color={bookmarked ? '#ffd700' : '#FFF'}
-        onPress={() => setBookmarked(!bookmarked)}
+        size={18}
+        onPress={changeBookmarkStatus}
       />
       <TouchableOpacity onPress={onPosterPress}>
         <Image 

@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, KeyboardAvoidingView, ImageBackground, Platform, Text, View } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { AppLoading } from 'expo';
-import { TouchableOpacity } from 'react-native-gesture-handler';
-import { Feather, Entypo, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { TouchableOpacity, ScrollView } from 'react-native-gesture-handler';
+import { Feather, Entypo, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 
-import api, { TmdbMovie } from '../../api/tmdb';
+import api, { TmdbMovie, TmdbVideo } from '../../api/tmdb';
+import Theme from '../../theme';
+import database from '../../api/database';
 
 interface Params {
   movieId: number
@@ -19,15 +22,11 @@ const MovieDetail = () => {
   const routeParams = route.params as Params;
 
   const [movie, setMovie] = useState<TmdbMovie>();
-  const [bookmarked, setBookmarked] = useState(false);
-
-  useEffect(() => {
-    setBookmarked(Math.floor(Math.random() * 2) === 1);
-  }, []);
+  const [bookmarked, setBookmarked] = useState<boolean>();
 
   useEffect(() => {
     async function requestMovieDetail() {
-      const response = await api.get<TmdbMovie>(`movie/${routeParams.movieId}`);
+      const response = await api.get<TmdbMovie>(`movie/${routeParams.movieId}?append_to_response=videos`);
 
       setMovie(response.data);
     }
@@ -35,9 +34,22 @@ const MovieDetail = () => {
     requestMovieDetail();
   }, []);
 
+  useEffect(() => { 
+    fetchBookmarkStatus();
+  }, [])
+  
+  async function fetchBookmarkStatus() {
+    setBookmarked(await database.existsBookmark({id: routeParams.movieId} as TmdbMovie));
+  }
 
-  if (!movie) {
-    return <AppLoading />;
+  async function changeBookmarkStatus() {
+    if (bookmarked) {
+      await database.removeBookmark(movie!);
+    } else {
+      await database.addBookmark(movie!);
+    }
+
+    await fetchBookmarkStatus();
   }
 
   function getReleaseYear(): number {
@@ -45,29 +57,47 @@ const MovieDetail = () => {
 
     return releaseDate.getFullYear();
   }
-  
+
+  function handlePlayTrailer() {
+    const movieTrailer = movie!.videos?.results.find(video => /youtube/i.test(video.site));
+
+    if (movieTrailer) {
+      WebBrowser.openBrowserAsync(`https://www.youtube.com/embed/${movieTrailer.key}?rel=0&autoplay=0&showinfo=0&controls=0`);
+    }
+  }
+
+  if (!movie) {
+    return <AppLoading />;
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={ Platform.OS === 'ios' ? 'padding' : undefined } 
       style={{flex: 1}}>
-      <Ionicons 
-        style={styles.bookmark}
-        name="ios-bookmark"
-        color={bookmarked ? '#ffd700' : '#FFF'}
-        onPress={() => setBookmarked(!bookmarked)}
-        size={24}
-      />
       <ImageBackground
         style={styles.container} 
-        source={{uri: `https://image.tmdb.org/t/p/w342${movie.poster_path}`}}
+        source={{uri: `https://image.tmdb.org/t/p/w500${movie.poster_path}`}}
         resizeMode="cover"
       >
         <LinearGradient
-          colors={['transparent', '#2e2a27']}
+          colors={['transparent', Theme.colors.primary]}
           start={[0.0, 0.1]}
           style={styles.linearGradient}
         />
-        <View>     
+        <View style={styles.nav}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="ios-arrow-round-back" size={24} color="#FFF"/>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={changeBookmarkStatus}>
+            <Ionicons 
+              name="ios-bookmark"
+              color={bookmarked ? '#ffd700' : '#FFF'}              
+              size={24}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={{flex: 1}}>     
           <Text style={styles.yearAndGenre}>{getReleaseYear()} • {movie.genres[0]?.name || '?'}</Text>
           <View style={styles.rating}>
             <Text style={styles.ratingOwned}>{movie.vote_average} </Text>
@@ -77,14 +107,11 @@ const MovieDetail = () => {
           <Text style={styles.title}>{movie.title.toUpperCase()}</Text>
           <Text style={styles.overview}>{movie.overview}</Text>
           <View style={styles.play}>
-            <TouchableOpacity style={styles.playButton}>
-              { movie.video
-                ? <Entypo name='controller-play' color="#2e2a19" size={24}/>
-                : <MaterialCommunityIcons name="web" color="#2e2a19" size={24}/>
-              }
+            <TouchableOpacity style={styles.playButton} onPress={handlePlayTrailer}>
+               <Entypo name='controller-play' color="#2e2a19" size={24}/>
             </TouchableOpacity>
           </View>          
-        </View>        
+        </ScrollView>        
       </ImageBackground>
       <View style={styles.footer}>
           <TouchableOpacity style={styles.footerNavItem}>
@@ -113,11 +140,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: '100%',
   },
-  bookmark: {
-    position: 'absolute',
-    top: 52,
-    right: 42,
-    zIndex: 1
+  nav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flex: 1
   },
   yearAndGenre: {
     color: '#fff'
@@ -126,8 +152,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 48,
     fontWeight: 'bold',
-    fontFamily: 'Ubuntu_700Bold',
-    maxWidth: 260,
+    fontFamily: 'RobotoCondensed_700Bold',
+    maxWidth: 360,
   },
   rating: {
     flexDirection: 'row',
@@ -161,7 +187,7 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: '#2e2a27'
+    backgroundColor: Theme.colors.primary
   },
   footerNavItem: {
     margin: 12,

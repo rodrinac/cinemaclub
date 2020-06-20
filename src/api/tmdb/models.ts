@@ -23,6 +23,9 @@ export interface TmdbMovie {
   video: boolean,
   vote_average: number,
   vote_count: number,
+  videos?: {
+    results: TmdbVideo[]
+  },
 }
 
 export interface TmdbGenreList {
@@ -32,4 +35,15 @@ export interface TmdbGenreList {
 export interface TmdbGenre {
   id: number;
   name: string
+}
+
+export interface TmdbVideo {
+  id: string,
+  iso_3166_1: string,
+  iso_639_1: string,
+  key: string,
+  name: string,
+  site: string,
+  size: number,
+  type: string,
 }
