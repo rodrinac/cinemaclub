@@ -25,7 +25,7 @@ const Home = () => {
   const [movieList, setMovieList] = useState<TmdbMovieList>();
   const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
     number: 1,
-    sortBy: Filter.POPULAR
+    sortBy: Filter.POPULAR,
   });
 
   useEffect(() => {
@@ -33,12 +33,11 @@ const Home = () => {
       const response = await tmdb.get<TmdbMovieList>('discover/movie', {
         params: {
           page: pageToLoad.number,
-          sortBy: pageToLoad.sortBy
+          sort_by: pageToLoad.sortBy
         }
       });
 
       const responseData = response.data;
-      
       const loadedMovies = responseData.results;
 
       const currentMovieList = pageToLoad.number === 1 ? [] : (movieList?.results || []);
@@ -58,21 +57,28 @@ const Home = () => {
       <View style={styles.header}>
         <Text style={styles.title}>DISCOVER</Text>
         <View style={styles.menu}>
-          <Text 
-            style={[styles.menuItem, pageToLoad.sortBy === Filter.NOW ? styles.menuItemActive : {}]}
-            onPress={() => setPageToLoad({ number: 1, sortBy: Filter.NOW})}>
-              Now
-          </Text>
-          <Text
-            style={[styles.menuItem, pageToLoad.sortBy === Filter.POPULAR ? styles.menuItemActive : {}]}
-            onPress={() => setPageToLoad({ number: 1, sortBy: Filter.POPULAR})}>
-              Popular
-          </Text>
-          <Text
-            style={[styles.menuItem,  pageToLoad.sortBy === Filter.UPCOMMING ? styles.menuItemActive : {}]}
-            onPress={() => setPageToLoad({ number: 1, sortBy: Filter.UPCOMMING})}>
-              Upcomming
-          </Text>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <Text 
+              style={[styles.menuItemText, pageToLoad.sortBy === Filter.NOW ? styles.menuItemTextActive : {}]}
+              onPress={() => setPageToLoad({ number: 1, sortBy: Filter.NOW})}>
+                Favorites
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem}>
+            <Text
+              style={[styles.menuItemText, pageToLoad.sortBy === Filter.POPULAR ? styles.menuItemTextActive : {}]}
+              onPress={() => setPageToLoad({ number: 1, sortBy: Filter.POPULAR})}>
+                Popular
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem}>
+            <Text
+              style={[styles.menuItemText,  pageToLoad.sortBy === Filter.UPCOMMING ? styles.menuItemTextActive : {}]}
+              onPress={() => setPageToLoad({ number: 1, sortBy: Filter.UPCOMMING})}>
+                Upcomming
+            </Text>
+          </TouchableOpacity>
           <Text style={styles.menuItem}>{' '}</Text>
         </View>
       </View>
@@ -132,13 +138,15 @@ const styles = StyleSheet.create({
     marginVertical: 16,   
     flexDirection: 'row',
   },
-  menuItem: {
+  menuItem: {    
+    marginEnd: 12
+  },
+  menuItemText: {
     color: Theme.colors.accentLighter,
-    marginEnd: 12,
     fontFamily: 'Roboto_400Regular',
     fontWeight: 'bold'
   },
-  menuItemActive: {
+  menuItemTextActive: {
     color: Theme.colors.accent,
   }
 });

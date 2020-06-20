@@ -7,6 +7,7 @@ export interface TmdbMovieList {
 }
 
 export interface TmdbMovie {
+  runtime: number;
   id: number,
   adult: boolean,
   backdrop_path: string,
@@ -26,6 +27,10 @@ export interface TmdbMovie {
   videos?: {
     results: TmdbVideo[]
   },
+  credits?: {
+    cast: TmdbMovieCredit[],
+    crew: TmdbMovieCredit[]
+  }
 }
 
 export interface TmdbGenreList {
@@ -46,4 +51,17 @@ export interface TmdbVideo {
   site: string,
   size: number,
   type: string,
+}
+
+export interface TmdbMovieCredit {
+  cast_id?: number,
+  character?: string,
+  department?: string,
+  credit_id: string,
+  gender: number,
+  id: number,
+  name: string,
+  order?: number,
+  profile_path: string,
+  job?: string
 }
