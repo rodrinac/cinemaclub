@@ -22,6 +22,29 @@ NPM:
 npm install
 ```
 
+Go to **src/api/tmdb** and create the file **conf.json**
+
+```json
+{
+  "authToken": "<your_api_token_goes_here"
+}
+```
+
+## Dev
+
+Yarn:
+
+```sh
+yarn start
+```
+
+NPM:
+
+```sh
+npm start
+```
+
+
 ## Milestones
 
  - [x] Start Page.
