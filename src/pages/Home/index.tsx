@@ -9,14 +9,14 @@ import VerticalMovieCard from '../../components/VerticalMovieCard';
 import Theme from '../../theme';
 
 enum Filter {
-  NOW = 'popularity.asc',
-  POPULAR = 'popularity.desc',
-  UPCOMMING = 'release_date.desc'
+  NOW = 'movie/now_playing',
+  POPULAR = 'movie/popular',
+  UPCOMMING = 'movie/upcoming'
 }
 
 interface PageToLoad {
   number: number,
-  sortBy: Filter
+  filter: Filter
 }
 
 const Home = () => {
@@ -25,16 +25,13 @@ const Home = () => {
   const [movieList, setMovieList] = useState<TmdbMovieList>();
   const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
     number: 1,
-    sortBy: Filter.POPULAR,
+    filter: Filter.POPULAR,
   });
 
   useEffect(() => {
     async function requestDiscoverMovies() {
-      const response = await tmdb.get<TmdbMovieList>('discover/movie', {
-        params: {
-          page: pageToLoad.number,
-          sort_by: pageToLoad.sortBy
-        }
+      const response = await tmdb.get<TmdbMovieList>(pageToLoad.filter, {
+        params: { page: pageToLoad.number}
       });
 
       const responseData = response.data;
@@ -60,22 +57,22 @@ const Home = () => {
 
           <TouchableOpacity style={styles.menuItem}>
             <Text 
-              style={[styles.menuItemText, pageToLoad.sortBy === Filter.NOW ? styles.menuItemTextActive : {}]}
-              onPress={() => setPageToLoad({ number: 1, sortBy: Filter.NOW})}>
-                Favorites
+              style={[styles.menuItemText, pageToLoad.filter === Filter.NOW ? styles.menuItemTextActive : {}]}
+              onPress={() => setPageToLoad({ number: 1, filter: Filter.NOW})}>
+                Now
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
             <Text
-              style={[styles.menuItemText, pageToLoad.sortBy === Filter.POPULAR ? styles.menuItemTextActive : {}]}
-              onPress={() => setPageToLoad({ number: 1, sortBy: Filter.POPULAR})}>
+              style={[styles.menuItemText, pageToLoad.filter === Filter.POPULAR ? styles.menuItemTextActive : {}]}
+              onPress={() => setPageToLoad({ number: 1, filter: Filter.POPULAR})}>
                 Popular
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
             <Text
-              style={[styles.menuItemText,  pageToLoad.sortBy === Filter.UPCOMMING ? styles.menuItemTextActive : {}]}
-              onPress={() => setPageToLoad({ number: 1, sortBy: Filter.UPCOMMING})}>
+              style={[styles.menuItemText,  pageToLoad.filter === Filter.UPCOMMING ? styles.menuItemTextActive : {}]}
+              onPress={() => setPageToLoad({ number: 1, filter: Filter.UPCOMMING})}>
                 Upcomming
             </Text>
           </TouchableOpacity>
