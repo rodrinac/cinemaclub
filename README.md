@@ -6,7 +6,7 @@
 
 This is a React Native application based on Expo using the [TMDB api](https://www.themoviedb.org/).
 
-<img src="assets/screenshot_01.png" width="295" /><img src="assets/screenshot_02.png" width="295" /><img src="assets/screenshot_03.png" width="295" />
+<img src="showcase/screenshot_01.png" width="295" /><img src="showcase/screenshot_02.png" width="295" /><img src="showcase/screenshot_03.png" width="295" />
 
 ## Installation
 
