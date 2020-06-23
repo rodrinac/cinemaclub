@@ -108,7 +108,8 @@ export default Home;
 const styles = StyleSheet.create({
   header: {
     paddingLeft: 22,
-    backgroundColor: Theme.colors.primary
+    backgroundColor: Theme.colors.primary,
+    elevation: 2
   },
   main: {
     flex: 1,
@@ -118,7 +119,8 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: Theme.colors.primary
+    backgroundColor: Theme.colors.primary,
+    elevation: 2
   },
   footerNavItem: {
     margin: 12,

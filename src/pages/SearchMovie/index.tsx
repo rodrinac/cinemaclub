@@ -127,7 +127,8 @@ export default SearchMovie;
 const styles = StyleSheet.create({
   header: {
     paddingLeft: 22,
-    backgroundColor: Theme.colors.primary
+    backgroundColor: Theme.colors.primary,
+    elevation: 2
   },
   nav: {
     flexDirection: 'row',
@@ -153,13 +154,13 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.primaryDarker,
     color: Theme.colors.accentLighter,
     fontSize: 18,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 12
   },
   searchFilter: {
     marginHorizontal: 12,
     backgroundColor: Theme.colors.primaryDarker,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 8
   },
   main: {

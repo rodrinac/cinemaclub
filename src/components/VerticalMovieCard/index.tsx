@@ -73,7 +73,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginVertical: 8,
-    backgroundColor: 'transparent'
+    backgroundColor: 'transparent',
+    elevation: 4
   },
   bookmark: {
     position: 'absolute',

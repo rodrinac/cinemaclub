@@ -116,7 +116,8 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 8,
     backgroundColor: Theme.colors.primary,
-    flexDirection: 'row'
+    flexDirection: 'row',
+    elevation: 2
   },
   bookmark: {
     position: 'absolute',
