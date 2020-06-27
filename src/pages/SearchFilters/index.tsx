@@ -8,20 +8,22 @@ import api, { TmdbGenreList } from '../../api/tmdb';
 import Theme from '../../theme';
 import GenreCard from '../../components/GenreCard';
 
-interface PageToLoad {
-  number: number,
-  searchQuery: string
+enum Filter {
+  WITH_THESE,
+  WITHOUT_THESE
 }
 
 const SearchFilters = () => {
   const navigation = useNavigation();
+  
+  const withoutTheseColor = '#ED0000';
+  const withTheseColor = '#B7990D';
 
   const [genreList, setGenreList] = useState<TmdbGenreList>();
-
-  const colors = [ '#A5D0A8', '#8CADA7', '#B7990D', '#F2F4CB'];
+  const [filter, setFilter] = useState(Filter.WITH_THESE);
+  const [color, setColor] = useState(withTheseColor);
 
   useEffect(() => {
-
     async function fetchGenres() {
       const response = await api.get<TmdbGenreList>('genre/movie/list');
       
@@ -30,6 +32,14 @@ const SearchFilters = () => {
 
     fetchGenres();
   }, []);
+
+  useEffect(() => {
+    if (filter === Filter.WITH_THESE) {
+      setColor(withTheseColor);
+    } else {
+      setColor(withoutTheseColor);
+    }
+  }, [filter]);
 
   return (
     <KeyboardAvoidingView
@@ -50,20 +60,29 @@ const SearchFilters = () => {
             </TouchableOpacity>
         </View>
         <Text style={styles.title}>FILTERS</Text>
-        <View style={styles.search}>
-          <TouchableOpacity style={styles.searchFilter} onPress={() => {}}>          
-            <Text style={styles.searchFilterText}>With These</Text>
+        <View style={styles.menu}>
+          <TouchableOpacity style={styles.menuItem}>
+            <Text 
+              style={[styles.menuItemText, filter === Filter.WITH_THESE ? styles.menuItemTextActive : {}]}
+              onPress={() => setFilter(Filter.WITH_THESE)}>
+                Now
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.searchFilter} onPress={() => {}}>          
-            <Text style={styles.searchFilterText}>Without These</Text>
+          <TouchableOpacity style={styles.menuItem}>
+            <Text
+              style={[styles.menuItemText, filter === Filter.WITHOUT_THESE ? styles.menuItemTextActive : {}]}
+              onPress={() => setFilter(Filter.WITHOUT_THESE)}>
+                Popular
+            </Text>
           </TouchableOpacity>
-        </View>
+          <Text style={styles.menuItem}>{' '}</Text>
+          </View>
       </View>
       <View style={styles.main}>
         { genreList &&
           <FlatList
             data={genreList.genres}
-            renderItem={({item, index}) => <GenreCard color={colors[index % 4]} genre={item}/>}
+            renderItem={({item}) => <GenreCard color={color} genre={item}/>}
             keyExtractor={item => item.id.toString()}
             numColumns={2}
           />
@@ -96,18 +115,21 @@ const styles = StyleSheet.create({
     maxWidth: 260,
     marginTop: 64,
   },
-  search: {
+  menu: {
+    fontSize: 16,
+    marginVertical: 16,   
     flexDirection: 'row',
-    marginVertical: 16, 
   },
-  searchFilter: {
-    marginHorizontal: 12,
-    backgroundColor: Theme.colors.primaryDarker,
-    borderRadius: 8,
-    padding: 8
+  menuItem: {    
+    marginEnd: 12
   },
-  searchFilterText: {
-    color: Theme.colors.accentLighter
+  menuItemText: {
+    color: Theme.colors.accentLighter,
+    fontFamily: 'Roboto_400Regular',
+    fontWeight: 'bold'
+  },
+  menuItemTextActive: {
+    color: Theme.colors.accent,
   },
   main: {
     flex: 1,
