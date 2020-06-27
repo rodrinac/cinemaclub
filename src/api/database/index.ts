@@ -13,10 +13,15 @@ class Database {
   private initDB() {
     const sql = [
       `DROP TABLE IF EXISTS movie_bookmark;`,
-      `create table if not exists movie_bookmark (
-          id integer primary key autoincrement,
-          movie int unique
-        );`
+      `CREATE TABLE IF NOT EXISTS movie_bookmark (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        movie INT UNIQUE NOT NULL
+      );`,
+      `CREATE TABLE IF NOT EXISTS movie_filter (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        genre STRING UNIQUE NOT NULL,
+        filter STRING NOT NULL
+      );`
     ];
 
     this.connection.transaction(tx => sql.forEach(query => tx.executeSql(query)));

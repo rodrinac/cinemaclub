@@ -99,7 +99,7 @@ const SearchMovie = () => {
             placeholder="🔍 Search a movie"
             onSubmitEditing={handleSubmitEditing}
             autoFocus />
-          <TouchableOpacity style={styles.searchFilter} onPress={() => {}}>          
+          <TouchableOpacity style={styles.searchFilter} onPress={() => navigation.navigate('SearchFilters')}>          
             <MaterialCommunityIcons 
               name="filter-outline"
               color={Theme.colors.accentLighter}
