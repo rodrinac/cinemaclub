@@ -7,11 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import api, { TmdbGenreList } from '../../api/tmdb';
 import Theme from '../../theme';
 import GenreCard from '../../components/GenreCard';
-
-enum Filter {
-  WITH_THESE,
-  WITHOUT_THESE
-}
+import database, { GenreFilter } from '../../api/database';
 
 const SearchFilters = () => {
   const navigation = useNavigation();
@@ -20,7 +16,7 @@ const SearchFilters = () => {
   const withTheseColor = '#B7990D';
 
   const [genreList, setGenreList] = useState<TmdbGenreList>();
-  const [filter, setFilter] = useState(Filter.WITH_THESE);
+  const [filter, setFilter] = useState(GenreFilter.WITH_THESE);
   const [color, setColor] = useState(withTheseColor);
 
   useEffect(() => {
@@ -34,12 +30,25 @@ const SearchFilters = () => {
   }, []);
 
   useEffect(() => {
-    if (filter === Filter.WITH_THESE) {
+    async function fetchGenreFilter() {
+      setFilter(await database.getCurrentGenreFilter() || GenreFilter.WITH_THESE);
+    }
+
+    fetchGenreFilter();
+  }, []);
+
+  useEffect(() => {
+    if (filter === GenreFilter.WITH_THESE) {
       setColor(withTheseColor);
     } else {
       setColor(withoutTheseColor);
     }
   }, [filter]);
+
+  async function handleFilterPress(newFilter: GenreFilter) {
+    await database.setGenreFilter(newFilter);
+    setFilter(newFilter);
+  }
 
   return (
     <KeyboardAvoidingView
@@ -63,16 +72,16 @@ const SearchFilters = () => {
         <View style={styles.menu}>
           <TouchableOpacity style={styles.menuItem}>
             <Text 
-              style={[styles.menuItemText, filter === Filter.WITH_THESE ? styles.menuItemTextActive : {}]}
-              onPress={() => setFilter(Filter.WITH_THESE)}>
-                Now
+              style={[styles.menuItemText, filter === GenreFilter.WITH_THESE ? styles.menuItemTextActive : {}]}
+              onPress={() => handleFilterPress(GenreFilter.WITH_THESE)}>
+                With these
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
             <Text
-              style={[styles.menuItemText, filter === Filter.WITHOUT_THESE ? styles.menuItemTextActive : {}]}
-              onPress={() => setFilter(Filter.WITHOUT_THESE)}>
-                Popular
+              style={[styles.menuItemText, filter === GenreFilter.WITHOUT_THESE ? styles.menuItemTextActive : {}]}
+              onPress={() => handleFilterPress(GenreFilter.WITHOUT_THESE)}>
+                Without these
             </Text>
           </TouchableOpacity>
           <Text style={styles.menuItem}>{' '}</Text>
@@ -82,7 +91,7 @@ const SearchFilters = () => {
         { genreList &&
           <FlatList
             data={genreList.genres}
-            renderItem={({item}) => <GenreCard color={color} genre={item}/>}
+            renderItem={({item}) => <GenreCard color={color} genre={item} filter={filter}/>}
             keyExtractor={item => item.id.toString()}
             numColumns={2}
           />

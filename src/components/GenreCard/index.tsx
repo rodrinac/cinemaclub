@@ -5,22 +5,39 @@ import { TouchableOpacity } from 'react-native-gesture-handler';
 
 import { TmdbGenre } from '../../api/tmdb';
 import Theme from '../../theme';
+import database, { GenreFilter } from '../../api/database';
 
 interface Props {
   genre: TmdbGenre;
-  color?: string
+  filter: GenreFilter;
+  color: string
 }
 
-const GenreCard: React.FC<Props> = ({genre, color}) => {
+const GenreCard: React.FC<Props> = ({genre, color, filter}) => {
+
+  const [selected, setSelected] = useState(false);
+
+  useEffect(() => {
+    async function fetchGenreFilter() {
+      setSelected(await database.hasGenreFilter(genre));
+    }
+
+    fetchGenreFilter();
+  }, []);
+
+  async function handlePress() {
+    const x = await database.toggleGenreFilter(genre, filter);
+    setSelected(!selected);
+  }
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button} onPress={handlePress}>
         <Feather 
-          color={color}
+          color={selected ? color : Theme.colors.accentLighter}
           name="circle"
           size={18}/>
-        <Text style={[styles.title, { color }]}>{genre.name}</Text>
+        <Text style={[styles.title, { color: selected ? color : Theme.colors.accentLighter }]}>{genre.name}</Text>
       </TouchableOpacity>
     </View>
   );

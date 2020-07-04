@@ -1,5 +1,10 @@
 import * as SQLite from 'expo-sqlite';
-import { TmdbMovie } from '../tmdb';
+import { TmdbMovie, TmdbGenre } from '../tmdb';
+
+export enum GenreFilter {
+  WITH_THESE,
+  WITHOUT_THESE
+}
 
 class Database {
   private connection = SQLite.openDatabase('CinemaClub');
@@ -17,10 +22,10 @@ class Database {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         movie INT UNIQUE NOT NULL
       );`,
-      `CREATE TABLE IF NOT EXISTS movie_filter (
+      `CREATE TABLE IF NOT EXISTS genre_filter (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         genre STRING UNIQUE NOT NULL,
-        filter STRING NOT NULL
+        filter INT NOT NULL
       );`
     ];
 
@@ -46,6 +51,8 @@ class Database {
           tx.executeSql(`insert into movie_bookmark (movie) values(?)`, [movie.id], (_, { rows }) => {
             resolve(rows.item(0));
           });
+        } else {
+          resolve(null);
         }
       }, reject);
     });
@@ -56,14 +63,58 @@ class Database {
     return new Promise((resolve, reject) => {
       this.connection.transaction(tx => {
         this.connection.transaction(tx => {
-          tx.executeSql(`delete from movie_bookmark where movie =?`, [movie.id], (_, { rows }) => {
+          tx.executeSql(`DELETE FROM movie_bookmark WHERE movie = ?`, [movie.id], (_, { rows }) => {
             resolve(rows.item(0));
           });
         }, reject);
       });
     });
   }
-}
 
+  public async toggleGenreFilter(genre: TmdbGenre, filter: GenreFilter): Promise<any> {
+    const hasGenreFilter = await this.hasGenreFilter(genre);
+
+    return new Promise((resolve, reject) => {
+      this.connection.transaction(tx => {
+        if (hasGenreFilter) {
+          tx.executeSql(`DELETE genre_filter WHERE id = ?`, [filter, genre.id], resolve);
+        } else {
+          tx.executeSql(`INSERT INTO genre_filter(genre, filter) VALUES(?, ?)`, [genre.id, filter], resolve);
+        }
+      }, reject);
+    });
+  }
+
+  public async hasGenreFilter(genre: TmdbGenre): Promise<boolean> {
+    
+    return new Promise((resolve, reject) => {
+      this.connection.transaction(tx => {
+        tx.executeSql(`SELECT * FROM genre_filter WHERE genre = ?`, [genre.id], (_, { rows }) => {
+          resolve(rows.length > 0);        
+        });
+      }, reject);
+    });
+  }
+
+  public async getCurrentGenreFilter(): Promise<GenreFilter> {
+    
+    return new Promise((resolve, reject) => {
+      this.connection.transaction(tx => {
+        tx.executeSql(`SELECT * FROM genre_filter LIMIT 1`, [], (_, { rows }) => {
+          resolve(rows.item(0)?.filter);        
+        });
+      }, reject);
+    });
+  }
+
+  public async setGenreFilter(filter: GenreFilter): Promise<any> {
+    
+    return new Promise((resolve, reject) => {
+      this.connection.transaction(tx => {
+        tx.executeSql(`UPDATE genre_filter SET filter = ?`, [filter], _ => resolve(null));
+      }, reject);
+    });
+  }
+}
 
 export default new Database();
