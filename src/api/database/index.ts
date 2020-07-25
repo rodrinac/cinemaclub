@@ -107,6 +107,18 @@ class Database {
     });
   }
 
+
+  public async getGenreFilters(): Promise<number[]> {
+    
+    return new Promise((resolve, reject) => {
+      this.connection.transaction(tx => {
+        tx.executeSql(`SELECT * FROM genre_filter`, [], (_, { rows }) => {
+          resolve(Array(rows.length).fill('0').map((_, i) => Number(rows.item(i).genre)));        
+        });
+      }, reject);
+    });
+  }
+
   public async setGenreFilter(filter: GenreFilter): Promise<any> {
     
     return new Promise((resolve, reject) => {
