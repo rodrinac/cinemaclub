@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import api, { TmdbMovieList, TmdbMovie } from '../../api/tmdb';
 import HorizontalMovieCard from '../../components/HorizontalMovieCard';
 import Theme from '../../theme';
+import database, { GenreFilter } from '../../api/database';
 
 interface PageToLoad {
   number: number,
@@ -16,12 +17,32 @@ interface PageToLoad {
 const SearchMovie = () => {
   const navigation = useNavigation();
 
+  const [filter, setFilter] = useState(GenreFilter.WITH_THESE);
+  const [genreFilters, setGenreFilters] = useState<number[]>();
   const [foundMovies, setFoundMovies] = useState<TmdbMovieList>();
 
   const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
     number: 0,
     searchQuery: ''
   });
+
+  useEffect(() => {
+    async function fetchFilter() {
+      const _filter = await database.getCurrentGenreFilter() || GenreFilter.WITHOUT_THESE;
+      setFilter(_filter);
+    }
+
+    fetchFilter();
+  }, []);
+
+  useEffect(() => {
+    async function fetchGenreFilters() {
+      const _genreFilters = await database.getGenreFilters();
+      setGenreFilters(_genreFilters);
+    }
+
+    fetchGenreFilters();
+  }, [filter]);
 
   useEffect(() => {
     async function requestSearchMovies() {
@@ -38,24 +59,15 @@ const SearchMovie = () => {
 
       const responseData = response.data;
 
-      const ids = new Set<number>();
+      const movieList = (foundMovies?.results || []).concat(responseData.results);
 
-      const movieList = (foundMovies?.results || []).concat(responseData.results).filter(movie => {
-        if (ids.has(movie.id)) {
-          return false;
-        }
-
-        ids.add(movie.id);
-        return true;
-      });
-
-      setFoundMovies({...responseData, results: movieList });     
+      setFoundMovies({...responseData, results: filterMovieList(movieList) });     
     }
 
     if (pageToLoad.number > 0 && (!foundMovies || pageToLoad.number <= foundMovies.total_pages)) {
       requestSearchMovies();
     }
-  }, [pageToLoad]);
+  }, [pageToLoad, genreFilters]);
 
   async function handleSubmitEditing(event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) {
     const searchQuery = event.nativeEvent.text;
@@ -72,6 +84,18 @@ const SearchMovie = () => {
 
   function handleMoviePosterPress(movie: TmdbMovie) {
     navigation.navigate('MovieDetail', { movieId: movie.id });
+  }
+
+  function filterMovieList(movies: TmdbMovie[]): TmdbMovie[] {
+    if (!genreFilters) {
+      return movies;
+    }
+
+    if (filter === GenreFilter.WITHOUT_THESE) {
+      return movies.filter(movie => genreFilters.every(genre => !movie.genre_ids.includes(genre)));
+    }
+  
+    return movies.filter(movie => genreFilters.some(genre => movie.genre_ids.includes(genre)));
   }
 
   return (
