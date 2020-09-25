@@ -114,7 +114,7 @@ const MovieDetail = () => {
         </ScrollView>        
       </ImageBackground>
       <View style={styles.footer}>
-          <TouchableOpacity style={styles.footerNavItem}>
+          <TouchableOpacity style={styles.footerNavItem} onPress={() => navigation.navigate('Settings')}>
             <Feather name="grid" color="#fff" size={24} />
           </TouchableOpacity>          
           <TouchableOpacity style={styles.footerNavItem} onPress={() => navigation.navigate('SearchMovie')}>

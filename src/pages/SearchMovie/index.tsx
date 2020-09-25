@@ -108,13 +108,9 @@ const SearchMovie = () => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="ios-arrow-round-back" size={24} color="#FFF"/>
           </TouchableOpacity>
-          <TouchableOpacity>
-            <Ionicons 
-              name="ios-options"
-              color="#FFF"            
-              size={24}
-              />
-            </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+            <Ionicons name="ios-options" size={24} color="#FFF"/>
+          </TouchableOpacity>
         </View>
         <Text style={styles.title}>SEARCH</Text>
         <View style={styles.search}>
