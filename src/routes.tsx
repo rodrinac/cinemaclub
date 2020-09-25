@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import MovieDetail from './pages/MovieDetail';
 import SearchMovie from './pages/SearchMovie';
 import SearchFilters from './pages/SearchFilters';
+import Settings from './pages/Settings';
 
 const AppStack = createStackNavigator();
 
@@ -19,6 +20,7 @@ const Routes = () => {
         <AppStack.Screen name="MovieDetail" component={MovieDetail}></AppStack.Screen>
         <AppStack.Screen name="SearchMovie" component={SearchMovie}></AppStack.Screen>
         <AppStack.Screen name="SearchFilters" component={SearchFilters}></AppStack.Screen>
+        <AppStack.Screen name="Settings" component={Settings}></AppStack.Screen>
       </AppStack.Navigator>
     </NavigationContainer>
   );

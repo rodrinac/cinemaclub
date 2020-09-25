@@ -54,7 +54,6 @@ const Home = () => {
       <View style={styles.header}>
         <Text style={styles.title}>DISCOVER</Text>
         <View style={styles.menu}>
-
           <TouchableOpacity style={styles.menuItem}>
             <Text 
               style={[styles.menuItemText, pageToLoad.filter === Filter.NOW ? styles.menuItemTextActive : {}]}
@@ -92,7 +91,7 @@ const Home = () => {
         }
       </View>
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.footerNavItem}>
+        <TouchableOpacity style={styles.footerNavItem} onPress={() => navigation.navigate('Settings')}>
           <Feather name="grid" color="#fff" size={24} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.footerNavItem} onPress={() => navigation.navigate('SearchMovie')}>

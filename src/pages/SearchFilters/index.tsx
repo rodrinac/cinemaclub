@@ -60,7 +60,7 @@ const SearchFilters = () => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="ios-arrow-round-back" size={24} color="#FFF"/>
           </TouchableOpacity>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
             <Ionicons 
               name="ios-options"
               color="#FFF"            
