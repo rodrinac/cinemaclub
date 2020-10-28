@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, Platform, KeyboardAvoidingView, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, Platform, KeyboardAvoidingView, StyleSheet, Alert } from 'react-native';
 import * as StoreReview from 'expo-store-review';
+import * as SecureStore from 'expo-secure-store';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -10,9 +11,23 @@ import Theme from '../../theme';
 const Settings = () => {
   const navigation = useNavigation();
 
-  const [isSwitchOn, setIsSwitchOn] = React.useState(false);
+  const [hideAdultContent, setHideAdultContent] = React.useState(true);
 
-  const onToggleSwitch = () => setIsSwitchOn(!isSwitchOn);
+  useEffect(() => {
+    async function initAdultContentState() {
+      const willHideAdultContent = await SecureStore.getItemAsync('hide_adult_content') === 'true';
+
+      setHideAdultContent(willHideAdultContent);
+    }
+  }, []);
+
+  async function onToggleSwitch() {
+    const willHideAdultContent = !hideAdultContent;
+    
+    await SecureStore.setItemAsync('hide_adult_content', String(willHideAdultContent));
+  
+    setHideAdultContent(willHideAdultContent);
+  }
 
   return (
     <KeyboardAvoidingView
@@ -42,7 +57,7 @@ const Settings = () => {
             accessibilityValue="adult.content"
             style={{flex: 1}}
           />
-          <Switch value={isSwitchOn} />
+          <Switch value={hideAdultContent} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.listItem}>
           <List.Item
