@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import conf from './conf.json';
 import SmartQueue from 'smart-request-balancer';
+import * as SecureStore from 'expo-secure-store';
 
 const api = axios.create({
   baseURL: 'https://api.themoviedb.org/3/',
@@ -13,6 +14,14 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${conf.authToken}`
   }
+});
+
+api.interceptors.request.use(async (config) => {
+  if (config.params) {
+    config.params.include_adult = await SecureStore.getItemAsync('hide_adult_content') !== 'true';
+  }
+
+  return config;
 });
 
 const queue = new SmartQueue({
