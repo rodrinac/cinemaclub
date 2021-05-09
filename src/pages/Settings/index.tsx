@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, Platform, KeyboardAvoidingView, StyleSheet } from 'react-native';
+import { View, Text, Platform, KeyboardAvoidingView, StyleSheet, Alert } from 'react-native';
 import * as StoreReview from 'expo-store-review';
 import * as SecureStore from 'expo-secure-store';
 import { TouchableOpacity } from 'react-native-gesture-handler';
@@ -19,8 +19,6 @@ const Settings = () => {
 
       setHideAdultContent(willHideAdultContent);
     }
-
-    initAdultContentState();
   }, []);
 
   async function onToggleSwitch() {
@@ -39,7 +37,7 @@ const Settings = () => {
       <View style={styles.header}>
         <View style={styles.nav}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="ios-arrow-back" size={24} color="#FFF"/>
+            <Ionicons name="ios-arrow-round-back" size={24} color="#FFF"/>
           </TouchableOpacity>
           <TouchableOpacity>
             <Ionicons 
@@ -56,7 +54,7 @@ const Settings = () => {
           <List.Item
             title="Adult Content"
             description="Hide adult content"
-            accessibilityValue={{text: 'adult.content'}}
+            accessibilityValue="adult.content"
             style={{flex: 1}}
           />
           <Switch value={hideAdultContent} />
@@ -65,7 +63,7 @@ const Settings = () => {
           <List.Item
             title="Privacy"
             description="Terms of Service"
-            accessibilityValue={{text: 'terms.of.service'}}
+            accessibilityValue="terms.of.service"
             style={{flex: 1}}
           />
         </TouchableOpacity>
@@ -73,7 +71,7 @@ const Settings = () => {
           <List.Item
             title="Review"
             description="Send your feedback"
-            accessibilityValue={{text: 'send.your.feedback'}}
+            accessibilityValue="send.your.feedback"
             style={{flex: 1}}
           />
         </TouchableOpacity>
