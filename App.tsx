@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppLoading } from 'expo';
+import AppLoading from 'expo-app-loading';
 import { StatusBar } from 'react-native';
 import { DefaultTheme, Provider as PaperProvider } from 'react-native-paper';
 import { RobotoCondensed_700Bold, RobotoCondensed_400Regular } from '@expo-google-fonts/roboto-condensed';
@@ -35,7 +35,7 @@ export default function App() {
   
   return (
     <PaperProvider theme={theme}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent/>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent hidden/>
       <Routes />
     </PaperProvider>  
   );

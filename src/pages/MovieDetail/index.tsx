@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, KeyboardAvoidingView, ImageBackground, Platform, Text, View } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { AppLoading } from 'expo';
+import AppLoading from 'expo-app-loading';
 import { TouchableOpacity, ScrollView } from 'react-native-gesture-handler';
 import { Feather, Entypo, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 
-import api, { TmdbMovie, TmdbVideo } from '../../api/tmdb';
+import api, { TmdbMovie } from '../../api/tmdb';
 import Theme from '../../theme';
 import database from '../../api/database';
 
@@ -86,7 +86,7 @@ const MovieDetail = () => {
         />
         <View style={styles.nav}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="ios-arrow-round-back" size={24} color="#FFF"/>
+            <Ionicons name="ios-arrow-back" size={24} color="#FFF"/>
           </TouchableOpacity>
           <TouchableOpacity onPress={changeBookmarkStatus}>
             <Ionicons 

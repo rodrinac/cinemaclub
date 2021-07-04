@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Platform, KeyboardAvoidingView, StyleSheet, NativeSyntheticEvent, TextInputSubmitEditingEventData, Picker, Modal, Alert, PermissionsAndroid } from 'react-native';
+import { View, Text, Platform, KeyboardAvoidingView, StyleSheet, NativeSyntheticEvent, TextInputSubmitEditingEventData } from 'react-native';
 import { TextInput, TouchableOpacity, FlatList } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -106,7 +106,7 @@ const SearchMovie = () => {
       <View style={styles.header}>
         <View style={styles.nav}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="ios-arrow-round-back" size={24} color="#FFF"/>
+            <Ionicons name="ios-arrow-back" size={24} color="#FFF"/>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
             <Ionicons name="ios-options" size={24} color="#FFF"/>

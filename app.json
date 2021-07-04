@@ -24,14 +24,12 @@
       "**/*"
     ],
     "android": {
-      "enableDangerousExperimentalLeanBuilds": true,
       "playStoreUrl": "https://play.google.com/store/apps/details?id=com.nu.production"
     },
     "ios": {
       "supportsTablet": true
     },
     "androidNavigationBar": {
-      "package": "tech.kaomidev.cinemaclub",
      "backgroundColor": "#1C2646",
      "visible": "sticky-immersive"
    }
