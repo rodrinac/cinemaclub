@@ -2,27 +2,16 @@
   "expo": {
     "name": "Cinema Club",
     "slug": "cinemaclub",
-    "githubUrl": "https://github.com/josersi/cinemaclub",
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
+    "githubUrl": "https://github.com/rodrinac/cinemaclub",
+    "platforms": ["ios", "android"],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1C2646",
-      "userInterfaceStyle": "dark"
-    },
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
+    "newArchEnabled": true,
     "android": {
       "playStoreUrl": "https://play.google.com/store/apps/details?id=com.nu.production"
     },
@@ -30,8 +19,26 @@
       "supportsTablet": true
     },
     "androidNavigationBar": {
-     "backgroundColor": "#1C2646",
-     "visible": "sticky-immersive"
-   }
+      "backgroundColor": "#1C2646",
+      "visible": "sticky-immersive"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-localization",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#E3E8F5",
+          "image": "./assets/splash.png",
+          "dark": {
+            "image": "./assets/splash.png",
+            "backgroundColor": "#1c2646"
+          },
+          "imageWidth": 216
+        }
+      ],
+      "expo-localization"
+    ]
   }
 }
