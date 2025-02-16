@@ -13,10 +13,12 @@
     "assetBundlePatterns": ["**/*"],
     "newArchEnabled": true,
     "android": {
-      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.nu.production"
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.nu.production",
+      "package": "com.anonymous.cinemaclub"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.anonymous.cinemaclub"
     },
     "androidNavigationBar": {
       "backgroundColor": "#1C2646",
