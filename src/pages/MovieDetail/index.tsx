@@ -15,7 +15,7 @@ import * as WebBrowser from "expo-web-browser";
 
 import api, { TmdbMovie } from "../../api/tmdb";
 import Theme from "../../theme";
-import database from "../../api/database";
+import { hasBookmark, addBookmark, removeBookmark } from "../../api/database";
 
 interface Params {
   movieId: number;
@@ -31,36 +31,34 @@ const MovieDetail = () => {
   const [bookmarked, setBookmarked] = useState<boolean>();
 
   useEffect(() => {
-    async function requestMovieDetail() {
+    const requestMovieDetail = async () => {
       const response = await api.get<TmdbMovie>(
         `movie/${routeParams.movieId}?append_to_response=videos`,
       );
 
       setMovie(response.data);
-    }
+    };
 
     requestMovieDetail();
-  }, []);
+  }, [routeParams.movieId]);
 
   useEffect(() => {
-    fetchBookmarkStatus();
-  }, []);
+    (async () => {
+      setBookmarked(
+        await hasBookmark({ id: routeParams.movieId } as TmdbMovie),
+      );
+    })();
+  }, [routeParams.movieId]);
 
-  async function fetchBookmarkStatus() {
-    setBookmarked(
-      await database.existsBookmark({ id: routeParams.movieId } as TmdbMovie),
-    );
-  }
-
-  async function changeBookmarkStatus() {
+  const changeBookmarkStatus = async () => {
     if (bookmarked) {
-      await database.removeBookmark(movie!);
+      await removeBookmark(movie!);
     } else {
-      await database.addBookmark(movie!);
+      await addBookmark(movie!);
     }
 
-    await fetchBookmarkStatus();
-  }
+    setBookmarked(!bookmarked);
+  };
 
   function getReleaseYear(): number {
     const releaseDate = new Date(movie!.release_date);
@@ -101,11 +99,11 @@ const MovieDetail = () => {
         />
         <View style={styles.nav}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="ios-arrow-back" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <TouchableOpacity onPress={changeBookmarkStatus}>
             <Ionicons
-              name="ios-bookmark"
+              name="bookmark"
               color={bookmarked ? "#ffd700" : "#FFF"}
               size={24}
             />
@@ -219,4 +217,3 @@ const styles = StyleSheet.create({
     margin: 12,
   },
 });
-

@@ -11,6 +11,7 @@ import { Ubuntu_700Bold, useFonts } from "@expo-google-fonts/ubuntu";
 
 import Routes from "./src/routes";
 import Theme from "./src/theme";
+import { initDB } from "./src/api/database";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,6 +32,7 @@ export default function App() {
   const onLayoutRootView = useCallback(() => {
     if (fontsLoaded) {
       SplashScreen.hide();
+      initDB();
     }
   }, [fontsLoaded]);
 
