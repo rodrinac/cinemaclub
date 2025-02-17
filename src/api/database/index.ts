@@ -1,132 +1,113 @@
-import * as SQLite from 'expo-sqlite';
-import { TmdbMovie, TmdbGenre } from '../tmdb';
+import * as SQLite from "expo-sqlite";
+import { TmdbMovie, TmdbGenre } from "../tmdb";
 
-export enum GenreFilter {
-  WITH_THESE,
-  WITHOUT_THESE
-}
+type GenreFilterMode = "INCLUDING" | "EXCLUDING" | "UNDEFINED";
 
-class Database {
-  private connection = SQLite.openDatabase('CinemaClub');
+const getDB = async (): Promise<SQLite.SQLiteDatabase> =>
+  SQLite.openDatabaseAsync("CINEMA_CLUB");
 
-  constructor() {
-    this.connection.exec([{ sql: 'PRAGMA foreign_keys = ON;', args: [] }], false, () => console.log('Foreign keys turned on'));
-  
-    this.initDB();
-  }
-
-  private initDB() {
-    const sql = [
-      `DROP TABLE IF EXISTS movie_bookmark;`,
-      `CREATE TABLE IF NOT EXISTS movie_bookmark (
+const initDB = async () => {
+  const sql = [
+    `CREATE TABLE IF NOT EXISTS movie_bookmark (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         movie INT UNIQUE NOT NULL
       );`,
-      `CREATE TABLE IF NOT EXISTS genre_filter (
+    `CREATE TABLE IF NOT EXISTS genre_filter (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        genre STRING UNIQUE NOT NULL,
+        genre TEXT UNIQUE NOT NULL,
         filter INT NOT NULL
-      );`
-    ];
+      );`,
+  ];
+  const db = await getDB();
 
-    this.connection.transaction(tx => sql.forEach(query => tx.executeSql(query)));
+  await db.withTransactionAsync(async () => {
+    sql.map(async (query) => await db.runAsync(query));
+  });
+};
+
+const hasBookmark = async (movie: TmdbMovie): Promise<boolean> => {
+  const db = await getDB();
+  const result = await db.getFirstAsync(
+    `select * from movie_bookmark where movie =?`,
+    [movie.id],
+  );
+  return result != null;
+};
+
+const addBookmark = async (movie: TmdbMovie) => {
+  const exists = await hasBookmark(movie);
+
+  if (!exists) {
+    const db = await getDB();
+    await db.runAsync("insert into movie_bookmark (movie) values(?)", [
+      movie.id,
+    ]);
   }
+};
 
-  public existsBookmark(movie: TmdbMovie): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      this.connection.transaction(tx => {
-        tx.executeSql(`select * from movie_bookmark where movie =?`, [movie.id], (_, { rows }) => {
-          resolve(rows.length === 1);
-        });
-      }, reject);
-    });    
+const removeBookmark = async (movie: TmdbMovie) => {
+  const db = await getDB();
+  await db.runAsync("DELETE FROM movie_bookmark WHERE movie = ?", [movie.id]);
+};
+
+const hasGenreFilter = async (genre: TmdbGenre): Promise<boolean> => {
+  const db = await getDB();
+
+  const result = await db.getFirstAsync(
+    "SELECT * FROM genre_filter WHERE genre = ?",
+    [genre.id],
+  );
+  return result != null;
+};
+
+const toggleGenreFilter = async (genre: TmdbGenre, mode: GenreFilterMode) => {
+  const hasFilter = await hasGenreFilter(genre);
+
+  const db = await getDB();
+
+  if (hasFilter) {
+    await db.runAsync("DELETE genre_filter WHERE id = ?", [genre.id]);
+  } else {
+    await db.runAsync("INSERT INTO genre_filter(genre, mode) VALUES(?, ?)", [
+      genre.id,
+      mode,
+    ]);
   }
+};
 
-  public async addBookmark(movie: TmdbMovie): Promise<any> {
-    const exists = await this.existsBookmark(movie);
+const getGenreFilterMode = async (): Promise<GenreFilterMode> => {
+  const db = await getDB();
+  const genreFilter = await db.getFirstAsync<{ mode: GenreFilterMode }>(
+    "SELECT * FROM genre_filter",
+  );
+  return genreFilter?.mode ?? "UNDEFINED";
+};
 
-    return new Promise((resolve, reject) => {
-      this.connection.transaction(tx => {
-        if (!exists) {
-          tx.executeSql(`insert into movie_bookmark (movie) values(?)`, [movie.id], (_, { rows }) => {
-            resolve(rows.item(0));
-          });
-        } else {
-          resolve(null);
-        }
-      }, reject);
-    });
-  }
+const getGenreFilters = async (): Promise<number[]> => {
+  const db = await getDB();
 
-  public removeBookmark(movie: TmdbMovie): Promise<any> {
-   
-    return new Promise((resolve, reject) => {
-      this.connection.transaction(tx => {
-        this.connection.transaction(tx => {
-          tx.executeSql(`DELETE FROM movie_bookmark WHERE movie = ?`, [movie.id], (_, { rows }) => {
-            resolve(rows.item(0));
-          });
-        }, reject);
-      });
-    });
-  }
+  const filters: { genre: number }[] = await db.getAllAsync(
+    "SELECT * FROM genre_filter",
+  );
 
-  public async toggleGenreFilter(genre: TmdbGenre, filter: GenreFilter): Promise<any> {
-    const hasGenreFilter = await this.hasGenreFilter(genre);
+  return filters.map((filter) => filter.genre);
+};
 
-    return new Promise((resolve, reject) => {
-      this.connection.transaction(tx => {
-        if (hasGenreFilter) {
-          tx.executeSql(`DELETE genre_filter WHERE id = ?`, [filter, genre.id], resolve);
-        } else {
-          tx.executeSql(`INSERT INTO genre_filter(genre, filter) VALUES(?, ?)`, [genre.id, filter], resolve);
-        }
-      }, reject);
-    });
-  }
+const setGenreFilterMode = async (mode: GenreFilterMode) => {
+  const db = await getDB();
 
-  public async hasGenreFilter(genre: TmdbGenre): Promise<boolean> {
-    
-    return new Promise((resolve, reject) => {
-      this.connection.transaction(tx => {
-        tx.executeSql(`SELECT * FROM genre_filter WHERE genre = ?`, [genre.id], (_, { rows }) => {
-          resolve(rows.length > 0);        
-        });
-      }, reject);
-    });
-  }
+  await db.runAsync(`UPDATE genre_filter SET mode = ?`, [mode]);
+};
 
-  public async getCurrentGenreFilter(): Promise<GenreFilter> {
-    
-    return new Promise((resolve, reject) => {
-      this.connection.transaction(tx => {
-        tx.executeSql(`SELECT * FROM genre_filter LIMIT 1`, [], (_, { rows }) => {
-          resolve(rows.item(0)?.filter);        
-        });
-      }, reject);
-    });
-  }
-
-
-  public async getGenreFilters(): Promise<number[]> {
-    
-    return new Promise((resolve, reject) => {
-      this.connection.transaction(tx => {
-        tx.executeSql(`SELECT * FROM genre_filter`, [], (_, { rows }) => {
-          resolve(Array(rows.length).fill('0').map((_, i) => Number(rows.item(i).genre)));        
-        });
-      }, reject);
-    });
-  }
-
-  public async setGenreFilter(filter: GenreFilter): Promise<any> {
-    
-    return new Promise((resolve, reject) => {
-      this.connection.transaction(tx => {
-        tx.executeSql(`UPDATE genre_filter SET filter = ?`, [filter], _ => resolve(null));
-      }, reject);
-    });
-  }
-}
-
-export default new Database();
+export {
+  GenreFilterMode,
+  initDB,
+  hasBookmark,
+  addBookmark,
+  removeBookmark,
+  hasGenreFilter,
+  toggleGenreFilter,
+  getGenreFilterMode,
+  getGenreFilters,
+  setGenreFilterMode,
+};

@@ -1,28 +1,34 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Platform, KeyboardAvoidingView, StyleSheet } from 'react-native';
-import { TouchableOpacity, FlatList } from 'react-native-gesture-handler';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  Platform,
+  KeyboardAvoidingView,
+  StyleSheet,
+} from "react-native";
+import { TouchableOpacity, FlatList } from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
-import api, { TmdbGenreList } from '../../api/tmdb';
-import Theme from '../../theme';
-import GenreCard from '../../components/GenreCard';
-import database, { GenreFilter } from '../../api/database';
+import api, { TmdbGenreList } from "../../api/tmdb";
+import Theme from "../../theme";
+import GenreCard from "../../components/GenreCard";
+import * as database from "../../api/database";
 
 const SearchFilters = () => {
   const navigation = useNavigation();
-  
-  const withoutTheseColor = '#ED0000';
-  const withTheseColor = '#B7990D';
+
+  const withoutTheseColor = "#ED0000";
+  const withTheseColor = "#B7990D";
 
   const [genreList, setGenreList] = useState<TmdbGenreList>();
-  const [filter, setFilter] = useState(GenreFilter.WITH_THESE);
+  const [filter, setFilter] = useState<database.GenreFilterMode>("INCLUDING");
   const [color, setColor] = useState(withTheseColor);
 
   useEffect(() => {
     async function fetchGenres() {
-      const response = await api.get<TmdbGenreList>('genre/movie/list');
-      
+      const response = await api.get<TmdbGenreList>("genre/movie/list");
+
       setGenreList(response.data);
     }
 
@@ -31,75 +37,81 @@ const SearchFilters = () => {
 
   useEffect(() => {
     async function fetchGenreFilter() {
-      setFilter(await database.getCurrentGenreFilter() || GenreFilter.WITH_THESE);
+      setFilter((await database.getGenreFilterMode()) || "INCLUDING");
     }
 
     fetchGenreFilter();
   }, []);
 
   useEffect(() => {
-    if (filter === GenreFilter.WITH_THESE) {
+    if (filter === "INCLUDING") {
       setColor(withTheseColor);
     } else {
       setColor(withoutTheseColor);
     }
   }, [filter]);
 
-  async function handleFilterPress(newFilter: GenreFilter) {
-    await database.setGenreFilter(newFilter);
+  async function handleFilterPress(newFilter: database.GenreFilterMode) {
+    await database.setGenreFilterMode(newFilter);
     setFilter(newFilter);
   }
 
   return (
     <KeyboardAvoidingView
-      behavior={ Platform.OS === 'ios' ? 'padding' : undefined } 
-      style={{flex: 1}}>
-        
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{ flex: 1 }}
+    >
       <View style={styles.header}>
         <View style={styles.nav}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="ios-arrow-round-back" size={24} color="#FFF"/>
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-            <Ionicons 
-              name="ios-options"
-              color="#FFF"            
-              size={24}
-              />
-            </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
+            <Ionicons name="options" color="#FFF" size={24} />
+          </TouchableOpacity>
         </View>
         <Text style={styles.title}>FILTERS</Text>
         <View style={styles.menu}>
           <TouchableOpacity style={styles.menuItem}>
-            <Text 
-              style={[styles.menuItemText, filter === GenreFilter.WITH_THESE ? styles.menuItemTextActive : {}]}
-              onPress={() => handleFilterPress(GenreFilter.WITH_THESE)}>
-                With these
+            <Text
+              style={[
+                styles.menuItemText,
+                filter === "INCLUDING" ? styles.menuItemTextActive : {},
+              ]}
+              onPress={() => handleFilterPress("INCLUDING")}
+            >
+              With these
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
             <Text
-              style={[styles.menuItemText, filter === GenreFilter.WITHOUT_THESE ? styles.menuItemTextActive : {}]}
-              onPress={() => handleFilterPress(GenreFilter.WITHOUT_THESE)}>
-                Without these
+              style={[
+                styles.menuItemText,
+                filter === "EXCLUDING" ? styles.menuItemTextActive : {},
+              ]}
+              onPress={() => handleFilterPress("EXCLUDING")}
+            >
+              Without these
             </Text>
           </TouchableOpacity>
-          <Text style={styles.menuItem}>{' '}</Text>
-          </View>
+          <Text style={styles.menuItem}> </Text>
+        </View>
       </View>
       <View style={styles.main}>
-        { genreList &&
+        {genreList && (
           <FlatList
             data={genreList.genres}
-            renderItem={({item}) => <GenreCard color={color} genre={item} filter={filter}/>}
-            keyExtractor={item => item.id.toString()}
+            renderItem={({ item }) => (
+              <GenreCard color={color} genre={item} filter={filter} />
+            )}
+            keyExtractor={(item) => item.id.toString()}
             numColumns={2}
           />
-        }
+        )}
       </View>
     </KeyboardAvoidingView>
   );
-}
+};
 
 export default SearchFilters;
 
@@ -107,43 +119,43 @@ const styles = StyleSheet.create({
   header: {
     paddingLeft: 22,
     backgroundColor: Theme.colors.primary,
-    elevation: 4
+    elevation: 4,
   },
   nav: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    position: 'absolute',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    position: "absolute",
     top: 32,
     left: 32,
-    right: 32
+    right: 32,
   },
   title: {
     color: Theme.colors.accent,
     fontSize: 32,
-    fontFamily: 'RobotoCondensed_700Bold',
+    fontFamily: "RobotoCondensed_700Bold",
     maxWidth: 260,
     marginTop: 64,
   },
   menu: {
     fontSize: 16,
-    marginVertical: 16,   
-    flexDirection: 'row',
+    marginVertical: 16,
+    flexDirection: "row",
   },
-  menuItem: {    
-    marginEnd: 12
+  menuItem: {
+    marginEnd: 12,
   },
   menuItemText: {
     color: Theme.colors.accentLighter,
-    fontFamily: 'Roboto_400Regular',
-    fontWeight: 'bold'
+    fontFamily: "Roboto_400Regular",
+    fontWeight: "bold",
   },
   menuItemTextActive: {
     color: Theme.colors.accent,
   },
   main: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     backgroundColor: Theme.colors.background,
-    paddingHorizontal: 12
+    paddingHorizontal: 12,
   },
 });

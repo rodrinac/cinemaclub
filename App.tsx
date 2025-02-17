@@ -1,13 +1,24 @@
-import React from 'react';
-import AppLoading from 'expo-app-loading';
-import { StatusBar } from 'react-native';
-import { DefaultTheme, Provider as PaperProvider } from 'react-native-paper';
-import { RobotoCondensed_700Bold, RobotoCondensed_400Regular } from '@expo-google-fonts/roboto-condensed';
-import { Roboto_400Regular, Roboto_500Medium } from '@expo-google-fonts/roboto';
-import { Ubuntu_700Bold, useFonts } from '@expo-google-fonts/ubuntu';
+import React, { useCallback } from "react";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar, View } from "react-native";
+import { DefaultTheme, Provider as PaperProvider } from "react-native-paper";
+import {
+  RobotoCondensed_700Bold,
+  RobotoCondensed_400Regular,
+} from "@expo-google-fonts/roboto-condensed";
+import { Roboto_400Regular, Roboto_500Medium } from "@expo-google-fonts/roboto";
+import { Ubuntu_700Bold, useFonts } from "@expo-google-fonts/ubuntu";
 
-import Routes from './src/routes';
-import Theme from './src/theme';
+import Routes from "./src/routes";
+import Theme from "./src/theme";
+import { initDB } from "./src/api/database";
+
+SplashScreen.preventAutoHideAsync();
+
+SplashScreen.setOptions({
+  duration: 100,
+  fade: true,
+});
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -15,11 +26,18 @@ export default function App() {
     RobotoCondensed_700Bold,
     Roboto_400Regular,
     Roboto_500Medium,
-    Ubuntu_700Bold
+    Ubuntu_700Bold,
   });
 
+  const onLayoutRootView = useCallback(() => {
+    if (fontsLoaded) {
+      SplashScreen.hide();
+      initDB();
+    }
+  }, [fontsLoaded]);
+
   if (!fontsLoaded) {
-    return <AppLoading />
+    return null;
   }
 
   const theme = {
@@ -30,13 +48,20 @@ export default function App() {
       primary: Theme.colors.primary,
       accent: Theme.colors.accent,
       text: Theme.colors.accent,
-    }
+    },
   };
-  
+
   return (
-    <PaperProvider theme={theme}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent hidden/>
-      <Routes />
-    </PaperProvider>  
+    <View onLayout={onLayoutRootView} style={{ flex: 1 }}>
+      <PaperProvider theme={theme}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="transparent"
+          translucent
+          hidden
+        />
+        <Routes />
+      </PaperProvider>
+    </View>
   );
 }
