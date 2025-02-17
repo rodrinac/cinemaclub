@@ -4,6 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { TouchableOpacity } from "react-native-gesture-handler";
 import { TmdbMovie } from "../../api/tmdb";
 import * as database from "../../api/database";
+import Theme from "../../theme";
+import { opacity } from "react-native-reanimated/lib/typescript/Colors";
 
 const screenWidth = Dimensions.get("window").width;
 const posterWidth = screenWidth / 2 - 16; // Adjust for padding
@@ -40,9 +42,9 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
   return (
     <View style={styles.container}>
       <Ionicons
-        style={styles.bookmark}
+        style={[styles.bookmark, { opacity: bookmarked ? 0.5 : 1 }]}
         name={bookmarked ? "bookmark" : "bookmark-outline"}
-        color={bookmarked ? "#ffd700" : "#FFF"}
+        color={Theme.colors.accent}
         size={18}
         onPress={changeBookmarkStatus}
       />
@@ -71,7 +73,7 @@ const styles = StyleSheet.create({
   },
   bookmark: {
     position: "absolute",
-    top: 18,
+    top: 12,
     right: 16,
     zIndex: 1,
   },
