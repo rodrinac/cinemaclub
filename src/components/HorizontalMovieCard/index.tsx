@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Image, View, StyleSheet, Text } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
 
 import { TmdbMovie, getQueued } from "../../api/tmdb";
 import * as database from "../../api/database";
@@ -52,7 +53,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
     fetchExtraDetails();
   }, [actors, directors, movie.id]);
 
-  const toogleBookmarked = useCallback(async () => {
+  const toggleBookmarked = useCallback(async () => {
     if (bookmarked) {
       await database.removeBookmark(movie);
     } else {
@@ -83,9 +84,19 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
         />
       </TouchableOpacity>
       <View style={styles.movieDetails}>
-        <Text style={styles.movieTitle} numberOfLines={1}>
-          {movie.title}
-        </Text>
+        <View style={styles.titleWrapper}>
+          <Text style={styles.movieTitle} numberOfLines={1}>
+            {movie.title}
+          </Text>
+
+          <Ionicons
+            style={styles.bookmark}
+            name="bookmark"
+            color={bookmarked ? "#ffd700" : "#FFF"}
+            size={18}
+            onPress={toggleBookmarked}
+          />
+        </View>
         <View>
           <Text style={styles.actor} numberOfLines={1}>
             Actors: {actors}
@@ -99,7 +110,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
               <Text style={styles.duration}>{runtime}</Text>
             </View>
             <Text style={styles.voteAverage}>
-              {movie.vote_average.toFixed(1)}
+              {movie.vote_average?.toFixed(1) ?? "0.0"}
             </Text>
           </View>
         </View>
@@ -120,12 +131,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     elevation: 2,
   },
-  bookmark: {
-    position: "absolute",
-    top: 18,
-    right: 52,
-    zIndex: 1,
+  titleWrapper: {
+    display: "flex",
+    flexDirection: "row",
   },
+  bookmark: {},
   posterWrapper: {},
   poster: {
     width: 91,
@@ -140,6 +150,7 @@ const styles = StyleSheet.create({
     color: Theme.colors.accent,
     fontFamily: "RobotoCondensed_400Regular",
     fontSize: 18,
+    flexGrow: 1,
   },
   actor: {
     color: Theme.colors.accentLighter,
@@ -167,12 +178,3 @@ const styles = StyleSheet.create({
     color: Theme.colors.accentLighter,
   },
 });
-
-/*
-      <Ionicons 
-        style={styles.bookmark}
-        name="ios-bookmark"
-        color={bookmarked ? '#ffd700' : '#FFF'}
-        size={18}
-        onPress={changeBookmarkStatus}
-      />*/

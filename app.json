@@ -20,10 +20,6 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.anonymous.cinemaclub"
     },
-    "androidNavigationBar": {
-      "backgroundColor": "#1C2646",
-      "visible": "sticky-immersive"
-    },
     "plugins": [
       "expo-secure-store",
       "expo-sqlite",
