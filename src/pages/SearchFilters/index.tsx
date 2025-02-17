@@ -80,7 +80,7 @@ const SearchFilters = () => {
               ]}
               onPress={() => handleFilterPress("INCLUDING")}
             >
-              With these
+              Only these
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
@@ -157,5 +157,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: Theme.colors.background,
     paddingHorizontal: 12,
+    paddingVertical: 16,
   },
 });

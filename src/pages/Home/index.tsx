@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Text,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +14,8 @@ import { useNavigation } from "@react-navigation/native";
 import tmdb, { TmdbMovieList, TmdbMovie } from "../../api/tmdb";
 import VerticalMovieCard from "../../components/VerticalMovieCard";
 import Theme from "../../theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { transform } from "@babel/core";
 
 enum Filter {
   NOW = "movie/now_playing",
@@ -27,6 +30,7 @@ interface PageToLoad {
 
 const Home = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const [movieList, setMovieList] = useState<TmdbMovieList>();
   const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
@@ -34,9 +38,28 @@ const Home = () => {
     filter: Filter.POPULAR,
   });
 
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const titleOpacity = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const titleHeight = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [60, 0],
+    extrapolate: "clamp",
+  });
+
+  const titleScale = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [32, 8],
+    extrapolate: "clamp",
+  });
+
   useEffect(() => {
     const requestDiscoverMovies = async () => {
-      console.log({ pageToLoad });
       const response = await tmdb.get<TmdbMovieList>(pageToLoad.filter, {
         params: { page: pageToLoad.number },
       });
@@ -66,8 +89,21 @@ const Home = () => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1 }}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>DISCOVER</Text>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <Animated.View
+          style={[
+            styles.titleWrapper,
+            {
+              height: titleHeight,
+              opacity: titleOpacity,
+            },
+          ]}
+        >
+          <Animated.Text style={[styles.title, { fontSize: titleScale }]}>
+            DISCOVER
+          </Animated.Text>
+        </Animated.View>
+
         <View style={styles.menu}>
           <TouchableOpacity style={styles.menuItem}>
             <Text
@@ -117,7 +153,7 @@ const Home = () => {
       </View>
       <View style={styles.main}>
         {movieList && (
-          <FlatList
+          <Animated.FlatList
             data={movieList.results}
             numColumns={2}
             renderItem={({ item }) => (
@@ -131,6 +167,10 @@ const Home = () => {
               setPageToLoad({ ...pageToLoad, number: pageToLoad.number + 1 })
             }
             onEndReachedThreshold={0.2}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: false },
+            )}
           />
         )}
       </View>
@@ -156,14 +196,26 @@ export default Home;
 
 const styles = StyleSheet.create({
   header: {
-    paddingLeft: 22,
+    paddingLeft: 12,
     backgroundColor: Theme.colors.primary,
     elevation: 2,
+  },
+  titleWrapper: {
+    position: "relative",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 24,
+  },
+  title: {
+    color: Theme.colors.accent,
+    fontFamily: "RobotoCondensed_700Bold",
   },
   main: {
     flex: 1,
     justifyContent: "center",
     backgroundColor: Theme.colors.background,
+    paddingTop: 8,
   },
   footer: {
     flexDirection: "row",
@@ -173,13 +225,6 @@ const styles = StyleSheet.create({
   },
   footerNavItem: {
     margin: 12,
-  },
-  title: {
-    color: Theme.colors.accent,
-    fontSize: 32,
-    fontFamily: "RobotoCondensed_700Bold",
-    maxWidth: 260,
-    marginTop: 64,
   },
   menu: {
     fontSize: 16,

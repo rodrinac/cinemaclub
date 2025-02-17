@@ -7,11 +7,11 @@ import { TmdbGenre } from "../../api/tmdb";
 import Theme from "../../theme";
 import * as database from "../../api/database";
 
-interface Props {
+type Props = {
   genre: TmdbGenre;
   filter: database.GenreFilterMode;
   color: string;
-}
+};
 
 const GenreCard: React.FC<Props> = ({ genre, color, filter }) => {
   const [selected, setSelected] = useState(false);
@@ -25,7 +25,7 @@ const GenreCard: React.FC<Props> = ({ genre, color, filter }) => {
   }, [genre]);
 
   async function handlePress() {
-    const selected = await database.toggleGenreFilter(genre, filter);
+    await database.toggleGenreFilter(genre, filter);
     setSelected(!selected);
   }
 

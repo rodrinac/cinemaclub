@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   FlatList,
 } from "react-native-gesture-handler";
-import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
 import api, { TmdbMovieList, TmdbMovie } from "../../api/tmdb";
@@ -56,6 +56,17 @@ const SearchMovie = () => {
     },
     [filter, genreFilters],
   );
+  const fetchSearchMovies = useCallback(async () => {
+    const response = await api.get<TmdbMovieList>("search/movie", {
+      params: {
+        query: pageToLoad.searchQuery,
+        page: pageToLoad.number,
+        append_to_response: "credits",
+      },
+    });
+
+    return response.data;
+  }, [pageToLoad]);
 
   useEffect(() => {
     async function fetchFilter() {
@@ -76,33 +87,26 @@ const SearchMovie = () => {
   }, [filter]);
 
   useEffect(() => {
-    const requestSearchMovies = async () => {
-      const response = await api.get<TmdbMovieList>("search/movie", {
-        params: {
-          query: pageToLoad.searchQuery,
-          page: pageToLoad.number,
-          append_to_response: "credits",
-        },
+    (async () => {
+      const responseData = await fetchSearchMovies();
+      setFoundMovies((prevList) => {
+        const movieList = (prevList?.results ?? []).concat(
+          responseData.results,
+        );
+
+        return { ...responseData, results: filterMovieList(movieList) };
       });
+    })();
+  }, [pageToLoad, genreFilters, filterMovieList, fetchSearchMovies]);
 
-      setFoundMovies(response.data);
-
-      const responseData = response.data;
-
-      const movieList = (foundMovies?.results || []).concat(
-        responseData.results,
-      );
-
-      setFoundMovies({ ...responseData, results: filterMovieList(movieList) });
-    };
-
+  useEffect(() => {
     if (
       pageToLoad.number > 0 &&
       (!foundMovies || pageToLoad.number <= foundMovies.total_pages)
     ) {
-      requestSearchMovies();
+      fetchSearchMovies();
     }
-  }, [pageToLoad, genreFilters, foundMovies, filterMovieList]);
+  }, [fetchSearchMovies, foundMovies, pageToLoad.number]);
 
   const handleSubmitEditing = (
     event: NativeSyntheticEvent<TextInputSubmitEditingEventData>,
@@ -149,8 +153,8 @@ const SearchMovie = () => {
             style={styles.searchFilter}
             onPress={() => navigation.navigate("SearchFilters")}
           >
-            <MaterialCommunityIcons
-              name="filter-outline"
+            <Ionicons
+              name="filter"
               color={Theme.colors.accentLighter}
               size={36}
             />
@@ -183,7 +187,7 @@ export default SearchMovie;
 
 const styles = StyleSheet.create({
   header: {
-    paddingLeft: 22,
+    paddingLeft: 24,
     backgroundColor: Theme.colors.primary,
     elevation: 2,
   },
@@ -225,5 +229,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: Theme.colors.background,
     paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
 });

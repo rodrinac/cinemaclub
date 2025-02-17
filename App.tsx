@@ -54,14 +54,14 @@ export default function App() {
   return (
     <View onLayout={onLayoutRootView} style={{ flex: 1 }}>
       <PaperProvider theme={theme}>
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor="transparent"
-          translucent
-          hidden
-        />
         <Routes />
       </PaperProvider>
+      <StatusBar
+        translucent={true}
+        hidden={false}
+        barStyle="light-content"
+        backgroundColor="#1C2646"
+      />
     </View>
   );
 }
