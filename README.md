@@ -44,32 +44,30 @@ NPM:
 npm start
 ```
 
-
 ## Milestones
 
- - [x] Start Page.
- - [x] Movies Search Page
- - [x] Movie Details Page
- - [x] Splash Screen
- - [ ] TMDB Authentication
- - [ ] Favorites Page
- - [ ] User lists
- - [ ] App Modularization
- - [ ] i18n
- - [ ] Tests (:D)
- - [ ] ... what more?
+- [x] Start Page.
+- [x] Movies Search Page
+- [x] Movie Details Page
+- [x] Splash Screen
+- [ ] TMDB Authentication
+- [ ] Favorites Page
+- [ ] User lists
+- [ ] App Modularization
+- [ ] i18n
+- [ ] Tests (:D)
+- [ ] ... what more?
 
 ## Release History
 
-* beta01
-    * Work in progress
-    
+- beta01
+  - Work in progress
 
 ## Meta
 
 José Rodrigo– [@kaomi_jose](https://twitter.com/kaomi_jose) – jose.rodrigo@kaomidev.tech
 
-Distributed under the MIT license. See ``LICENSE`` for more information.
+Distributed under the MIT license. See `LICENSE` for more information.
 
 ## Contributing
 
