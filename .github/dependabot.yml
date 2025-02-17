@@ -1,0 +1,9 @@
+version: 2
+updates:
+  - package-ecosystem: "yarn" # or "yarn"
+    directory: "/" # Root directory
+    schedule:
+      interval: "daily"
+    versioning-strategy: "increase-if-necessary" # Updates only package.json if needed
+    ignore:
+      - dependency-name: "*" # Prevents updating dependencies beyond the range in package.json
