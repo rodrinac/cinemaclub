@@ -15,6 +15,14 @@ jobs:
           node-version: 22
           cache: yarn
 
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+
+      - name: Install RuboCop
+        run: gem install rubocop
+        
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 

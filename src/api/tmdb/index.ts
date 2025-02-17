@@ -1,9 +1,8 @@
 import axios, { AxiosRequestConfig } from "axios";
+import conf from "./conf.json";
 import SmartQueue from "smart-request-balancer";
 import { getLocales } from "expo-localization";
 import * as SecureStore from "expo-secure-store";
-import { doc, getDoc } from "firebase/firestore";
-import { firestore } from "../firebase";
 
 const getLocale = () => getLocales()[0].languageTag;
 
@@ -16,6 +15,7 @@ const api = axios.create({
     Accept: "application/json",
     "Accept-Language": "en",
     "Content-Type": "application/json",
+    Authorization: `Bearer ${conf.authToken}`,
   },
 });
 
@@ -27,23 +27,6 @@ api.interceptors.request.use(async (config) => {
 
   return config;
 });
-
-const setTmdbApiKey = async () => {
-  try {
-    const docRef = doc(firestore, "config", "tmdb");
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      api.defaults.headers.common["Authorization"] =
-        `Bearer ${data["API_TOKEN"]}`;
-    }
-  } catch (error) {
-    console.error("Error fetching TMDB credentials: ", error);
-  }
-};
-
-setTmdbApiKey();
 
 const queue = new SmartQueue({
   rules: {
@@ -57,20 +40,22 @@ const queue = new SmartQueue({
   ignoreOverallOverheat: true,
 });
 
-const getQueued = <T>(url: string, params?: AxiosRequestConfig): Promise<T> => {
-  return queue.request(async (retry) => {
-    try {
-      const response = await api.get<T>(url, params);
-      return response.data;
-    } catch (error: any) {
-      if (error.response.status === 429) {
-        return retry(error.response.data.parameters.retry_after);
-      }
-      throw error;
-    }
-  }, "default");
-};
+const getQueued = <T>(url: string, params?: AxiosRequestConfig): Promise<T> =>
+  queue.request(
+    (retry) =>
+      api
+        .get<T>(url, params)
+        .then((response) => response.data)
+        .catch((error) => {
+          if (error.response.status === 429) {
+            return retry(error.response.data.parameters.retry_after);
+          }
+          throw error;
+        }),
+    "default",
+  );
 
 export default api;
 export { getQueued };
 export * from "./models";
+
