@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Image, View, StyleSheet, Text } from "react-native";
-import { TouchableOpacity } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
+import React, { useCallback, useEffect, useState } from "react";
+import { Image, StyleSheet, Text, View } from "react-native";
+import { TouchableOpacity } from "react-native-gesture-handler";
 
-import { TmdbMovie, getQueued } from "../../api/tmdb";
 import * as database from "../../api/database";
+import { TmdbMovie, getQueued } from "../../api/tmdb";
 import Theme from "../../theme";
 
 interface Props {
@@ -19,9 +19,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
   const [runtime, setRuntime] = useState("Loading...");
 
   const voteAverage = Math.floor(movie.vote_average);
-  const stars = [0, 2, 4, 6, 8]
-    .map((n) => voteAverage > n)
-    .map((v) => (v ? "⭐" : "☆"));
+  const stars = [0, 2, 4, 6, 8].map((n) => voteAverage > n).map((v) => (v ? "⭐" : "☆"));
 
   useEffect(() => {
     async function fetchExtraDetails() {
@@ -109,9 +107,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
               <Text style={styles.stars}>{stars}</Text>
               <Text style={styles.duration}>{runtime}</Text>
             </View>
-            <Text style={styles.voteAverage}>
-              {movie.vote_average?.toFixed(1) ?? "0.0"}
-            </Text>
+            <Text style={styles.voteAverage}>{movie.vote_average?.toFixed(1) ?? "0.0"}</Text>
           </View>
         </View>
       </View>

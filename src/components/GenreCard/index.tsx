@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
 
+import * as database from "../../api/database";
 import { TmdbGenre } from "../../api/tmdb";
 import Theme from "../../theme";
-import * as database from "../../api/database";
 
 type Props = {
   genre: TmdbGenre;
@@ -32,17 +32,8 @@ const GenreCard: React.FC<Props> = ({ genre, color, filter }) => {
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.button} onPress={handlePress}>
-        <Feather
-          color={selected ? color : Theme.colors.accentLighter}
-          name="circle"
-          size={18}
-        />
-        <Text
-          style={[
-            styles.title,
-            { color: selected ? color : Theme.colors.accentLighter },
-          ]}
-        >
+        <Feather color={selected ? color : Theme.colors.accentLighter} name="circle" size={18} />
+        <Text style={[styles.title, { color: selected ? color : Theme.colors.accentLighter }]}>
           {genre.name}
         </Text>
       </TouchableOpacity>

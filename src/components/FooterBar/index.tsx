@@ -1,7 +1,7 @@
-import { StyleSheet } from "react-native";
-import { Appbar } from "react-native-paper";
 import Theme from "@/theme";
 import { useNavigation } from "@react-navigation/native";
+import { StyleSheet } from "react-native";
+import { Appbar } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
@@ -13,11 +13,7 @@ const FooterBar = ({ elevated = true }: Props) => {
   const { bottom } = useSafeAreaInsets();
 
   return (
-    <Appbar
-      style={styles.container}
-      safeAreaInsets={{ bottom }}
-      elevated={elevated!}
-    >
+    <Appbar style={styles.container} safeAreaInsets={{ bottom }} elevated={elevated!}>
       <Appbar.Action
         color={Theme.colors.accent}
         rippleColor={Theme.colors.accentLighter}

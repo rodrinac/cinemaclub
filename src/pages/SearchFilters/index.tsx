@@ -1,19 +1,13 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  Platform,
-  KeyboardAvoidingView,
-  StyleSheet,
-} from "react-native";
-import { TouchableOpacity, FlatList } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import React, { useEffect, useState } from "react";
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import { FlatList, TouchableOpacity } from "react-native-gesture-handler";
 
-import api, { TmdbGenreList } from "../../api/tmdb";
-import Theme from "../../theme";
-import GenreCard from "../../components/GenreCard";
 import * as database from "../../api/database";
+import api, { TmdbGenreList } from "../../api/tmdb";
+import GenreCard from "../../components/GenreCard";
+import Theme from "../../theme";
 
 const SearchFilters = () => {
   const navigation = useNavigation();
@@ -74,10 +68,7 @@ const SearchFilters = () => {
         <View style={styles.menu}>
           <TouchableOpacity style={styles.menuItem}>
             <Text
-              style={[
-                styles.menuItemText,
-                filter === "INCLUDING" ? styles.menuItemTextActive : {},
-              ]}
+              style={[styles.menuItemText, filter === "INCLUDING" ? styles.menuItemTextActive : {}]}
               onPress={() => handleFilterPress("INCLUDING")}
             >
               Only these
@@ -85,10 +76,7 @@ const SearchFilters = () => {
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
             <Text
-              style={[
-                styles.menuItemText,
-                filter === "EXCLUDING" ? styles.menuItemTextActive : {},
-              ]}
+              style={[styles.menuItemText, filter === "EXCLUDING" ? styles.menuItemTextActive : {}]}
               onPress={() => handleFilterPress("EXCLUDING")}
             >
               Without these
@@ -101,9 +89,7 @@ const SearchFilters = () => {
         {genreList && (
           <FlatList
             data={genreList.genres}
-            renderItem={({ item }) => (
-              <GenreCard color={color} genre={item} filter={filter} />
-            )}
+            renderItem={({ item }) => <GenreCard color={color} genre={item} filter={filter} />}
             keyExtractor={(item) => item.id.toString()}
             numColumns={2}
           />
