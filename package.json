@@ -13,8 +13,8 @@
     "@expo-google-fonts/roboto-condensed": "^0.1.0",
     "@expo-google-fonts/ubuntu": "^0.1.0",
     "@react-native-community/masked-view": "0.1.10",
-    "@react-navigation/native": "^5.9.4",
-    "@react-navigation/stack": "^5.14.5",
+    "@react-navigation/native": "^7",
+    "@react-navigation/stack": "^7",
     "axios": "^0.28.0",
     "expo": "^52.0.33",
     "expo-linear-gradient": "~14.0.2",
@@ -47,7 +47,9 @@
     "babel-preset-expo": "~12.0.0",
     "eslint": "^8.57.0",
     "eslint-config-expo": "~8.0.1",
-    "typescript": "^5.3.3"
+    "prettier": "^3.5.1",
+    "prettier-plugin-organize-imports": "^4.1.0",
+    "typescript": "^5.7.3"
   },
   "private": true,
   "name": "cinemaclub",

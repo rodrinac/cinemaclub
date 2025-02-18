@@ -2,4 +2,7 @@
 module.exports = {
   extends: "expo",
   ignorePatterns: ["/dist/*"],
+  rules: {
+    "eol-last": ["error", "always"],
+  },
 };

@@ -1,11 +1,11 @@
-export interface TmdbMovieList {
+export type TmdbMovieList = {
   page: number;
   results: TmdbMovie[];
   total_pages: number;
   total_results: number;
-}
+};
 
-export interface TmdbMovie {
+export type TmdbMovie = {
   runtime: number;
   id: number;
   adult: boolean;
@@ -30,18 +30,18 @@ export interface TmdbMovie {
     cast: TmdbMovieCredit[];
     crew: TmdbMovieCredit[];
   };
-}
+};
 
-export interface TmdbGenreList {
+export type TmdbGenreList = {
   genres: TmdbGenre[];
-}
+};
 
-export interface TmdbGenre {
+export type TmdbGenre = {
   id: number;
   name: string;
-}
+};
 
-export interface TmdbVideo {
+export type TmdbVideo = {
   id: string;
   iso_3166_1: string;
   iso_639_1: string;
@@ -50,9 +50,10 @@ export interface TmdbVideo {
   site: string;
   size: number;
   type: string;
-}
+  published_at: string;
+};
 
-export interface TmdbMovieCredit {
+export type TmdbMovieCredit = {
   cast_id?: number;
   character?: string;
   department?: string;
@@ -63,4 +64,4 @@ export interface TmdbMovieCredit {
   order?: number;
   profile_path: string;
   job?: string;
-}
+};
