@@ -1,54 +1,64 @@
-import React, { useState, useEffect } from "react";
+import { addBookmark, hasBookmark, removeBookmark } from "@/api/database";
+import api, { TmdbMovie } from "@/api/tmdb";
+import FooterBar from "@/components/FooterBar";
+import Theme from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation, type StaticScreenProps } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
+import { setStatusBarHidden } from "expo-status-bar";
+import * as WebBrowser from "expo-web-browser";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  StyleSheet,
-  KeyboardAvoidingView,
   ImageBackground,
+  KeyboardAvoidingView,
   Platform,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
-import { useRoute, useNavigation } from "@react-navigation/native";
-import { TouchableOpacity, ScrollView } from "react-native-gesture-handler";
-import { Feather, Entypo, Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import * as WebBrowser from "expo-web-browser";
+import { ScrollView, TouchableOpacity } from "react-native-gesture-handler";
 
-import api, { TmdbMovie } from "../../api/tmdb";
-import Theme from "../../theme";
-import { hasBookmark, addBookmark, removeBookmark } from "../../api/database";
-
-interface Params {
+type Props = StaticScreenProps<{
   movieId: number;
-}
+}>;
 
-const MovieDetail = () => {
+const MovieDetail = ({ route }: Props) => {
   const navigation = useNavigation();
-  const route = useRoute();
 
-  const routeParams = route.params as Params;
-
+  const movieId = route.params.movieId;
   const [movie, setMovie] = useState<TmdbMovie>();
   const [bookmarked, setBookmarked] = useState<boolean>();
 
+  const movieTrailer = useMemo(() => {
+    const videos = movie?.videos?.results ?? [];
+
+    return videos
+      .filter((video) => video.type === "Teaser" || video.type === "Trailer")
+      .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+      .find((video) => /youtube/i.test(video.site));
+  }, [movie]);
+
+  useEffect(() => {
+    setStatusBarHidden(true, "slide");
+
+    return () => setStatusBarHidden(false, "fade");
+  }, []);
+
   useEffect(() => {
     const requestMovieDetail = async () => {
-      const response = await api.get<TmdbMovie>(
-        `movie/${routeParams.movieId}?append_to_response=videos`,
-      );
+      const response = await api.get<TmdbMovie>(`movie/${movieId}?append_to_response=videos`);
 
       setMovie(response.data);
     };
 
     requestMovieDetail();
-  }, [routeParams.movieId]);
+  }, [movieId]);
 
   useEffect(() => {
     (async () => {
-      setBookmarked(
-        await hasBookmark({ id: routeParams.movieId } as TmdbMovie),
-      );
+      setBookmarked(await hasBookmark({ id: movieId }));
     })();
-  }, [routeParams.movieId]);
+  }, [movieId]);
 
   const changeBookmarkStatus = async () => {
     if (bookmarked) {
@@ -66,17 +76,13 @@ const MovieDetail = () => {
     return releaseDate.getFullYear();
   }
 
-  function handlePlayTrailer() {
-    const movieTrailer = movie!.videos?.results.find((video) =>
-      /youtube/i.test(video.site),
-    );
-
+  const playTrailer = () => {
     if (movieTrailer) {
       WebBrowser.openBrowserAsync(
-        `https://www.youtube.com/embed/${movieTrailer.key}?rel=0&autoplay=0&showinfo=0&controls=0`,
+        `https://www.youtube.com/embed/${movieTrailer.key}?autoplay=1&fs=1`,
       );
     }
-  }
+  };
 
   if (!movie) {
     return null;
@@ -103,48 +109,32 @@ const MovieDetail = () => {
           </TouchableOpacity>
           <TouchableOpacity onPress={changeBookmarkStatus}>
             <Ionicons
-              name="bookmark"
-              color={bookmarked ? "#ffd700" : "#FFF"}
+              name={bookmarked ? "bookmark" : "bookmark-outline"}
+              color={Theme.colors.accent}
               size={24}
             />
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={{ flex: 1 }}>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           <Text style={styles.yearAndGenre}>
             {getReleaseYear()} • {movie.genres[0]?.name || "?"}
           </Text>
           <View style={styles.rating}>
             <Text style={styles.ratingOwned}>{movie.vote_average} </Text>
             <Text style={styles.ratingBase}>/ 10</Text>
-            <Text style={styles.ratingProvider}> IMDb</Text>
+            <Text style={styles.ratingProvider}> TMDB</Text>
           </View>
           <Text style={styles.title}>{movie.title.toUpperCase()}</Text>
           <Text style={styles.overview}>{movie.overview}</Text>
           <View style={styles.play}>
-            <TouchableOpacity
-              style={styles.playButton}
-              onPress={handlePlayTrailer}
-            >
-              <Entypo name="controller-play" color="#2e2a19" size={24} />
+            <TouchableOpacity style={styles.playButton} onPress={playTrailer}>
+              <Ionicons name="play-sharp" color={Theme.colors.primaryDarker} size={24} />
             </TouchableOpacity>
           </View>
         </ScrollView>
       </ImageBackground>
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.footerNavItem}
-          onPress={() => navigation.navigate("Settings")}
-        >
-          <Feather name="grid" color="#fff" size={24} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerNavItem}
-          onPress={() => navigation.navigate("SearchMovie")}
-        >
-          <Feather name="search" color="#fff" size={24} />
-        </TouchableOpacity>
-      </View>
+      <FooterBar elevated={false} />
     </KeyboardAvoidingView>
   );
 };
@@ -154,7 +144,8 @@ export default MovieDetail;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 32,
+    padding: 24,
+    paddingBottom: 0,
     justifyContent: "flex-end",
   },
   linearGradient: {
@@ -170,10 +161,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   yearAndGenre: {
-    color: "#fff",
+    color: Theme.colors.accent,
   },
   title: {
-    color: "#fff",
+    color: Theme.colors.accent,
     fontSize: 48,
     fontWeight: "bold",
     fontFamily: "RobotoCondensed_700Bold",
@@ -184,36 +175,28 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   ratingOwned: {
-    color: "#fff",
+    color: Theme.colors.accent,
     fontWeight: "bold",
   },
   ratingBase: {
-    color: "#f1f1f1",
+    color: Theme.colors.accentLighter,
     fontWeight: "100",
     fontSize: 12,
   },
   ratingProvider: {
-    color: "#ffd700",
+    color: Theme.colors.gold,
     fontWeight: "bold",
   },
   overview: {
-    color: "#fff",
+    color: Theme.colors.accentLighter,
   },
   play: {
     alignItems: "center",
     paddingTop: 24,
   },
   playButton: {
-    backgroundColor: "#ffd700",
+    backgroundColor: Theme.colors.gold,
     borderRadius: 24,
     padding: 18,
-  },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: Theme.colors.primary,
-  },
-  footerNavItem: {
-    margin: 12,
   },
 });

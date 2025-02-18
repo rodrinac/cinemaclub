@@ -1,25 +1,21 @@
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  Platform,
-  KeyboardAvoidingView,
-  StyleSheet,
-  NativeSyntheticEvent,
-  TextInputSubmitEditingEventData,
-} from "react-native";
-import {
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-} from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  KeyboardAvoidingView,
+  NativeSyntheticEvent,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInputSubmitEditingEventData,
+  View,
+} from "react-native";
+import { FlatList, TextInput, TouchableOpacity } from "react-native-gesture-handler";
 
-import api, { TmdbMovieList, TmdbMovie } from "../../api/tmdb";
-import HorizontalMovieCard from "../../components/HorizontalMovieCard";
-import Theme from "../../theme";
-import * as database from "../../api/database";
+import * as database from "@/api/database";
+import api, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
+import HorizontalMovieCard from "@/components/HorizontalMovieCard";
+import Theme from "@/theme";
 
 interface PageToLoad {
   number: number;
@@ -90,9 +86,7 @@ const SearchMovie = () => {
     (async () => {
       const responseData = await fetchSearchMovies();
       setFoundMovies((prevList) => {
-        const movieList = (prevList?.results ?? []).concat(
-          responseData.results,
-        );
+        const movieList = (prevList?.results ?? []).concat(responseData.results);
 
         return { ...responseData, results: filterMovieList(movieList) };
       });
@@ -100,17 +94,12 @@ const SearchMovie = () => {
   }, [pageToLoad, genreFilters, filterMovieList, fetchSearchMovies]);
 
   useEffect(() => {
-    if (
-      pageToLoad.number > 0 &&
-      (!foundMovies || pageToLoad.number <= foundMovies.total_pages)
-    ) {
+    if (pageToLoad.number > 0 && (!foundMovies || pageToLoad.number <= foundMovies.total_pages)) {
       fetchSearchMovies();
     }
   }, [fetchSearchMovies, foundMovies, pageToLoad.number]);
 
-  const handleSubmitEditing = (
-    event: NativeSyntheticEvent<TextInputSubmitEditingEventData>,
-  ) => {
+  const handleSubmitEditing = (event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => {
     const searchQuery = event.nativeEvent.text;
 
     if (searchQuery.trim().length < 1) {
@@ -153,11 +142,7 @@ const SearchMovie = () => {
             style={styles.searchFilter}
             onPress={() => navigation.navigate("SearchFilters")}
           >
-            <Ionicons
-              name="filter"
-              color={Theme.colors.accentLighter}
-              size={36}
-            />
+            <Ionicons name="filter" color={Theme.colors.accentLighter} size={36} />
           </TouchableOpacity>
         </View>
       </View>
@@ -172,9 +157,7 @@ const SearchMovie = () => {
               />
             )}
             keyExtractor={(item) => item.id.toString()}
-            onEndReached={() =>
-              setPageToLoad({ ...pageToLoad, number: pageToLoad.number + 1 })
-            }
+            onEndReached={() => setPageToLoad({ ...pageToLoad, number: pageToLoad.number + 1 })}
             onEndReachedThreshold={0.2}
           />
         )}

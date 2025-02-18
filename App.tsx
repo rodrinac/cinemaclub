@@ -1,17 +1,18 @@
-import React, { useCallback } from "react";
-import * as SplashScreen from "expo-splash-screen";
-import { StatusBar, View } from "react-native";
-import { DefaultTheme, Provider as PaperProvider } from "react-native-paper";
-import {
-  RobotoCondensed_700Bold,
-  RobotoCondensed_400Regular,
-} from "@expo-google-fonts/roboto-condensed";
+import { initDB } from "@/api/database";
+import Routes from "@/routes";
+import Theme from "@/theme";
 import { Roboto_400Regular, Roboto_500Medium } from "@expo-google-fonts/roboto";
+import {
+  RobotoCondensed_400Regular,
+  RobotoCondensed_700Bold,
+} from "@expo-google-fonts/roboto-condensed";
 import { Ubuntu_700Bold, useFonts } from "@expo-google-fonts/ubuntu";
-
-import Routes from "./src/routes";
-import Theme from "./src/theme";
-import { initDB } from "./src/api/database";
+import { Ionicons } from "@expo/vector-icons";
+import * as SplashScreen from "expo-splash-screen";
+import React, { useCallback } from "react";
+import { StatusBar, View } from "react-native";
+import "react-native-gesture-handler";
+import { DefaultTheme, Provider as PaperProvider } from "react-native-paper";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -53,15 +54,20 @@ export default function App() {
 
   return (
     <View onLayout={onLayoutRootView} style={{ flex: 1 }}>
-      <PaperProvider theme={theme}>
-        <Routes />
-      </PaperProvider>
       <StatusBar
         translucent={true}
         hidden={false}
         barStyle="light-content"
         backgroundColor="#1C2646"
       />
+      <PaperProvider
+        theme={theme}
+        settings={{
+          icon: (props) => <Ionicons {...props} />,
+        }}
+      >
+        <Routes />
+      </PaperProvider>
     </View>
   );
 }

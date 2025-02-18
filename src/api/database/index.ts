@@ -25,7 +25,7 @@ const initDB = async () => {
   });
 };
 
-const hasBookmark = async (movie: TmdbMovie): Promise<boolean> => {
+const hasBookmark = async (movie: Pick<TmdbMovie, "id">): Promise<boolean> => {
   const db = await getDB();
   const result = await db.getFirstAsync(
     `select * from movie_bookmark where movie =?`,
