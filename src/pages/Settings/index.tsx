@@ -1,16 +1,10 @@
-import React, { useEffect } from "react";
-import {
-  View,
-  Text,
-  Platform,
-  KeyboardAvoidingView,
-  StyleSheet,
-} from "react-native";
-import * as StoreReview from "expo-store-review";
-import * as SecureStore from "expo-secure-store";
-import { TouchableOpacity } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import * as SecureStore from "expo-secure-store";
+import * as StoreReview from "expo-store-review";
+import React, { useEffect } from "react";
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import { TouchableOpacity } from "react-native-gesture-handler";
 import { List, Switch } from "react-native-paper";
 import Theme from "../../theme";
 
@@ -33,10 +27,7 @@ const Settings = () => {
   async function onToggleSwitch() {
     const willHideAdultContent = !hideAdultContent;
 
-    await SecureStore.setItemAsync(
-      "hide_adult_content",
-      String(willHideAdultContent),
-    );
+    await SecureStore.setItemAsync("hide_adult_content", String(willHideAdultContent));
 
     setHideAdultContent(willHideAdultContent);
   }
@@ -75,10 +66,7 @@ const Settings = () => {
             style={{ flex: 1 }}
           />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.listItem}
-          onPress={() => StoreReview.requestReview()}
-        >
+        <TouchableOpacity style={styles.listItem} onPress={() => StoreReview.requestReview()}>
           <List.Item
             title="Review"
             description="Send your feedback"

@@ -1,21 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Text,
-  KeyboardAvoidingView,
-  Platform,
-  View,
-  StyleSheet,
-} from "react-native";
-import { Feather } from "@expo/vector-icons";
-import { FlatList, TouchableOpacity } from "react-native-gesture-handler";
+import tmdb, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
+import FooterBar from "@/components/FooterBar";
+import VerticalMovieCard from "@/components/VerticalMovieCard";
+import Theme from "@/theme";
 import { useNavigation } from "@react-navigation/native";
-
-import tmdb, { TmdbMovieList, TmdbMovie } from "../../api/tmdb";
-import VerticalMovieCard from "../../components/VerticalMovieCard";
-import Theme from "../../theme";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import { TouchableOpacity } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { transform } from "@babel/core";
 
 enum Filter {
   NOW = "movie/now_playing",
@@ -68,8 +59,7 @@ const Home = () => {
       const loadedMovies = responseData.results;
 
       setMovieList((prevMovieList) => {
-        const currentMovieList =
-          pageToLoad.number === 1 ? [] : prevMovieList?.results || [];
+        const currentMovieList = pageToLoad.number === 1 ? [] : prevMovieList?.results || [];
         return {
           ...responseData,
           results: currentMovieList.concat(loadedMovies),
@@ -99,9 +89,7 @@ const Home = () => {
             },
           ]}
         >
-          <Animated.Text style={[styles.title, { fontSize: titleScale }]}>
-            DISCOVER
-          </Animated.Text>
+          <Animated.Text style={[styles.title, { fontSize: titleScale }]}>DISCOVER</Animated.Text>
         </Animated.View>
 
         <View style={styles.menu}>
@@ -109,9 +97,7 @@ const Home = () => {
             <Text
               style={[
                 styles.menuItemText,
-                pageToLoad.filter === Filter.NOW
-                  ? styles.menuItemTextActive
-                  : {},
+                pageToLoad.filter === Filter.NOW ? styles.menuItemTextActive : {},
               ]}
               onPress={() => setPageToLoad({ number: 1, filter: Filter.NOW })}
             >
@@ -122,13 +108,9 @@ const Home = () => {
             <Text
               style={[
                 styles.menuItemText,
-                pageToLoad.filter === Filter.POPULAR
-                  ? styles.menuItemTextActive
-                  : {},
+                pageToLoad.filter === Filter.POPULAR ? styles.menuItemTextActive : {},
               ]}
-              onPress={() =>
-                setPageToLoad({ number: 1, filter: Filter.POPULAR })
-              }
+              onPress={() => setPageToLoad({ number: 1, filter: Filter.POPULAR })}
             >
               Popular
             </Text>
@@ -137,13 +119,9 @@ const Home = () => {
             <Text
               style={[
                 styles.menuItemText,
-                pageToLoad.filter === Filter.UPCOMMING
-                  ? styles.menuItemTextActive
-                  : {},
+                pageToLoad.filter === Filter.UPCOMMING ? styles.menuItemTextActive : {},
               ]}
-              onPress={() =>
-                setPageToLoad({ number: 1, filter: Filter.UPCOMMING })
-              }
+              onPress={() => setPageToLoad({ number: 1, filter: Filter.UPCOMMING })}
             >
               Upcomming
             </Text>
@@ -157,37 +135,18 @@ const Home = () => {
             data={movieList.results}
             numColumns={2}
             renderItem={({ item }) => (
-              <VerticalMovieCard
-                movie={item}
-                onPosterPress={() => handleMoviePosterPress(item)}
-              />
+              <VerticalMovieCard movie={item} onPosterPress={() => handleMoviePosterPress(item)} />
             )}
             keyExtractor={(item) => item.id.toString()}
-            onEndReached={() =>
-              setPageToLoad({ ...pageToLoad, number: pageToLoad.number + 1 })
-            }
+            onEndReached={() => setPageToLoad({ ...pageToLoad, number: pageToLoad.number + 1 })}
             onEndReachedThreshold={0.2}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: false },
-            )}
+            onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+              useNativeDriver: false,
+            })}
           />
         )}
       </View>
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.footerNavItem}
-          onPress={() => navigation.navigate("Settings")}
-        >
-          <Feather name="grid" color="#fff" size={24} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerNavItem}
-          onPress={() => navigation.navigate("SearchMovie")}
-        >
-          <Feather name="search" color="#fff" size={24} />
-        </TouchableOpacity>
-      </View>
+      <FooterBar />
     </KeyboardAvoidingView>
   );
 };

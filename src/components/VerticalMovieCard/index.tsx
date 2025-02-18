@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { Dimensions, Image, View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
+import { Dimensions, Image, StyleSheet, View } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
-import { TmdbMovie } from "../../api/tmdb";
-import * as database from "../../api/database";
-import Theme from "../../theme";
 import { opacity } from "react-native-reanimated/lib/typescript/Colors";
+import * as database from "../../api/database";
+import { TmdbMovie } from "../../api/tmdb";
+import Theme from "../../theme";
 
 const screenWidth = Dimensions.get("window").width;
 const posterWidth = screenWidth / 2 - 16; // Adjust for padding

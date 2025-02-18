@@ -1,8 +1,8 @@
 import axios, { AxiosRequestConfig } from "axios";
-import SmartQueue from "smart-request-balancer";
 import { getLocales } from "expo-localization";
 import * as SecureStore from "expo-secure-store";
 import { doc, getDoc } from "firebase/firestore";
+import SmartQueue from "smart-request-balancer";
 import { firestore } from "../firebase";
 
 const getLocale = () => getLocales()[0].languageTag;
@@ -21,8 +21,7 @@ const api = axios.create({
 
 api.interceptors.request.use(async (config) => {
   if (config.params) {
-    config.params.include_adult =
-      (await SecureStore.getItemAsync("hide_adult_content")) !== "true";
+    config.params.include_adult = (await SecureStore.getItemAsync("hide_adult_content")) !== "true";
   }
 
   return config;
@@ -35,8 +34,7 @@ const setTmdbApiKey = async () => {
 
     if (docSnap.exists()) {
       const data = docSnap.data();
-      api.defaults.headers.common["Authorization"] =
-        `Bearer ${data["API_TOKEN"]}`;
+      api.defaults.headers.common["Authorization"] = `Bearer ${data["API_TOKEN"]}`;
     }
   } catch (error) {
     console.error("Error fetching TMDB credentials: ", error);
@@ -72,5 +70,5 @@ const getQueued = <T>(url: string, params?: AxiosRequestConfig): Promise<T> => {
 };
 
 export default api;
-export { getQueued };
 export * from "./models";
+export { getQueued };
