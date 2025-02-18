@@ -1,10 +1,9 @@
 import * as SQLite from "expo-sqlite";
-import { TmdbMovie, TmdbGenre } from "../tmdb";
+import { TmdbGenre, TmdbMovie } from "../tmdb";
 
 type GenreFilterMode = "INCLUDING" | "EXCLUDING" | "UNDEFINED";
 
-const getDB = async (): Promise<SQLite.SQLiteDatabase> =>
-  SQLite.openDatabaseAsync("CINEMA_CLUB");
+const getDB = async (): Promise<SQLite.SQLiteDatabase> => SQLite.openDatabaseAsync("CINEMA_CLUB");
 
 const initDB = async () => {
   const sql = [
@@ -27,10 +26,7 @@ const initDB = async () => {
 
 const hasBookmark = async (movie: Pick<TmdbMovie, "id">): Promise<boolean> => {
   const db = await getDB();
-  const result = await db.getFirstAsync(
-    `select * from movie_bookmark where movie =?`,
-    [movie.id],
-  );
+  const result = await db.getFirstAsync(`select * from movie_bookmark where movie =?`, [movie.id]);
   return result != null;
 };
 
@@ -39,9 +35,7 @@ const addBookmark = async (movie: TmdbMovie) => {
 
   if (!exists) {
     const db = await getDB();
-    await db.runAsync("insert into movie_bookmark (movie) values(?)", [
-      movie.id,
-    ]);
+    await db.runAsync("insert into movie_bookmark (movie) values(?)", [movie.id]);
   }
 };
 
@@ -53,10 +47,7 @@ const removeBookmark = async (movie: TmdbMovie) => {
 const hasGenreFilter = async (genre: TmdbGenre): Promise<boolean> => {
   const db = await getDB();
 
-  const result = await db.getFirstAsync(
-    "SELECT * FROM genre_filter WHERE genre = ?",
-    [genre.id],
-  );
+  const result = await db.getFirstAsync("SELECT * FROM genre_filter WHERE genre = ?", [genre.id]);
   return result != null;
 };
 
@@ -68,10 +59,7 @@ const toggleGenreFilter = async (genre: TmdbGenre, mode: GenreFilterMode) => {
   if (hasFilter) {
     await db.runAsync("DELETE genre_filter WHERE id = ?", [genre.id]);
   } else {
-    await db.runAsync("INSERT INTO genre_filter(genre, mode) VALUES(?, ?)", [
-      genre.id,
-      mode,
-    ]);
+    await db.runAsync("INSERT INTO genre_filter(genre, mode) VALUES(?, ?)", [genre.id, mode]);
   }
 };
 
@@ -86,9 +74,7 @@ const getGenreFilterMode = async (): Promise<GenreFilterMode> => {
 const getGenreFilters = async (): Promise<number[]> => {
   const db = await getDB();
 
-  const filters: { genre: number }[] = await db.getAllAsync(
-    "SELECT * FROM genre_filter",
-  );
+  const filters: { genre: number }[] = await db.getAllAsync("SELECT * FROM genre_filter");
 
   return filters.map((filter) => filter.genre);
 };
@@ -100,14 +86,14 @@ const setGenreFilterMode = async (mode: GenreFilterMode) => {
 };
 
 export {
-  GenreFilterMode,
-  initDB,
-  hasBookmark,
   addBookmark,
-  removeBookmark,
-  hasGenreFilter,
-  toggleGenreFilter,
+  GenreFilterMode,
   getGenreFilterMode,
   getGenreFilters,
+  hasBookmark,
+  hasGenreFilter,
+  initDB,
+  removeBookmark,
   setGenreFilterMode,
+  toggleGenreFilter,
 };
