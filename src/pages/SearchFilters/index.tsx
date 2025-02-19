@@ -3,21 +3,18 @@ import { useNavigation } from "@react-navigation/native";
 import React, { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
 import { FlatList, TouchableOpacity } from "react-native-gesture-handler";
+import { SegmentedButtons } from "react-native-paper";
 
-import * as database from "../../api/database";
-import api, { TmdbGenreList } from "../../api/tmdb";
-import GenreCard from "../../components/GenreCard";
-import Theme from "../../theme";
+import * as database from "@/api/database";
+import api, { TmdbGenreList } from "@/api/tmdb";
+import GenreCard from "@/components/GenreCard";
+import Theme from "@/theme";
 
 const SearchFilters = () => {
   const navigation = useNavigation();
 
-  const withoutTheseColor = "#ED0000";
-  const withTheseColor = "#B7990D";
-
-  const [genreList, setGenreList] = useState<TmdbGenreList>();
-  const [filter, setFilter] = useState<database.GenreFilterMode>("INCLUDING");
-  const [color, setColor] = useState(withTheseColor);
+  const [genreList, setGenreList] = useState<TmdbGenreList | undefined>();
+  const [filterMode, setFilterMode] = useState<database.GenreFilterMode>("INCLUDING");
 
   useEffect(() => {
     async function fetchGenres() {
@@ -31,24 +28,22 @@ const SearchFilters = () => {
 
   useEffect(() => {
     async function fetchGenreFilter() {
-      setFilter((await database.getGenreFilterMode()) || "INCLUDING");
+      const mode = await database.getGenreFilterMode();
+
+      if (mode !== "UNDEFINED") {
+        setFilterMode(mode);
+      }
     }
 
     fetchGenreFilter();
   }, []);
 
-  useEffect(() => {
-    if (filter === "INCLUDING") {
-      setColor(withTheseColor);
-    } else {
-      setColor(withoutTheseColor);
-    }
-  }, [filter]);
-
-  async function handleFilterPress(newFilter: database.GenreFilterMode) {
-    await database.setGenreFilterMode(newFilter);
-    setFilter(newFilter);
-  }
+  const onFilterModeChange = (newFilter: database.GenreFilterMode) => {
+    (async () => {
+      await database.setGenreFilterMode(newFilter);
+    })();
+    setFilterMode(newFilter);
+  };
 
   return (
     <KeyboardAvoidingView
@@ -66,30 +61,28 @@ const SearchFilters = () => {
         </View>
         <Text style={styles.title}>FILTERS</Text>
         <View style={styles.menu}>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text
-              style={[styles.menuItemText, filter === "INCLUDING" ? styles.menuItemTextActive : {}]}
-              onPress={() => handleFilterPress("INCLUDING")}
-            >
-              Only these
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text
-              style={[styles.menuItemText, filter === "EXCLUDING" ? styles.menuItemTextActive : {}]}
-              onPress={() => handleFilterPress("EXCLUDING")}
-            >
-              Without these
-            </Text>
-          </TouchableOpacity>
-          <Text style={styles.menuItem}> </Text>
+          <SegmentedButtons
+            value={filterMode}
+            onValueChange={onFilterModeChange}
+            style={styles.menuButtons}
+            buttons={[
+              {
+                value: "INCLUDING",
+                label: "Only these",
+              },
+              {
+                value: "EXCLUDING",
+                label: "Without these",
+              },
+            ]}
+          />
         </View>
       </View>
       <View style={styles.main}>
         {genreList && (
           <FlatList
             data={genreList.genres}
-            renderItem={({ item }) => <GenreCard color={color} genre={item} filter={filter} />}
+            renderItem={({ item }) => <GenreCard genre={item} filterMode={filterMode} />}
             keyExtractor={(item) => item.id.toString()}
             numColumns={2}
           />
@@ -103,7 +96,7 @@ export default SearchFilters;
 
 const styles = StyleSheet.create({
   header: {
-    paddingLeft: 22,
+    paddingHorizontal: 24,
     backgroundColor: Theme.colors.primary,
     elevation: 4,
   },
@@ -123,12 +116,10 @@ const styles = StyleSheet.create({
     marginTop: 64,
   },
   menu: {
-    fontSize: 16,
-    marginVertical: 16,
-    flexDirection: "row",
+    paddingVertical: 16,
   },
-  menuItem: {
-    marginEnd: 12,
+  menuButtons: {
+    flexGrow: 1,
   },
   menuItemText: {
     color: Theme.colors.accentLighter,

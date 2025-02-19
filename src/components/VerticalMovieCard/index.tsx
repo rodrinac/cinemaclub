@@ -2,19 +2,18 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import { Dimensions, Image, StyleSheet, View } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
-import { opacity } from "react-native-reanimated/lib/typescript/Colors";
 import * as database from "../../api/database";
 import { TmdbMovie } from "../../api/tmdb";
 import Theme from "../../theme";
 
 const screenWidth = Dimensions.get("window").width;
-const posterWidth = screenWidth / 2 - 16; // Adjust for padding
-const posterHeight = (posterWidth / 140) * 210; // Maintain aspect ratio (140x210)
+const posterWidth = screenWidth / 2 - 16;
+const posterHeight = (posterWidth / 140) * 210;
 
-interface Props {
+type Props = {
   movie: TmdbMovie;
   onPosterPress?: () => void;
-}
+};
 
 const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
   const [bookmarked, setBookmarked] = useState<boolean>();

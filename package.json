@@ -47,10 +47,12 @@
     "babel-preset-expo": "~12.0.0",
     "eslint": "^8.57.0",
     "eslint-config-expo": "~8.0.1",
+    "eslint-config-prettier": "^10.0.1",
     "prettier": "^3.5.1",
     "prettier-plugin-organize-imports": "^4.1.0",
     "typescript": "^5.7.3"
   },
+  "type": "module",
   "private": true,
   "name": "cinemaclub",
   "version": "1.0.0"

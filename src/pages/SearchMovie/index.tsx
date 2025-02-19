@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   NativeSyntheticEvent,
@@ -17,26 +17,37 @@ import api, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
 import HorizontalMovieCard from "@/components/HorizontalMovieCard";
 import Theme from "@/theme";
 
-interface PageToLoad {
+type PageToLoad = {
   number: number;
   searchQuery: string;
-}
+};
+
+const PRISTINE_EMPTY_LIST: TmdbMovieList = {
+  page: 0,
+  results: [],
+  total_pages: 0,
+  total_results: 0,
+};
 
 const SearchMovie = () => {
   const navigation = useNavigation();
 
   const [filter, setFilter] = useState<database.GenreFilterMode>("INCLUDING");
   const [genreFilters, setGenreFilters] = useState<number[]>();
-  const [foundMovies, setFoundMovies] = useState<TmdbMovieList>();
+  const [currResponse, setCurrResponse] = useState<TmdbMovieList>();
 
   const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
     number: 0,
     searchQuery: "",
   });
 
+  const moviesRef = useRef<TmdbMovieList>(PRISTINE_EMPTY_LIST);
+
+  const moviesPage = moviesRef.current;
+
   const filterMovieList = useCallback(
     (movies: TmdbMovie[]): TmdbMovie[] => {
-      if (!genreFilters) {
+      if (genreFilters == null || genreFilters?.length == 0) {
         return movies;
       }
 
@@ -52,6 +63,17 @@ const SearchMovie = () => {
     },
     [filter, genreFilters],
   );
+
+  const movies = useMemo(() => {
+    if (currResponse) {
+      moviesRef.current = {
+        ...moviesRef.current,
+        results: [...moviesRef.current.results, ...currResponse.results],
+      };
+    }
+
+    return filterMovieList(moviesRef.current.results);
+  }, [currResponse, filterMovieList]);
   const fetchSearchMovies = useCallback(async () => {
     const response = await api.get<TmdbMovieList>("search/movie", {
       params: {
@@ -61,8 +83,36 @@ const SearchMovie = () => {
       },
     });
 
-    return response.data;
+    setCurrResponse(response.data);
   }, [pageToLoad]);
+
+  useEffect(() => {
+    if (
+      pageToLoad.number > 0 &&
+      (moviesPage.page === 0 || pageToLoad.number <= moviesPage.total_pages)
+    ) {
+      fetchSearchMovies();
+    }
+  }, [fetchSearchMovies, pageToLoad.number]);
+
+  const handleSubmitEditing = (event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => {
+    const searchQuery = event.nativeEvent.text;
+
+    if (searchQuery.trim().length < 1) {
+      return;
+    }
+
+    moviesRef.current = PRISTINE_EMPTY_LIST;
+
+    setPageToLoad({
+      number: 1,
+      searchQuery,
+    });
+  };
+
+  const goToMovieDetails = (movie: TmdbMovie) => {
+    navigation.navigate("MovieDetail", { movieId: movie.id });
+  };
 
   useEffect(() => {
     async function fetchFilter() {
@@ -81,40 +131,6 @@ const SearchMovie = () => {
 
     fetchGenreFilters();
   }, [filter]);
-
-  useEffect(() => {
-    (async () => {
-      const responseData = await fetchSearchMovies();
-      setFoundMovies((prevList) => {
-        const movieList = (prevList?.results ?? []).concat(responseData.results);
-
-        return { ...responseData, results: filterMovieList(movieList) };
-      });
-    })();
-  }, [pageToLoad, genreFilters, filterMovieList, fetchSearchMovies]);
-
-  useEffect(() => {
-    if (pageToLoad.number > 0 && (!foundMovies || pageToLoad.number <= foundMovies.total_pages)) {
-      fetchSearchMovies();
-    }
-  }, [fetchSearchMovies, foundMovies, pageToLoad.number]);
-
-  const handleSubmitEditing = (event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => {
-    const searchQuery = event.nativeEvent.text;
-
-    if (searchQuery.trim().length < 1) {
-      return;
-    }
-
-    setPageToLoad({
-      number: 1,
-      searchQuery,
-    });
-  };
-
-  const handleMoviePosterPress = (movie: TmdbMovie) => {
-    navigation.navigate("MovieDetail", { movieId: movie.id });
-  };
 
   return (
     <KeyboardAvoidingView
@@ -135,6 +151,7 @@ const SearchMovie = () => {
           <TextInput
             style={styles.searchInput}
             placeholder="🔍 Search a movie"
+            placeholderTextColor={Theme.colors.accent}
             onSubmitEditing={handleSubmitEditing}
             autoFocus
           />
@@ -147,14 +164,11 @@ const SearchMovie = () => {
         </View>
       </View>
       <View style={styles.main}>
-        {foundMovies && (
+        {movies.length > 0 && (
           <FlatList
-            data={foundMovies.results}
+            data={movies}
             renderItem={({ item }) => (
-              <HorizontalMovieCard
-                movie={item}
-                onPosterPress={() => handleMoviePosterPress(item)}
-              />
+              <HorizontalMovieCard movie={item} onPosterPress={() => goToMovieDetails(item)} />
             )}
             keyExtractor={(item) => item.id.toString()}
             onEndReached={() => setPageToLoad({ ...pageToLoad, number: pageToLoad.number + 1 })}
