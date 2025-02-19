@@ -13,7 +13,7 @@ const posterHeight = (posterWidth / 140) * 210;
 type Props = {
   movie: TmdbMovie;
   onPosterPress?: () => void;
-}
+};
 
 const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
   const [bookmarked, setBookmarked] = useState<boolean>();
