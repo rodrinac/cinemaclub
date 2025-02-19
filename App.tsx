@@ -30,10 +30,10 @@ export default function App() {
     Ubuntu_700Bold,
   });
 
-  const onLayoutRootView = useCallback(() => {
+  const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
+      await initDB();
       SplashScreen.hide();
-      initDB();
     }
   }, [fontsLoaded]);
 
@@ -49,6 +49,7 @@ export default function App() {
       primary: Theme.colors.primary,
       accent: Theme.colors.accent,
       text: Theme.colors.accent,
+      onSurface: Theme.colors.accentLighter,
     },
   };
 

@@ -1,20 +1,33 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
 
-import * as database from "../../api/database";
-import { TmdbGenre } from "../../api/tmdb";
-import Theme from "../../theme";
+import * as database from "@/api/database";
+import { TmdbGenre } from "@/api/tmdb";
+import Theme from "@/theme";
 
 type Props = {
   genre: TmdbGenre;
-  filter: database.GenreFilterMode;
-  color: string;
+  filterMode: database.GenreFilterMode;
 };
 
-const GenreCard: React.FC<Props> = ({ genre, color, filter }) => {
+const withoutTheseColor = "#ED0000";
+const withTheseColor = "#B7990D";
+
+const GenreCard: React.FC<Props> = ({ genre, filterMode }) => {
   const [selected, setSelected] = useState(false);
+
+  const color = useMemo(() => {
+    switch (filterMode) {
+      case "INCLUDING":
+        return withTheseColor;
+      case "EXCLUDING":
+        return withoutTheseColor;
+      default:
+        return Theme.colors.accentLighter;
+    }
+  }, [filterMode]);
 
   useEffect(() => {
     async function fetchGenreFilter() {
@@ -24,10 +37,11 @@ const GenreCard: React.FC<Props> = ({ genre, color, filter }) => {
     fetchGenreFilter();
   }, [genre]);
 
-  async function handlePress() {
-    await database.toggleGenreFilter(genre, filter);
+  const handlePress = () => {
+    (async () => await database.toggleGenreFilter(genre, filterMode))();
+    console.log({ selected, genre, filterMode });
     setSelected(!selected);
-  }
+  };
 
   return (
     <View style={styles.container}>
@@ -42,10 +56,6 @@ const GenreCard: React.FC<Props> = ({ genre, color, filter }) => {
 };
 
 export default GenreCard;
-
-GenreCard.defaultProps = {
-  color: Theme.colors.accentLighter,
-};
 
 const styles = StyleSheet.create({
   container: {
