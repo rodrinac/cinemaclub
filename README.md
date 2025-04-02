@@ -2,7 +2,7 @@
 
 > React Native (Expo) Movie App
 
-[![GitHub version](https://badge.fury.io/gh/josersi%2Fcinemaclub.svg)](https://badge.fury.io/gh/josersi%2Fcinemaclub)
+[![GitHub version](https://badge.fury.io/gh/rodrinac%2Fcinemaclub.svg)](https://badge.fury.io/gh/rodrinac%2Fcinemaclub)
 
 This is a React Native application based on Expo using the [TMDB api](https://www.themoviedb.org/).
 
@@ -20,14 +20,6 @@ NPM:
 
 ```sh
 npm install
-```
-
-Go to **src/api/tmdb** and create the file **conf.json**
-
-```json
-{
-  "authToken": "<your_api_token_goes_here"
-}
 ```
 
 ## Dev
@@ -53,7 +45,6 @@ npm start
 - [ ] TMDB Authentication
 - [ ] Favorites Page
 - [ ] User lists
-- [ ] App Modularization
 - [ ] i18n
 - [ ] Tests (:D)
 - [ ] ... what more?
@@ -65,13 +56,13 @@ npm start
 
 ## Meta
 
-José Rodrigo– [@kaomi_jose](https://twitter.com/kaomi_jose) – jose.rodrigo@kaomidev.tech
+José Inácio – [👨‍💻 @josersinacio](https://www.linkedin.com/in/josersinacio/) – jose.rs.inacio@gmail.com
 
 Distributed under the MIT license. See `LICENSE` for more information.
 
 ## Contributing
 
-1. Fork it (<https://github.com/josersi/cinemaclub/fork>)
+1. Fork it (<https://github.com/rodrinac/cinemaclub/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
 3. Commit your changes (`git commit -am 'Add some fooBar'`)
 4. Push to the branch (`git push origin feature/fooBar`)
