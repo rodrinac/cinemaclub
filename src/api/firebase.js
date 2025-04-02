@@ -7,13 +7,13 @@ import { getFirestore } from "firebase/firestore";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyCextIaU9Delu1x8aAQTis0MfdlEMV8awQ",
-  authDomain: "cinema-club-5c65b.firebaseapp.com",
-  projectId: "cinema-club-5c65b",
-  storageBucket: "cinema-club-5c65b.firebasestorage.app",
-  messagingSenderId: "121178376153",
-  appId: "1:121178376153:web:0366ca8cab165b206e7bc8",
-  measurementId: "G-T1BPJJ2QZ6",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
