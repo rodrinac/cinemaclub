@@ -11,13 +11,17 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ImageBackground,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = StaticScreenProps<{
   movieId: number;
@@ -25,10 +29,14 @@ type Props = StaticScreenProps<{
 
 const MovieDetail = ({ route }: Props) => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
 
   const movieId = route.params.movieId;
   const [movie, setMovie] = useState<TmdbMovie>();
   const [bookmarked, setBookmarked] = useState<boolean>();
+  const [isTrailerOpen, setIsTrailerOpen] = useState(false);
 
   const movieTrailer = useMemo(() => {
     const videos = movie?.videos?.results ?? [];
@@ -79,13 +87,40 @@ const MovieDetail = ({ route }: Props) => {
     return releaseDate.getFullYear();
   }
 
+  const trailerUrl = movieTrailer
+    ? `https://www.youtube.com/embed/${movieTrailer.key}?autoplay=1&fs=1`
+    : undefined;
+
   const playTrailer = () => {
-    if (movieTrailer) {
-      WebBrowser.openBrowserAsync(
-        `https://www.youtube.com/embed/${movieTrailer.key}?autoplay=1&fs=1`,
-      );
+    if (!trailerUrl) {
+      return;
     }
+
+    if (Platform.OS === "web") {
+      setIsTrailerOpen(true);
+      return;
+    }
+
+    WebBrowser.openBrowserAsync(trailerUrl);
   };
+
+  useEffect(() => {
+    if (!(Platform.OS === "web" && isTrailerOpen)) {
+      return;
+    }
+
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsTrailerOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onEscape);
+
+    return () => {
+      window.removeEventListener("keydown", onEscape);
+    };
+  }, [isTrailerOpen]);
 
   if (!movie) {
     return null;
@@ -97,7 +132,7 @@ const MovieDetail = ({ route }: Props) => {
       style={{ flex: 1 }}
     >
       <ImageBackground
-        style={styles.container}
+        style={[styles.container, { paddingTop: insets.top + 8 }]}
         source={{ uri: `https://image.tmdb.org/t/p/w500${movie.poster_path}` }}
         resizeMode="cover"
       >
@@ -108,7 +143,7 @@ const MovieDetail = ({ route }: Props) => {
         />
         <View style={styles.nav}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
           </TouchableOpacity>
           <TouchableOpacity onPress={changeBookmarkStatus}>
             <Ionicons
@@ -128,15 +163,56 @@ const MovieDetail = ({ route }: Props) => {
             <Text style={styles.ratingBase}>/ 10</Text>
             <Text style={styles.ratingProvider}> TMDB</Text>
           </View>
-          <Text style={styles.title}>{movie.title.toUpperCase()}</Text>
+          <Text style={[styles.title, { fontSize: isLandscape ? 36 : 48 }]}>{movie.title.toUpperCase()}</Text>
           <Text style={styles.overview}>{movie.overview}</Text>
           <View style={styles.play}>
-            <TouchableOpacity style={styles.playButton} onPress={playTrailer}>
+            <TouchableOpacity
+              style={styles.playButton}
+              onPress={playTrailer}
+              accessibilityLabel="Play trailer"
+              testID="play-trailer-button"
+            >
               <Ionicons name="play-sharp" color={Theme.colors.primaryDarker} size={24} />
             </TouchableOpacity>
           </View>
         </ScrollView>
       </ImageBackground>
+      <Modal
+        visible={Platform.OS === "web" && isTrailerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsTrailerOpen(false)}
+      >
+        <Pressable style={styles.trailerBackdrop} onPress={() => setIsTrailerOpen(false)}>
+          <Pressable
+            onPress={(event) => event.stopPropagation()}
+            style={styles.trailerPanel}
+            testID="trailer-overlay"
+          >
+            <TouchableOpacity
+              style={styles.trailerCloseButton}
+              onPress={() => setIsTrailerOpen(false)}
+              accessibilityLabel="Close trailer"
+              testID="trailer-overlay-close"
+            >
+              <Ionicons name="close" size={22} color={Theme.colors.accent} />
+            </TouchableOpacity>
+            {trailerUrl ? (
+              Platform.OS === "web" ? (
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                React.createElement("iframe" as any, {
+                  src: trailerUrl,
+                  style: { width: "100%", height: "100%", border: "none" },
+                  allow:
+                    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+                  allowFullScreen: true,
+                  title: "Trailer",
+                })
+              ) : null
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
       <FooterBar elevated={false} />
     </KeyboardAvoidingView>
   );
@@ -168,10 +244,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: Theme.colors.accent,
-    fontSize: 48,
     fontWeight: "bold",
     fontFamily: "RobotoCondensed_700Bold",
-    maxWidth: 360,
+    maxWidth: 680,
   },
   rating: {
     flexDirection: "row",
@@ -191,15 +266,42 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   overview: {
-    color: Theme.colors.accentLighter,
+    color: Theme.colors.textMuted,
+    maxWidth: 760,
   },
   play: {
     alignItems: "center",
     paddingTop: 24,
   },
   playButton: {
-    backgroundColor: Theme.colors.gold,
+    backgroundColor: Theme.colors.warning,
     borderRadius: 24,
     padding: 18,
+  },
+  trailerBackdrop: {
+    flex: 1,
+    backgroundColor: Theme.colors.backdrop,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  trailerPanel: {
+    width: "100%",
+    maxWidth: 1080,
+    aspectRatio: 16 / 9,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Theme.colors.surfaceAlt,
+  },
+  trailerCloseButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 1,
+    backgroundColor: Theme.colors.overlay,
+    borderRadius: 20,
+    padding: 6,
   },
 });

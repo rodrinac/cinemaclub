@@ -47,9 +47,13 @@ export default function App() {
     colors: {
       ...DefaultTheme.colors,
       primary: Theme.colors.primary,
-      accent: Theme.colors.accent,
-      text: Theme.colors.accent,
-      onSurface: Theme.colors.accentLighter,
+      background: Theme.colors.background,
+      surface: Theme.colors.surface,
+      onSurface: Theme.colors.text,
+      onSurfaceVariant: Theme.colors.textMuted,
+      text: Theme.colors.text,
+      secondary: Theme.colors.gold,
+      outline: Theme.colors.surfaceAlt,
     },
   };
 
@@ -59,7 +63,7 @@ export default function App() {
         translucent={true}
         hidden={false}
         barStyle="light-content"
-        backgroundColor="#1C2646"
+        backgroundColor={Theme.colors.primary}
       />
       <PaperProvider
         theme={theme}

@@ -2,13 +2,25 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as StoreReview from "expo-store-review";
 import React, { useEffect } from "react";
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { List, Switch } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Theme from "../../theme";
 import { persistentStorage } from "@/utils/persistentStorage";
 
 const Settings = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
 
   const [hideAdultContent, setHideAdultContent] = React.useState(true);
 
@@ -36,16 +48,16 @@ const Settings = () => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1 }}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
           </TouchableOpacity>
           <TouchableOpacity>
-            <Ionicons name="help-circle-outline" color="#FFF" size={24} />
+            <Ionicons name="help-circle-outline" color={Theme.colors.accent} size={24} />
           </TouchableOpacity>
         </View>
-        <Text style={styles.title}>SETTINGS</Text>
+        <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>SETTINGS</Text>
       </View>
       <View style={styles.main}>
         <TouchableOpacity onPress={onToggleSwitch} style={styles.listItem}>
@@ -82,24 +94,21 @@ export default Settings;
 
 const styles = StyleSheet.create({
   header: {
-    paddingLeft: 22,
+    paddingHorizontal: 18,
     backgroundColor: Theme.colors.primary,
     elevation: 4,
   },
   nav: {
     flexDirection: "row",
     justifyContent: "space-between",
-    position: "absolute",
-    top: 32,
-    left: 32,
-    right: 32,
+    alignItems: "center",
   },
   title: {
     color: Theme.colors.accent,
     fontSize: 32,
     fontFamily: "RobotoCondensed_700Bold",
-    maxWidth: 260,
-    marginTop: 64,
+    maxWidth: "100%",
+    marginTop: 16,
   },
   main: {
     flex: 1,

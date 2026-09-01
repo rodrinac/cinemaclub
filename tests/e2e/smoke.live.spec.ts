@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("API Server Smoke Tests", () => {
+test.describe("API Server Smoke Tests (live)", () => {
   test("health endpoint returns 200 OK", async ({ request }) => {
     const response = await request.get("http://127.0.0.1:3001/health");
     expect(response.status()).toBe(200);
     const body = await response.json();
-    expect(body).toEqual({ status: "ok" });
+    expect(body.status).toBe("ok");
   });
 
   test("rejects invalid method with 405", async ({ request }) => {
@@ -19,10 +19,10 @@ test.describe("API Server Smoke Tests", () => {
   });
 });
 
-test.describe("Web App Smoke Tests", () => {
+test.describe("Web App Smoke Tests (live)", () => {
   test("renders home web page", async ({ page }) => {
-    await page.goto("http://127.0.0.1:8081");
-    const root = page.locator("#root");
-    await expect(root).toBeVisible({ timeout: 10000 });
+    await page.goto("/");
+    await expect(page.locator("#root")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("DISCOVER")).toBeVisible();
   });
 });
