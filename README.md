@@ -10,27 +10,11 @@ This is a React Native application based on Expo using the [TMDB api](https://ww
 
 ## Installation
 
-Yarn:
-
-```sh
-yarn
-```
-
-NPM:
-
 ```sh
 npm install
 ```
 
 ## Dev
-
-Yarn:
-
-```sh
-yarn start
-```
-
-NPM:
 
 ```sh
 npm start
