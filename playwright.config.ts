@@ -1,0 +1,35 @@
+import { defineConfig, devices } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./tests/e2e",
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: "list",
+  use: {
+    trace: "on-first-retry",
+  },
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
+  webServer: [
+    {
+      command: "node server/movies-api.mjs",
+      url: "http://127.0.0.1:3001/health",
+      reuseExistingServer: !process.env.CI,
+      env: {
+        PORT: "3001",
+        TMDB_API_TOKEN: process.env.TMDB_API_TOKEN || "dummy_token_for_ci",
+      },
+    },
+    {
+      command: "npx serve dist -l 8081 --single",
+      url: "http://127.0.0.1:8081",
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
+});

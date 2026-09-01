@@ -12,7 +12,11 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "api": "node --env-file=.env server/movies-api.mjs",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "jest",
+    "test:ci": "jest --ci && playwright test",
+    "build:web": "expo export --platform web",
+    "prebuild:check": "expo prebuild --clean --no-install"
   },
   "dependencies": {
     "@expo-google-fonts/roboto": "^0.1.0",
@@ -21,8 +25,11 @@
     "@expo/metro-runtime": "~5.0.5",
     "@react-navigation/native": "^7",
     "@react-navigation/stack": "^7",
-    "axios": "^0.28.0",
+    "axios": "^1.20.0",
     "expo": "^53.0.27",
+    "expo-asset": "~11.1.7",
+    "expo-constants": "~17.1.8",
+    "expo-font": "~13.3.2",
     "expo-linear-gradient": "~14.1.5",
     "expo-linking": "~7.1.7",
     "expo-localization": "~16.1.6",
@@ -48,13 +55,20 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@playwright/test": "^1.62.1",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.0.10",
     "babel-preset-expo": "~13.0.0",
+    "better-sqlite3": "^13.0.3",
     "eslint": "^8.57.0",
     "eslint-config-expo": "~9.2.0",
     "eslint-config-prettier": "^10.0.1",
+    "jest": "^30.5.1",
     "prettier": "^3.5.1",
     "prettier-plugin-organize-imports": "^4.1.0",
+    "serve": "^14.2.6",
+    "ts-jest": "^29.4.12",
     "typescript": "~5.8.3"
   }
 }
