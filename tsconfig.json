@@ -4,7 +4,7 @@
     "jsx": "react-native",
     "lib": ["ESNext.Array", "dom", "esnext", "es2023"],
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,

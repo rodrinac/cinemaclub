@@ -64,7 +64,9 @@ export default function App() {
       <PaperProvider
         theme={theme}
         settings={{
-          icon: (props) => <Ionicons {...props} />,
+          icon: (props) => (
+            <Ionicons {...props} name={props.name as keyof typeof Ionicons.glyphMap} />
+          ),
         }}
       >
         <Routes />

@@ -43,8 +43,6 @@ const SearchMovie = () => {
 
   const moviesRef = useRef<TmdbMovieList>(PRISTINE_EMPTY_LIST);
 
-  const moviesPage = moviesRef.current;
-
   const filterMovieList = useCallback(
     (movies: TmdbMovie[]): TmdbMovie[] => {
       if (genreFilters == null || genreFilters?.length == 0) {
@@ -74,8 +72,9 @@ const SearchMovie = () => {
 
     return filterMovieList(moviesRef.current.results);
   }, [currResponse, filterMovieList]);
+
   const fetchSearchMovies = useCallback(async () => {
-    const response = await api.get<TmdbMovieList>("search/movie", {
+    const response = await api.get<TmdbMovieList>("search/movies", {
       params: {
         query: pageToLoad.searchQuery,
         page: pageToLoad.number,
@@ -87,10 +86,8 @@ const SearchMovie = () => {
   }, [pageToLoad]);
 
   useEffect(() => {
-    if (
-      pageToLoad.number > 0 &&
-      (moviesPage.page === 0 || pageToLoad.number <= moviesPage.total_pages)
-    ) {
+    const { page, total_pages } = moviesRef.current;
+    if (pageToLoad.number > 0 && (page === 0 || pageToLoad.number <= total_pages)) {
       fetchSearchMovies();
     }
   }, [fetchSearchMovies, pageToLoad.number]);

@@ -4,7 +4,7 @@
 
 [![GitHub version](https://badge.fury.io/gh/rodrinac%2Fcinemaclub.svg)](https://badge.fury.io/gh/rodrinac%2Fcinemaclub)
 
-This is a React Native application based on Expo using the [TMDB api](https://www.themoviedb.org/).
+This is a React Native application based on Expo, with web support, using the [TMDB api](https://www.themoviedb.org/).
 
 <img src="showcase/screenshot_01.png" width="195" /><img src="showcase/screenshot_02.png" width="195" /><img src="showcase/screenshot_03.png" width="195" />
 
@@ -17,8 +17,24 @@ npm install
 ## Dev
 
 ```sh
+# Copy .env.template to .env and set TMDB_API_TOKEN first.
+npm run api
+
+# In a second terminal, start Expo and choose web, iOS, or Android.
 npm start
 ```
+
+The Expo app communicates only with the local Movies API; the TMDB bearer token is read by that API from `.env` and is never embedded in the app. On a physical device, set `EXPO_PUBLIC_MOVIES_API_URL` to your computer's LAN address, for example `http://192.168.1.10:3001/api`.
+
+## Movies API
+
+`npm run api` starts a small read-only API on port `3001`.
+
+- `GET /health`
+- `GET /api/movies/now-playing`, `/api/movies/popular`, `/api/movies/upcoming`
+- `GET /api/movies/:id`
+- `GET /api/search/movies?query=...`
+- `GET /api/genres`
 
 ## Milestones
 
