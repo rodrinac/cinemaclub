@@ -12,7 +12,6 @@
     "@expo-google-fonts/roboto": "^0.1.0",
     "@expo-google-fonts/roboto-condensed": "^0.1.0",
     "@expo-google-fonts/ubuntu": "^0.1.0",
-    "@react-native-community/masked-view": "0.1.10",
     "@react-navigation/native": "^7",
     "@react-navigation/stack": "^7",
     "axios": "^0.28.0",
