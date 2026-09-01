@@ -11,8 +11,8 @@ type Props = {
   filterMode: database.GenreFilterMode;
 };
 
-const withoutTheseColor = "#ED0000";
-const withTheseColor = "#B7990D";
+const withoutTheseColor = Theme.colors.danger;
+const withTheseColor = Theme.colors.warning;
 
 const GenreCard: React.FC<Props> = ({ genre, filterMode }) => {
   const [selected, setSelected] = useState(false);
@@ -59,7 +59,7 @@ export default GenreCard;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.surfaceAlt,
     margin: 8,
     borderRadius: 8,
   },

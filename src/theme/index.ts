@@ -1,12 +1,20 @@
 const Theme = {
   colors: {
-    primary: "#1c2646", // Dark navy
-    primaryDarker: "#1a2238", // More distinct from background
-    background: "#181a25", // Dark modern UI base
-    accentLighter: "#A5A9AF", // Softer warm gray
-    accent: "#f2f4f5", // Clean off-white for contrast
-    gold: "#E6C200", // Muted gold, softer on the eyes
-    goldDarker: "#B38E00", // Darker gold for hover states
+    primary: "#1a2135",
+    primaryDarker: "#101629",
+    background: "#0b1020",
+    surface: "#11182d",
+    surfaceAlt: "#1a2135",
+    accentLighter: "#93a1c2",
+    accent: "#eef3ff",
+    text: "#eef3ff",
+    textMuted: "#93a1c2",
+    gold: "#7aa2f7",
+    goldDarker: "#5a83df",
+    warning: "#f6c177",
+    danger: "#f7768e",
+    overlay: "rgba(8, 10, 20, 0.8)",
+    backdrop: "rgba(3, 4, 12, 0.92)",
   },
 };
 

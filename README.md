@@ -54,9 +54,17 @@ The Expo app communicates only with the local Movies API; the TMDB bearer token 
 - beta01
   - Work in progress
 
+## Spider-Man universe banners
+
+Banner visual references/inspirations used for this project:
+
+- [Spider-Man: Into the Spider-Verse – Official posters (TMDB)](https://www.themoviedb.org/movie/324857-spider-man-into-the-spider-verse/images/posters)
+- [Spider-Man: Across the Spider-Verse – Official posters (TMDB)](https://www.themoviedb.org/movie/569094-spider-man-across-the-spider-verse/images/posters)
+- [Spider-Man: Beyond the Spider-Verse – Title/brand references (Sony Pictures)](https://www.sonypictures.com/movies/spidermanbeyondthespiderverse)
+
 ## Meta
 
-José Inácio – [👨‍💻 @josersinacio](https://www.linkedin.com/in/josersinacio/) – jose.rs.inacio@gmail.com
+José Inácio – [👨‍💻 @josersinacio](https://www.linkedin.com/in/josersinacio/)
 
 Distributed under the MIT license. See `LICENSE` for more information.
 

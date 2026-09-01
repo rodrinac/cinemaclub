@@ -5,7 +5,16 @@ import Theme from "@/theme";
 import { mergeUniqueMovies } from "@/utils/movieList";
 import { useNavigation } from "@react-navigation/native";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 enum Filter {
@@ -14,14 +23,18 @@ enum Filter {
   UPCOMING = "movies/upcoming",
 }
 
-interface PageToLoad {
+type PageToLoad = {
   number: number;
   filter: Filter;
-}
+};
 
 const Home = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+  const numColumns = width >= 1200 ? 4 : width >= 768 || isLandscape ? 3 : 2;
+  const titleBaseSize = isLandscape ? 24 : 32;
 
   const [movieList, setMovieList] = useState<TmdbMovieList>();
   const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
@@ -45,7 +58,7 @@ const Home = () => {
 
   const titleScale = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [32, 8],
+    outputRange: [titleBaseSize, 18],
     extrapolate: "clamp",
   });
 
@@ -132,17 +145,24 @@ const Home = () => {
       <View style={styles.main}>
         {movieList && (
           <Animated.FlatList
+            key={`discover-columns-${numColumns}`}
             data={movieList.results}
-            numColumns={2}
+            numColumns={numColumns}
             renderItem={({ item }) => (
-              <VerticalMovieCard movie={item} onPosterPress={() => handleMoviePosterPress(item)} />
+              <VerticalMovieCard
+                movie={item}
+                columns={numColumns}
+                onPosterPress={() => handleMoviePosterPress(item)}
+              />
             )}
             keyExtractor={(item) => item.id.toString()}
             onEndReached={() => setPageToLoad({ ...pageToLoad, number: pageToLoad.number + 1 })}
             onEndReachedThreshold={0.2}
+            contentContainerStyle={styles.movieListContent}
             onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
               useNativeDriver: false,
             })}
+            testID="home-movie-list"
           />
         )}
       </View>
@@ -155,7 +175,7 @@ export default Home;
 
 const styles = StyleSheet.create({
   header: {
-    paddingLeft: 12,
+    paddingHorizontal: 12,
     backgroundColor: Theme.colors.primary,
     elevation: 2,
   },
@@ -176,6 +196,10 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.background,
     paddingTop: 8,
   },
+  movieListContent: {
+    paddingHorizontal: 6,
+    paddingBottom: 16,
+  },
   footer: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -186,9 +210,10 @@ const styles = StyleSheet.create({
     margin: 12,
   },
   menu: {
-    fontSize: 16,
     marginVertical: 16,
     flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: 10,
   },
   menuItem: {
     marginEnd: 12,

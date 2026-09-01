@@ -6,10 +6,10 @@ import * as database from "../../api/database";
 import { TmdbMovie, getQueued } from "../../api/tmdb";
 import Theme from "../../theme";
 
-interface Props {
+type Props = {
   movie: TmdbMovie;
   onPosterPress?: () => void;
-}
+};
 
 const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
   const [bookmarked, setBookmarked] = useState<boolean>();
@@ -89,7 +89,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
           <Ionicons
             style={styles.bookmark}
             name="bookmark"
-            color={bookmarked ? "#ffd700" : "#FFF"}
+            color={bookmarked ? Theme.colors.warning : Theme.colors.accent}
             size={18}
             onPress={toggleBookmarked}
           />
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     padding: 8,
     marginVertical: 8,
     borderRadius: 8,
-    backgroundColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.surface,
     flexDirection: "row",
     elevation: 2,
   },
