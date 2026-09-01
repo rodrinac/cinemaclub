@@ -28,6 +28,9 @@ type Props = StaticScreenProps<{
   movieId: number;
 }>;
 
+const TRAILER_MIN_LOADING_MS = 250;
+const TRAILER_WEB_LOAD_FAILSAFE_MS = 4000;
+
 const MovieDetail = ({ route }: Props) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -41,8 +44,10 @@ const MovieDetail = ({ route }: Props) => {
   const [bookmarked, setBookmarked] = useState<boolean>();
   const [isTrailerOpen, setIsTrailerOpen] = useState(false);
   const [isTrailerLoading, setIsTrailerLoading] = useState(false);
+  const [trailerLoadError, setTrailerLoadError] = useState<string | null>(null);
   const trailerOpenAtRef = useRef(0);
   const trailerLoadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const trailerLoadFailSafeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const focusedElementBeforeModalRef = useRef<HTMLElement | null>(null);
   const restoreFocusAnimationFrameRef = useRef<number | undefined>(undefined);
   const playTrailerButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -116,13 +121,46 @@ const MovieDetail = ({ route }: Props) => {
     ? `https://www.youtube.com/embed/${movieTrailer.key}?autoplay=1&fs=1`
     : undefined;
 
-  const closeTrailer = () => {
+  const clearTrailerLoadingTimers = () => {
     if (trailerLoadingTimeoutRef.current) {
       clearTimeout(trailerLoadingTimeoutRef.current);
       trailerLoadingTimeoutRef.current = undefined;
     }
+
+    if (trailerLoadFailSafeTimeoutRef.current) {
+      clearTimeout(trailerLoadFailSafeTimeoutRef.current);
+      trailerLoadFailSafeTimeoutRef.current = undefined;
+    }
+  };
+
+  const handleTrailerIframeReady = () => {
+    clearTrailerLoadingTimers();
+    setTrailerLoadError(null);
+    const elapsedMs = Date.now() - trailerOpenAtRef.current;
+    const remainingLoadingMs = Math.max(0, TRAILER_MIN_LOADING_MS - elapsedMs);
+
+    if (remainingLoadingMs === 0) {
+      setIsTrailerLoading(false);
+      return;
+    }
+
+    trailerLoadingTimeoutRef.current = setTimeout(() => {
+      setIsTrailerLoading(false);
+      trailerLoadingTimeoutRef.current = undefined;
+    }, remainingLoadingMs);
+  };
+
+  const handleTrailerIframeFailure = () => {
+    clearTrailerLoadingTimers();
+    setIsTrailerLoading(false);
+    setTrailerLoadError("Trailer failed to load. You can close this overlay and try again.");
+  };
+
+  const closeTrailer = () => {
+    clearTrailerLoadingTimers();
     setIsTrailerOpen(false);
     setIsTrailerLoading(false);
+    setTrailerLoadError(null);
   };
 
   const playTrailer = () => {
@@ -136,7 +174,12 @@ const MovieDetail = ({ route }: Props) => {
       focusedElementBeforeModalRef.current?.blur();
       trailerOpenAtRef.current = Date.now();
       setIsTrailerLoading(true);
+      setTrailerLoadError(null);
       setIsTrailerOpen(true);
+      clearTrailerLoadingTimers();
+      trailerLoadFailSafeTimeoutRef.current = setTimeout(() => {
+        handleTrailerIframeFailure();
+      }, TRAILER_WEB_LOAD_FAILSAFE_MS);
       return;
     }
 
@@ -226,6 +269,12 @@ const MovieDetail = ({ route }: Props) => {
 
       if (trailerLoadingTimeoutRef.current) {
         clearTimeout(trailerLoadingTimeoutRef.current);
+        trailerLoadingTimeoutRef.current = undefined;
+      }
+
+      if (trailerLoadFailSafeTimeoutRef.current) {
+        clearTimeout(trailerLoadFailSafeTimeoutRef.current);
+        trailerLoadFailSafeTimeoutRef.current = undefined;
       }
     };
   }, []);
@@ -266,7 +315,7 @@ const MovieDetail = ({ route }: Props) => {
           style={styles.linearGradient}
         />
         <View style={styles.nav}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => navigation.goBack()} testID="movie-detail-back-button">
             <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
           </TouchableOpacity>
           <TouchableOpacity onPress={changeBookmarkStatus}>
@@ -376,20 +425,8 @@ const MovieDetail = ({ route }: Props) => {
                       allow:
                         "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
                       allowFullScreen: true,
-                      onLoad: () => {
-                        const elapsedMs = Date.now() - trailerOpenAtRef.current;
-                        const remainingLoadingMs = Math.max(0, 250 - elapsedMs);
-
-                        if (remainingLoadingMs === 0) {
-                          setIsTrailerLoading(false);
-                          return;
-                        }
-
-                        trailerLoadingTimeoutRef.current = setTimeout(() => {
-                          setIsTrailerLoading(false);
-                          trailerLoadingTimeoutRef.current = undefined;
-                        }, remainingLoadingMs);
-                      },
+                      onLoad: handleTrailerIframeReady,
+                      onError: handleTrailerIframeFailure,
                       title: "Trailer",
                     })
                   : null
@@ -399,6 +436,14 @@ const MovieDetail = ({ route }: Props) => {
               <View style={styles.trailerLoading} testID="trailer-overlay-loading">
                 <ActivityIndicator color={Theme.colors.warning} size="large" />
                 <Text style={styles.trailerLoadingText}>Loading trailer...</Text>
+              </View>
+            )}
+            {!isTrailerLoading && trailerLoadError && (
+              <View style={styles.trailerError} testID="trailer-overlay-error">
+                <Text style={styles.trailerErrorText}>{trailerLoadError}</Text>
+                <TouchableOpacity onPress={closeTrailer} testID="trailer-overlay-error-close">
+                  <Text style={styles.trailerErrorCloseText}>Close trailer</Text>
+                </TouchableOpacity>
               </View>
             )}
           </Pressable>
@@ -508,6 +553,22 @@ const styles = StyleSheet.create({
   },
   trailerLoadingText: {
     color: Theme.colors.accent,
+    fontWeight: "bold",
+  },
+  trailerError: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 24,
+    backgroundColor: Theme.colors.overlay,
+  },
+  trailerErrorText: {
+    color: Theme.colors.accent,
+    textAlign: "center",
+  },
+  trailerErrorCloseText: {
+    color: Theme.colors.warning,
     fontWeight: "bold",
   },
   trailerCloseButton: {
