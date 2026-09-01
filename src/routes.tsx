@@ -1,4 +1,4 @@
-import { createStaticNavigation } from "@react-navigation/native";
+import { createStaticNavigation, type StaticParamList } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import React from "react";
 import Home from "./pages/Home";
@@ -19,6 +19,14 @@ const AppStack = createStackNavigator({
     Settings,
   },
 });
+
+type RootStackParamList = StaticParamList<typeof AppStack>;
+
+declare global {
+  namespace ReactNavigation {
+    interface RootParamList extends RootStackParamList {}
+  }
+}
 
 const Navigation = createStaticNavigation(AppStack);
 

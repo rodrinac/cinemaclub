@@ -9,9 +9,9 @@ import { TouchableOpacity } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 enum Filter {
-  NOW = "movie/now_playing",
-  POPULAR = "movie/popular",
-  UPCOMMING = "movie/upcoming",
+  NOW = "movies/now-playing",
+  POPULAR = "movies/popular",
+  UPCOMING = "movies/upcoming",
 }
 
 interface PageToLoad {
@@ -119,11 +119,11 @@ const Home = () => {
             <Text
               style={[
                 styles.menuItemText,
-                pageToLoad.filter === Filter.UPCOMMING ? styles.menuItemTextActive : {},
+                pageToLoad.filter === Filter.UPCOMING ? styles.menuItemTextActive : {},
               ]}
-              onPress={() => setPageToLoad({ number: 1, filter: Filter.UPCOMMING })}
+              onPress={() => setPageToLoad({ number: 1, filter: Filter.UPCOMING })}
             >
-              Upcomming
+              Upcoming
             </Text>
           </TouchableOpacity>
           <Text style={styles.menuItem}> </Text>

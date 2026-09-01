@@ -1,14 +1,12 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { getLocales } from "expo-localization";
 import * as SecureStore from "expo-secure-store";
-import { doc, getDoc } from "firebase/firestore";
 import SmartQueue from "smart-request-balancer";
-import { firestore } from "../firebase";
 
-const getLocale = () => getLocales()[0].languageTag;
+const getLocale = () => getLocales()[0]?.languageTag || "en-US";
 
 const api = axios.create({
-  baseURL: "https://api.themoviedb.org/3/",
+  baseURL: process.env.EXPO_PUBLIC_MOVIES_API_URL || "http://localhost:3001/api",
   params: {
     language: getLocale(),
   },
@@ -27,22 +25,6 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-const setTmdbApiKey = async () => {
-  try {
-    const docRef = doc(firestore, "config", "tmdb");
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      api.defaults.headers.common["Authorization"] = `Bearer ${data["API_TOKEN"]}`;
-    }
-  } catch (error) {
-    console.error("Error fetching TMDB credentials: ", error);
-  }
-};
-
-setTmdbApiKey();
-
 const queue = new SmartQueue({
   rules: {
     common: {
@@ -55,14 +37,14 @@ const queue = new SmartQueue({
   ignoreOverallOverheat: true,
 });
 
-const getQueued = <T>(url: string, params?: AxiosRequestConfig): Promise<T> => {
+const getQueued = <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   return queue.request(async (retry) => {
     try {
-      const response = await api.get<T>(url, params);
+      const response = await api.get<T>(url, config);
       return response.data;
     } catch (error: any) {
-      if (error.response.status === 429) {
-        return retry(error.response.data.parameters.retry_after);
+      if (error.response?.status === 429) {
+        return retry(error.response.data?.parameters?.retry_after ?? 1);
       }
       throw error;
     }

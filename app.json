@@ -3,7 +3,7 @@
     "name": "Cinema Club",
     "slug": "cinemaclub",
     "githubUrl": "https://github.com/rodrinac/cinemaclub",
-    "platforms": ["ios", "android"],
+    "platforms": ["ios", "android", "web"],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -35,8 +35,7 @@
           },
           "imageWidth": 216
         }
-      ],
-      "expo-localization"
+      ]
     ]
   }
 }

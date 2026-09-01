@@ -5,7 +5,7 @@ import { Appbar } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
-  elevated: boolean | undefined;
+  elevated?: boolean;
 };
 
 const FooterBar = ({ elevated = true }: Props) => {
@@ -13,7 +13,7 @@ const FooterBar = ({ elevated = true }: Props) => {
   const { bottom } = useSafeAreaInsets();
 
   return (
-    <Appbar style={styles.container} safeAreaInsets={{ bottom }} elevated={elevated!}>
+    <Appbar style={styles.container} safeAreaInsets={{ bottom }} elevated={elevated}>
       <Appbar.Action
         color={Theme.colors.accent}
         rippleColor={Theme.colors.accentLighter}

@@ -18,7 +18,7 @@ const SearchFilters = () => {
 
   useEffect(() => {
     async function fetchGenres() {
-      const response = await api.get<TmdbGenreList>("genre/movie/list");
+      const response = await api.get<TmdbGenreList>("genres");
 
       setGenreList(response.data);
     }
@@ -63,7 +63,7 @@ const SearchFilters = () => {
         <View style={styles.menu}>
           <SegmentedButtons
             value={filterMode}
-            onValueChange={onFilterModeChange}
+            onValueChange={(value) => onFilterModeChange(value as database.GenreFilterMode)}
             style={styles.menuButtons}
             buttons={[
               {

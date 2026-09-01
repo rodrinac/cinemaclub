@@ -26,3 +26,17 @@ jobs:
 
       - name: Run Prettier Check
         run: npx prettier --check .
+
+      - name: Type Check
+        run: npx tsc --noEmit
+
+      - name: Check API Server Syntax
+        run: node --check server/movies-api.mjs
+
+      - name: API Health Smoke Test
+        run: |
+          TMDB_API_TOKEN=dummy_token_for_ci node server/movies-api.mjs &
+          API_PID=$!
+          sleep 2
+          curl --fail http://127.0.0.1:3001/health
+          kill $API_PID
