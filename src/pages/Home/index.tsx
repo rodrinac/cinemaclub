@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   StyleSheet,
   Text,
@@ -217,7 +219,7 @@ const Home = () => {
             scrollIndicatorInsets={{ bottom: footerOffset }}
             onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
               useNativeDriver: false,
-              listener: (event) => {
+              listener: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
                 if (event.nativeEvent.contentOffset.y > 0) {
                   hasUserScrollIntentRef.current = true;
                 }
