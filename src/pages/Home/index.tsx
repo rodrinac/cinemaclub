@@ -2,10 +2,10 @@ import tmdb, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
 import FooterBar from "@/components/FooterBar";
 import VerticalMovieCard from "@/components/VerticalMovieCard";
 import Theme from "@/theme";
+import { mergeUniqueMovies } from "@/utils/movieList";
 import { useNavigation } from "@react-navigation/native";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
-import { TouchableOpacity } from "react-native-gesture-handler";
+import { Animated, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 enum Filter {
@@ -62,7 +62,7 @@ const Home = () => {
         const currentMovieList = pageToLoad.number === 1 ? [] : prevMovieList?.results || [];
         return {
           ...responseData,
-          results: currentMovieList.concat(loadedMovies),
+          results: mergeUniqueMovies(currentMovieList, loadedMovies),
         };
       });
     };

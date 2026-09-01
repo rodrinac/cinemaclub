@@ -1,7 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { TouchableOpacity } from "react-native-gesture-handler";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import * as database from "@/api/database";
 import { TmdbGenre } from "@/api/tmdb";

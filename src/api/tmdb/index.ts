@@ -1,7 +1,7 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { getLocales } from "expo-localization";
-import * as SecureStore from "expo-secure-store";
 import SmartQueue from "smart-request-balancer";
+import { persistentStorage } from "@/utils/persistentStorage";
 
 const getLocale = () => getLocales()[0]?.languageTag || "en-US";
 
@@ -19,7 +19,7 @@ const api = axios.create({
 
 api.interceptors.request.use(async (config) => {
   if (config.params) {
-    config.params.include_adult = (await SecureStore.getItemAsync("hide_adult_content")) !== "true";
+    config.params.include_adult = (await persistentStorage.getItem("hide_adult_content")) !== "true";
   }
 
   return config;
