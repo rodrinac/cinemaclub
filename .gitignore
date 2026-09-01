@@ -11,6 +11,14 @@ web-build/
 dist/
 web-report/
 
+# Native directories (CNG)
+/ios/
+/android/
+
+# Test artifacts
+test-results/
+playwright-report/
+
 # macOS
 .DS_Store
 
