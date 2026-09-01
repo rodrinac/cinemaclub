@@ -3,7 +3,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/" # Root directory
     schedule:
-      interval: "daily"
+      interval: "weekly"
     versioning-strategy: "increase-if-necessary" # Updates only package.json if needed
     ignore:
       - dependency-name: "*" # Prevents updating dependencies beyond the range in package.json
