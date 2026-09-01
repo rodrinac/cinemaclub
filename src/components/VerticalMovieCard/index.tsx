@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import { Dimensions, Image, StyleSheet, View } from "react-native";
-import { TouchableOpacity } from "react-native-gesture-handler";
+import { Dimensions, Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import * as database from "../../api/database";
 import { TmdbMovie } from "../../api/tmdb";
 import Theme from "../../theme";
