@@ -14,8 +14,10 @@
     "api": "node --env-file=.env server/movies-api.mjs",
     "lint": "eslint .",
     "test": "jest",
-    "test:ci": "jest --ci && npm run test:e2e:stub",
+    "test:ci": "npm run test:ci:stub",
+    "test:ci:stub": "jest --ci && npm run test:e2e:stub",
     "test:e2e:live": "playwright test --config=playwright.config.live.ts",
+    "test:e2e:live:ci": "playwright test --config=playwright.config.live.ts",
     "test:e2e:stub": "playwright test --config=playwright.config.stub.ts",
     "build:web": "expo export --platform web",
     "prebuild:check": "expo prebuild --clean --no-install"
