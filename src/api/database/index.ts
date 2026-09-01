@@ -6,22 +6,37 @@ type GenreFilterMode = "INCLUDING" | "EXCLUDING" | "UNDEFINED";
 const getDB = async (): Promise<SQLite.SQLiteDatabase> => SQLite.openDatabaseAsync("CINEMA_CLUB");
 
 const initDB = async () => {
-  const sql = [
-    `CREATE TABLE IF NOT EXISTS movie_bookmark (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        movie INT UNIQUE NOT NULL
-      );`,
-    `CREATE TABLE IF NOT EXISTS genre_filter (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        genre TEXT UNIQUE NOT NULL,
-        filter INT NOT NULL
-      );`,
-  ];
   const db = await getDB();
 
   await db.withTransactionAsync(async () => {
-    sql.map(async (query) => await db.runAsync(query));
+    await db.runAsync(`
+      CREATE TABLE IF NOT EXISTS movie_bookmark (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        movie INT UNIQUE NOT NULL
+      );
+    `);
+    await db.runAsync(`
+      CREATE TABLE IF NOT EXISTS genre_filter (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        genre TEXT UNIQUE NOT NULL,
+        mode TEXT NOT NULL
+      );
+    `);
   });
+
+  try {
+    const tableInfo = await db.getAllAsync<{ name: string }>("PRAGMA table_info(genre_filter)");
+    const hasMode = tableInfo.some((col) => col.name === "mode");
+    const hasFilter = tableInfo.some((col) => col.name === "filter");
+
+    if (hasFilter && !hasMode) {
+      await db.runAsync(
+        "ALTER TABLE genre_filter ADD COLUMN mode TEXT NOT NULL DEFAULT 'EXCLUDING'",
+      );
+    }
+  } catch {
+    // Ignore migration check if table is fresh
+  }
 };
 
 const hasBookmark = async (movie: Pick<TmdbMovie, "id">): Promise<boolean> => {
@@ -57,7 +72,7 @@ const toggleGenreFilter = async (genre: TmdbGenre, mode: GenreFilterMode) => {
   const db = await getDB();
 
   if (hasFilter) {
-    await db.runAsync("DELETE genre_filter WHERE id = ?", [genre.id]);
+    await db.runAsync("DELETE FROM genre_filter WHERE genre = ?", [genre.id]);
   } else {
     await db.runAsync("INSERT INTO genre_filter(genre, mode) VALUES(?, ?)", [genre.id, mode]);
   }
@@ -66,7 +81,7 @@ const toggleGenreFilter = async (genre: TmdbGenre, mode: GenreFilterMode) => {
 const getGenreFilterMode = async (): Promise<GenreFilterMode> => {
   const db = await getDB();
   const genreFilter = await db.getFirstAsync<{ mode: GenreFilterMode }>(
-    "SELECT * FROM genre_filter",
+    "SELECT mode FROM genre_filter LIMIT 1",
   );
   return genreFilter?.mode ?? "UNDEFINED";
 };
@@ -74,9 +89,9 @@ const getGenreFilterMode = async (): Promise<GenreFilterMode> => {
 const getGenreFilters = async (): Promise<number[]> => {
   const db = await getDB();
 
-  const filters: { genre: number }[] = await db.getAllAsync("SELECT * FROM genre_filter");
+  const filters: { genre: string }[] = await db.getAllAsync("SELECT genre FROM genre_filter");
 
-  return filters.map((filter) => filter.genre);
+  return filters.map((filter) => Number.parseInt(filter.genre, 10));
 };
 
 const setGenreFilterMode = async (mode: GenreFilterMode) => {

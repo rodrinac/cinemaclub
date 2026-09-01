@@ -46,7 +46,9 @@ const MovieDetail = ({ route }: Props) => {
 
   useEffect(() => {
     const requestMovieDetail = async () => {
-      const response = await api.get<TmdbMovie>(`movie/${movieId}?append_to_response=videos`);
+      const response = await api.get<TmdbMovie>(`movies/${movieId}`, {
+        params: { append_to_response: "videos" },
+      });
 
       setMovie(response.data);
     };

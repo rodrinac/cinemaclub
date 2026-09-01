@@ -23,9 +23,9 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
 
   useEffect(() => {
     async function fetchExtraDetails() {
-      const movieDetails = await getQueued<TmdbMovie>(
-        `movie/${movie.id}?append_to_response=credits`,
-      );
+      const movieDetails = await getQueued<TmdbMovie>(`movies/${movie.id}`, {
+        params: { append_to_response: "credits" },
+      });
 
       const foundActors = movieDetails.credits?.cast
         .slice(0, 2)
