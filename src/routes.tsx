@@ -1,7 +1,9 @@
 import { createStaticNavigation, type StaticParamList } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
+import * as Linking from "expo-linking";
 import React from "react";
 import { Platform } from "react-native";
+import { appLinkingConfig } from "./navigation/linking";
 import Home from "./pages/Home";
 import MovieDetail from "./pages/MovieDetail";
 import SearchFilters from "./pages/SearchFilters";
@@ -14,11 +16,26 @@ const AppStack = createStackNavigator({
     cardShadowEnabled: Platform.OS !== "web",
   },
   screens: {
-    Home,
-    MovieDetail,
-    SearchMovie,
-    SearchFilters,
-    Settings,
+    Home: {
+      screen: Home,
+      linking: appLinkingConfig.screens.Home,
+    },
+    MovieDetail: {
+      screen: MovieDetail,
+      linking: appLinkingConfig.screens.MovieDetail,
+    },
+    SearchMovie: {
+      screen: SearchMovie,
+      linking: appLinkingConfig.screens.SearchMovie,
+    },
+    SearchFilters: {
+      screen: SearchFilters,
+      linking: appLinkingConfig.screens.SearchFilters,
+    },
+    Settings: {
+      screen: Settings,
+      linking: appLinkingConfig.screens.Settings,
+    },
   },
 });
 
@@ -33,7 +50,15 @@ declare global {
 const Navigation = createStaticNavigation(AppStack);
 
 const Routes = () => {
-  return <Navigation />;
+  return (
+    <Navigation
+      linking={{
+        enabled: true,
+        prefixes: [Linking.createURL("/"), "http://127.0.0.1:8081", "http://localhost:8081"],
+        config: appLinkingConfig,
+      }}
+    />
+  );
 };
 
 export default Routes;

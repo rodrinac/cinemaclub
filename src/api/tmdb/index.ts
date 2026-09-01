@@ -1,7 +1,12 @@
-import axios, { AxiosRequestConfig } from "axios";
+import axios, { AxiosRequestConfig, type AxiosResponse } from "axios";
 import { getLocales } from "expo-localization";
 import SmartQueue from "smart-request-balancer";
 import { persistentStorage } from "@/utils/persistentStorage";
+import {
+  getDiscoverCategoryEndpoint,
+  type DiscoverCategoryKey,
+} from "./discover";
+import type { TmdbMovieList } from "./models";
 
 const getLocale = () => getLocales()[0]?.languageTag || "en-US";
 
@@ -16,6 +21,20 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+export const getDiscoverMovies = (
+  category: DiscoverCategoryKey,
+  page: number,
+  config?: AxiosRequestConfig,
+): Promise<AxiosResponse<TmdbMovieList>> => {
+  return api.get<TmdbMovieList>(getDiscoverCategoryEndpoint(category), {
+    ...config,
+    params: {
+      ...(config?.params || {}),
+      page,
+    },
+  });
+};
 
 api.interceptors.request.use(async (config) => {
   if (config.params) {
@@ -53,4 +72,5 @@ const getQueued = <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
 
 export default api;
 export * from "./models";
+export * from "./discover";
 export { getQueued };

@@ -64,15 +64,19 @@ const Settings = () => {
           <List.Item
             title="Adult Content"
             description="Hide adult content"
+            titleStyle={styles.listTitle}
+            descriptionStyle={styles.listDescription}
             accessibilityValue={{ text: "adult.content" }}
             style={{ flex: 1 }}
           />
-          <Switch value={hideAdultContent} />
+          <Switch value={hideAdultContent} onValueChange={onToggleSwitch} color={Theme.colors.gold} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.listItem}>
           <List.Item
             title="Privacy"
             description="Terms of Service"
+            titleStyle={styles.listTitle}
+            descriptionStyle={styles.listDescription}
             accessibilityValue={{ text: "terms.of.service" }}
             style={{ flex: 1 }}
           />
@@ -81,6 +85,8 @@ const Settings = () => {
           <List.Item
             title="Review"
             description="Send your feedback"
+            titleStyle={styles.listTitle}
+            descriptionStyle={styles.listDescription}
             accessibilityValue={{ text: "send.your.feedback" }}
             style={{ flex: 1 }}
           />
@@ -117,5 +123,14 @@ const styles = StyleSheet.create({
   },
   listItem: {
     flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Theme.colors.surfaceAlt,
+  },
+  listTitle: {
+    color: Theme.colors.text,
+  },
+  listDescription: {
+    color: Theme.colors.textMuted,
   },
 });

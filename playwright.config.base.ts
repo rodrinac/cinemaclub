@@ -7,6 +7,13 @@ const baseConfig: PlaywrightTestConfig = {
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: "list",
+  expect: {
+    toHaveScreenshot: {
+      animations: "disabled",
+      caret: "hide",
+      maxDiffPixelRatio: 0.01,
+    },
+  },
   use: {
     trace: "on-first-retry",
     baseURL: "http://127.0.0.1:8081",

@@ -78,14 +78,26 @@ const SearchFilters = () => {
             value={filterMode}
             onValueChange={(value) => onFilterModeChange(value as database.GenreFilterMode)}
             style={styles.menuButtons}
+            theme={{
+              colors: {
+                secondaryContainer: Theme.colors.surfaceAlt,
+                onSecondaryContainer: Theme.colors.accent,
+              },
+            }}
             buttons={[
               {
                 value: "INCLUDING",
                 label: "Only these",
+                checkedColor: Theme.colors.accent,
+                uncheckedColor: Theme.colors.textMuted,
+                style: styles.segment,
               },
               {
                 value: "EXCLUDING",
                 label: "Without these",
+                checkedColor: Theme.colors.accent,
+                uncheckedColor: Theme.colors.textMuted,
+                style: styles.segment,
               },
             ]}
           />
@@ -133,13 +145,8 @@ const styles = StyleSheet.create({
   menuButtons: {
     flexGrow: 1,
   },
-  menuItemText: {
-    color: Theme.colors.accentLighter,
-    fontFamily: "Roboto_400Regular",
-    fontWeight: "bold",
-  },
-  menuItemTextActive: {
-    color: Theme.colors.accent,
+  segment: {
+    borderColor: Theme.colors.surfaceAlt,
   },
   main: {
     flex: 1,
