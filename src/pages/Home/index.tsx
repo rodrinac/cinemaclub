@@ -45,6 +45,8 @@ const Home = () => {
   });
 
   const requestIdRef = useRef(0);
+  const isFetchingNextPageRef = useRef(false);
+  const hasUserScrollIntentRef = useRef(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const titleOpacity = scrollY.interpolate({
@@ -98,6 +100,7 @@ const Home = () => {
         setLoadError("Could not load discover movies. Please try again.");
       } finally {
         if (requestId === requestIdRef.current) {
+          isFetchingNextPageRef.current = false;
           setIsLoading(false);
         }
       }
@@ -111,10 +114,28 @@ const Home = () => {
   }
 
   const onSelectCategory = (categoryKey: keyof typeof DISCOVER_CATEGORY_BY_KEY) => {
+    isFetchingNextPageRef.current = false;
+    hasUserScrollIntentRef.current = false;
     setPageToLoad({
       number: 1,
       categoryKey,
     });
+  };
+
+  const handleEndReached = () => {
+    if (!hasUserScrollIntentRef.current || isLoading || isFetchingNextPageRef.current || !movieList) {
+      return;
+    }
+
+    if (movieList.page >= movieList.total_pages) {
+      return;
+    }
+
+    isFetchingNextPageRef.current = true;
+    setPageToLoad((currentPage) => ({
+      ...currentPage,
+      number: currentPage.number + 1,
+    }));
   };
 
   return (
@@ -190,18 +211,21 @@ const Home = () => {
               />
             )}
             keyExtractor={(item) => item.id.toString()}
-            onEndReached={() =>
-              setPageToLoad((currentPage) => ({
-                ...currentPage,
-                number: currentPage.number + 1,
-              }))
-            }
+            onEndReached={handleEndReached}
             onEndReachedThreshold={0.2}
             contentContainerStyle={[styles.movieListContent, { paddingBottom: footerOffset }]}
             scrollIndicatorInsets={{ bottom: footerOffset }}
             onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
               useNativeDriver: false,
+              listener: (event) => {
+                if (event.nativeEvent.contentOffset.y > 0) {
+                  hasUserScrollIntentRef.current = true;
+                }
+              },
             })}
+            onScrollBeginDrag={() => {
+              hasUserScrollIntentRef.current = true;
+            }}
             testID="home-movie-list"
           />
         )}
