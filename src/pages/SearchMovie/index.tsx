@@ -12,7 +12,9 @@ import {
   TextInputSubmitEditingEventData,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import * as database from "@/api/database";
 import api, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
@@ -34,6 +36,9 @@ const PRISTINE_EMPTY_LIST: TmdbMovieList = {
 
 const SearchMovie = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
 
   const [filter, setFilter] = useState<database.GenreFilterMode>("INCLUDING");
   const [genreFilters, setGenreFilters] = useState<number[]>();
@@ -137,21 +142,21 @@ const SearchMovie = () => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1 }}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
-            <Ionicons name="options" size={24} color="#FFF" />
+            <Ionicons name="options" size={24} color={Theme.colors.accent} />
           </TouchableOpacity>
         </View>
-        <Text style={styles.title}>SEARCH</Text>
-        <View style={styles.search}>
+        <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>SEARCH</Text>
+        <View style={[styles.search, isLandscape ? styles.searchLandscape : null]}>
           <TextInput
             style={styles.searchInput}
             placeholder="🔍 Search a movie"
-            placeholderTextColor={Theme.colors.accent}
+            placeholderTextColor={Theme.colors.textMuted}
             onSubmitEditing={handleSubmitEditing}
             autoFocus
           />
@@ -184,40 +189,41 @@ export default SearchMovie;
 
 const styles = StyleSheet.create({
   header: {
-    paddingLeft: 24,
+    paddingHorizontal: 18,
     backgroundColor: Theme.colors.primary,
     elevation: 2,
   },
   nav: {
     flexDirection: "row",
     justifyContent: "space-between",
-    position: "absolute",
-    top: 32,
-    left: 32,
-    right: 32,
+    alignItems: "center",
   },
   title: {
     color: Theme.colors.accent,
     fontSize: 32,
     fontFamily: "RobotoCondensed_700Bold",
-    maxWidth: 260,
-    marginTop: 64,
+    marginTop: 16,
+    maxWidth: "100%",
   },
   search: {
     flexDirection: "row",
+    alignItems: "center",
     marginVertical: 16,
+    gap: 12,
+  },
+  searchLandscape: {
+    marginTop: 12,
   },
   searchInput: {
     flex: 1,
-    backgroundColor: Theme.colors.primaryDarker,
-    color: Theme.colors.accentLighter,
+    backgroundColor: Theme.colors.surface,
+    color: Theme.colors.text,
     fontSize: 18,
     borderRadius: 8,
     padding: 12,
   },
   searchFilter: {
-    marginHorizontal: 12,
-    backgroundColor: Theme.colors.primaryDarker,
+    backgroundColor: Theme.colors.surface,
     borderRadius: 8,
     padding: 8,
   },

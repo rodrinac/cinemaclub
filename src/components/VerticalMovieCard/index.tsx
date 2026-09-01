@@ -1,21 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import { Dimensions, Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import * as database from "../../api/database";
 import { TmdbMovie } from "../../api/tmdb";
 import Theme from "../../theme";
 
-const screenWidth = Dimensions.get("window").width;
-const posterWidth = screenWidth / 2 - 16;
-const posterHeight = (posterWidth / 140) * 210;
-
 type Props = {
   movie: TmdbMovie;
   onPosterPress?: () => void;
+  columns?: number;
 };
 
-const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
+const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress, columns = 2 }) => {
   const [bookmarked, setBookmarked] = useState<boolean>();
+  const { width } = useWindowDimensions();
+
+  const posterWidth = Math.max(110, (width - 48 - (columns - 1) * 12) / columns);
+  const posterHeight = (posterWidth / 140) * 210;
 
   useEffect(() => {
     (async () => {
@@ -46,9 +47,9 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
         size={18}
         onPress={changeBookmarkStatus}
       />
-      <TouchableOpacity onPress={onPosterPress}>
+      <TouchableOpacity onPress={onPosterPress} testID={`movie-poster-${movie.id}`}>
         <Image
-          style={styles.poster}
+          style={[styles.poster, { width: posterWidth, height: posterHeight }]}
           source={{ uri: posterUrl }}
           resizeMode="cover"
           borderRadius={12}
@@ -68,6 +69,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     backgroundColor: "transparent",
     elevation: 4,
+    minWidth: 0,
   },
   bookmark: {
     position: "absolute",
@@ -76,7 +78,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   poster: {
-    width: posterWidth,
-    height: posterHeight,
+    backgroundColor: Theme.colors.surface,
   },
 });

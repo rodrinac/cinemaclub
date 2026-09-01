@@ -38,7 +38,8 @@ export default FooterBar;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.surface,
     justifyContent: "space-around",
+    minHeight: 56,
   },
 });
