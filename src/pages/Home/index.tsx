@@ -143,7 +143,7 @@ const Home = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1 }}
+      style={[styles.screen, Platform.OS === "web" ? styles.screenWeb : null]}
     >
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <Animated.View
@@ -178,7 +178,7 @@ const Home = () => {
           <Text style={styles.menuItem}> </Text>
         </View>
       </View>
-      <View style={styles.main}>
+      <View style={[styles.main, Platform.OS === "web" ? styles.mainWeb : null]}>
         {!movieList && isLoading && (
           <View style={styles.centerState} testID="home-loading-state">
             <ActivityIndicator color={Theme.colors.warning} size="large" />
@@ -204,6 +204,7 @@ const Home = () => {
           <Animated.FlatList
             key={`discover-columns-${numColumns}`}
             data={movieList.results}
+            style={[styles.movieList, Platform.OS === "web" ? styles.movieListWeb : null]}
             numColumns={numColumns}
             renderItem={({ item }) => (
               <VerticalMovieCard
@@ -240,6 +241,16 @@ const Home = () => {
 export default Home;
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    flexShrink: 1,
+    minHeight: 0,
+  },
+  screenWeb: {
+    height: "100vh",
+    maxHeight: "100vh",
+    overflow: "hidden",
+  },
   header: {
     paddingHorizontal: 12,
     backgroundColor: Theme.colors.primary,
@@ -258,9 +269,23 @@ const styles = StyleSheet.create({
   },
   main: {
     flex: 1,
+    flexShrink: 1,
+    minHeight: 0,
+    overflow: "hidden",
     justifyContent: "flex-start",
     backgroundColor: Theme.colors.background,
     paddingTop: 8,
+  },
+  mainWeb: {
+    height: 0,
+  },
+  movieList: {
+    flex: 1,
+    flexShrink: 1,
+    minHeight: 0,
+  },
+  movieListWeb: {
+    height: "100%",
   },
   centerState: {
     flex: 1,
