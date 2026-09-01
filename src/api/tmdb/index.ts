@@ -38,13 +38,13 @@ const queue = new SmartQueue({
 });
 
 const getQueued = <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
-  return queue.request(async (retry) => {
+  return queue.request<T>(async (retry): Promise<T> => {
     try {
       const response = await api.get<T>(url, config);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 429) {
-        return retry(error.response.data?.parameters?.retry_after ?? 1);
+        return retry(error.response.data?.parameters?.retry_after ?? 1) as never;
       }
       throw error;
     }
