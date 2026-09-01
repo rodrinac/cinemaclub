@@ -1,11 +1,12 @@
-import tmdb, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
-import FooterBar from "@/components/FooterBar";
+import { getDiscoverMovies, TmdbMovie, TmdbMovieList } from "@/api/tmdb";
+import FooterBar, { FOOTER_BAR_BASE_HEIGHT } from "@/components/FooterBar";
 import VerticalMovieCard from "@/components/VerticalMovieCard";
 import Theme from "@/theme";
 import { mergeUniqueMovies } from "@/utils/movieList";
 import { useNavigation } from "@react-navigation/native";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -16,16 +17,14 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-enum Filter {
-  NOW = "movies/now-playing",
-  POPULAR = "movies/popular",
-  UPCOMING = "movies/upcoming",
-}
+import {
+  DISCOVER_CATEGORIES,
+  DISCOVER_CATEGORY_BY_KEY,
+} from "./discoverCategories";
 
 type PageToLoad = {
   number: number;
-  filter: Filter;
+  categoryKey: keyof typeof DISCOVER_CATEGORY_BY_KEY;
 };
 
 const Home = () => {
@@ -35,13 +34,17 @@ const Home = () => {
   const isLandscape = width > height;
   const numColumns = width >= 1200 ? 4 : width >= 768 || isLandscape ? 3 : 2;
   const titleBaseSize = isLandscape ? 24 : 32;
+  const footerOffset = FOOTER_BAR_BASE_HEIGHT + insets.bottom + 24;
 
   const [movieList, setMovieList] = useState<TmdbMovieList>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
     number: 1,
-    filter: Filter.POPULAR,
+    categoryKey: "POPULAR",
   });
 
+  const requestIdRef = useRef(0);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const titleOpacity = scrollY.interpolate({
@@ -64,20 +67,40 @@ const Home = () => {
 
   useEffect(() => {
     const requestDiscoverMovies = async () => {
-      const response = await tmdb.get<TmdbMovieList>(pageToLoad.filter, {
-        params: { page: pageToLoad.number },
-      });
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
+      setIsLoading(true);
+      setLoadError(null);
 
-      const responseData = response.data;
-      const loadedMovies = responseData.results;
+      try {
+        const category = DISCOVER_CATEGORY_BY_KEY[pageToLoad.categoryKey];
+        const response = await getDiscoverMovies(category.key, pageToLoad.number);
 
-      setMovieList((prevMovieList) => {
-        const currentMovieList = pageToLoad.number === 1 ? [] : prevMovieList?.results || [];
-        return {
-          ...responseData,
-          results: mergeUniqueMovies(currentMovieList, loadedMovies),
-        };
-      });
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
+        const responseData = response.data;
+        const loadedMovies = responseData.results;
+
+        setMovieList((prevMovieList) => {
+          const currentMovieList = pageToLoad.number === 1 ? [] : prevMovieList?.results || [];
+          return {
+            ...responseData,
+            results: mergeUniqueMovies(currentMovieList, loadedMovies),
+          };
+        });
+      } catch {
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
+        setLoadError("Could not load discover movies. Please try again.");
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
+      }
     };
 
     requestDiscoverMovies();
@@ -86,6 +109,13 @@ const Home = () => {
   function handleMoviePosterPress(movie: TmdbMovie) {
     navigation.navigate("MovieDetail", { movieId: movie.id });
   }
+
+  const onSelectCategory = (categoryKey: keyof typeof DISCOVER_CATEGORY_BY_KEY) => {
+    setPageToLoad({
+      number: 1,
+      categoryKey,
+    });
+  };
 
   return (
     <KeyboardAvoidingView
@@ -106,43 +136,47 @@ const Home = () => {
         </Animated.View>
 
         <View style={styles.menu}>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text
-              style={[
-                styles.menuItemText,
-                pageToLoad.filter === Filter.NOW ? styles.menuItemTextActive : {},
-              ]}
-              onPress={() => setPageToLoad({ number: 1, filter: Filter.NOW })}
-            >
-              Now
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text
-              style={[
-                styles.menuItemText,
-                pageToLoad.filter === Filter.POPULAR ? styles.menuItemTextActive : {},
-              ]}
-              onPress={() => setPageToLoad({ number: 1, filter: Filter.POPULAR })}
-            >
-              Popular
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text
-              style={[
-                styles.menuItemText,
-                pageToLoad.filter === Filter.UPCOMING ? styles.menuItemTextActive : {},
-              ]}
-              onPress={() => setPageToLoad({ number: 1, filter: Filter.UPCOMING })}
-            >
-              Upcoming
-            </Text>
-          </TouchableOpacity>
+          {DISCOVER_CATEGORIES.map((category) => {
+            const isActive = pageToLoad.categoryKey === category.key;
+
+            return (
+              <TouchableOpacity
+                key={category.key}
+                style={styles.menuItem}
+                onPress={() => onSelectCategory(category.key)}
+                testID={category.testId}
+              >
+                <Text style={[styles.menuItemText, isActive ? styles.menuItemTextActive : {}]}>
+                  {category.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
           <Text style={styles.menuItem}> </Text>
         </View>
       </View>
       <View style={styles.main}>
+        {!movieList && isLoading && (
+          <View style={styles.centerState} testID="home-loading-state">
+            <ActivityIndicator color={Theme.colors.warning} size="large" />
+            <Text style={styles.helperText}>Loading discover movies...</Text>
+          </View>
+        )}
+        {!movieList && !isLoading && loadError && (
+          <View style={styles.centerState} testID="home-error-state">
+            <Text style={styles.errorText}>{loadError}</Text>
+            <TouchableOpacity
+              onPress={() =>
+                setPageToLoad((currentPage) => ({
+                  ...currentPage,
+                }))
+              }
+              testID="home-retry-button"
+            >
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         {movieList && (
           <Animated.FlatList
             key={`discover-columns-${numColumns}`}
@@ -156,9 +190,15 @@ const Home = () => {
               />
             )}
             keyExtractor={(item) => item.id.toString()}
-            onEndReached={() => setPageToLoad({ ...pageToLoad, number: pageToLoad.number + 1 })}
+            onEndReached={() =>
+              setPageToLoad((currentPage) => ({
+                ...currentPage,
+                number: currentPage.number + 1,
+              }))
+            }
             onEndReachedThreshold={0.2}
-            contentContainerStyle={styles.movieListContent}
+            contentContainerStyle={[styles.movieListContent, { paddingBottom: footerOffset }]}
+            scrollIndicatorInsets={{ bottom: footerOffset }}
             onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
               useNativeDriver: false,
             })}
@@ -192,13 +232,30 @@ const styles = StyleSheet.create({
   },
   main: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start",
     backgroundColor: Theme.colors.background,
     paddingTop: 8,
   },
+  centerState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 20,
+  },
+  helperText: {
+    color: Theme.colors.accentLighter,
+  },
+  errorText: {
+    color: Theme.colors.danger,
+    textAlign: "center",
+  },
+  retryText: {
+    color: Theme.colors.warning,
+    fontWeight: "bold",
+  },
   movieListContent: {
     paddingHorizontal: 6,
-    paddingBottom: 16,
   },
   footer: {
     flexDirection: "row",

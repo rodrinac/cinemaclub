@@ -8,25 +8,34 @@ const genres: TmdbGenreList = {
   ],
 };
 
-const baseMovies: TmdbMovie[] = [
-  {
-    runtime: 121,
-    id: 1001,
-    adult: false,
-    backdrop_path: "/backdrop-1.jpg",
-    homepage: "",
-    genre_ids: [28, 12],
-    genres: [genres.genres[0], genres.genres[2]],
-    original_language: "en",
-    original_title: "Spider-Verse Echo",
-    overview: "Miles receives a signal from another universe and leaps into chaos.",
-    popularity: 88,
-    poster_path: "/poster-1.jpg",
-    release_date: "2026-03-10",
+const makeMovie = (movie: Partial<TmdbMovie> & Pick<TmdbMovie, "id" | "title">): TmdbMovie => ({
+  runtime: 110,
+  adult: false,
+  backdrop_path: `/backdrop-${movie.id}.jpg`,
+  homepage: "",
+  genre_ids: [28],
+  genres: [genres.genres[0]],
+  original_language: "en",
+  original_title: movie.title,
+  overview: `${movie.title} synopsis.`,
+  popularity: 70,
+  poster_path: `/poster-${movie.id}.jpg`,
+  release_date: "2026-03-10",
+  video: false,
+  vote_average: 7.5,
+  vote_count: 500,
+  ...movie,
+});
+
+const nowPlayingMovies: TmdbMovie[] = [
+  makeMovie({ id: 1001, title: "Metro Pulse", genre_ids: [28, 12], genres: [genres.genres[0], genres.genres[2]] }),
+  makeMovie({ id: 1002, title: "Orbit Signal", genre_ids: [878], genres: [genres.genres[1]] }),
+];
+
+const popularMovies: TmdbMovie[] = [
+  makeMovie({
+    id: 2001,
     title: "Spider-Verse Echo",
-    video: false,
-    vote_average: 8.3,
-    vote_count: 1000,
     videos: {
       results: [
         {
@@ -67,45 +76,14 @@ const baseMovies: TmdbMovie[] = [
         },
       ],
     },
-  },
-  {
-    runtime: 104,
-    id: 1002,
-    adult: false,
-    backdrop_path: "/backdrop-2.jpg",
-    homepage: "",
-    genre_ids: [878],
-    genres: [genres.genres[1]],
-    original_language: "en",
-    original_title: "Neon Orbit",
-    overview: "A rogue pilot outruns a collapsing station.",
-    popularity: 71,
-    poster_path: "/poster-2.jpg",
-    release_date: "2026-04-12",
-    title: "Neon Orbit",
-    video: false,
-    vote_average: 7.1,
-    vote_count: 640,
-  },
-  {
-    runtime: 99,
-    id: 1003,
-    adult: false,
-    backdrop_path: "/backdrop-3.jpg",
-    homepage: "",
-    genre_ids: [12],
-    genres: [genres.genres[2]],
-    original_language: "en",
-    original_title: "Parallel Drift",
-    overview: "A teenager maps hidden dimensions under Brooklyn.",
-    popularity: 65,
-    poster_path: "/poster-3.jpg",
-    release_date: "2026-06-18",
-    title: "Parallel Drift",
-    video: false,
-    vote_average: 7.7,
-    vote_count: 502,
-  },
+  }),
+  makeMovie({ id: 2002, title: "Neon Orbit", genre_ids: [878], genres: [genres.genres[1]] }),
+  makeMovie({ id: 2003, title: "Prism City", genre_ids: [12], genres: [genres.genres[2]] }),
+];
+
+const upcomingMovies: TmdbMovie[] = [
+  makeMovie({ id: 3001, title: "Parallel Drift", genre_ids: [12], genres: [genres.genres[2]] }),
+  makeMovie({ id: 3002, title: "Vault Horizon", genre_ids: [28, 878], genres: [genres.genres[0], genres.genres[1]] }),
 ];
 
 const makeList = (results: TmdbMovie[]): TmdbMovieList => ({
@@ -116,14 +94,18 @@ const makeList = (results: TmdbMovie[]): TmdbMovieList => ({
 });
 
 const lists = {
-  popular: makeList(baseMovies),
-  upcoming: makeList(baseMovies.slice(1)),
-  nowPlaying: makeList(baseMovies.slice(0, 2)),
+  popular: makeList(popularMovies),
+  upcoming: makeList(upcomingMovies),
+  nowPlaying: makeList(nowPlayingMovies),
 };
+
+const detailById = Object.fromEntries(
+  [...popularMovies, ...upcomingMovies, ...nowPlayingMovies].map((movie) => [movie.id, movie]),
+) as Record<number, TmdbMovie>;
 
 export const tmdbStub = {
   genres,
   lists,
-  search: makeList(baseMovies.filter((movie) => /spider/i.test(movie.title))),
-  detailById: Object.fromEntries(baseMovies.map((movie) => [movie.id, movie])) as Record<number, TmdbMovie>,
+  search: makeList(popularMovies.filter((movie) => /spider/i.test(movie.title))),
+  detailById,
 };

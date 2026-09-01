@@ -7,8 +7,9 @@ import { useNavigation, type StaticScreenProps } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient";
 import { setStatusBarHidden } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   ImageBackground,
   KeyboardAvoidingView,
   Modal,
@@ -35,8 +36,17 @@ const MovieDetail = ({ route }: Props) => {
 
   const movieId = route.params.movieId;
   const [movie, setMovie] = useState<TmdbMovie>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [bookmarked, setBookmarked] = useState<boolean>();
   const [isTrailerOpen, setIsTrailerOpen] = useState(false);
+  const [isTrailerLoading, setIsTrailerLoading] = useState(false);
+  const trailerOpenAtRef = useRef(0);
+  const trailerLoadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const focusedElementBeforeModalRef = useRef<HTMLElement | null>(null);
+  const restoreFocusAnimationFrameRef = useRef<number | undefined>(undefined);
+  const playTrailerButtonRef = useRef<HTMLButtonElement | null>(null);
+  const trailerCloseButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const movieTrailer = useMemo(() => {
     const videos = movie?.videos?.results ?? [];
@@ -55,11 +65,26 @@ const MovieDetail = ({ route }: Props) => {
 
   useEffect(() => {
     const requestMovieDetail = async () => {
-      const response = await api.get<TmdbMovie>(`movies/${movieId}`, {
-        params: { append_to_response: "videos" },
-      });
+      if (!Number.isInteger(movieId) || movieId < 1) {
+        setLoadError("Invalid movie link.");
+        setIsLoading(false);
+        return;
+      }
 
-      setMovie(response.data);
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const response = await api.get<TmdbMovie>(`movies/${movieId}`, {
+          params: { append_to_response: "videos" },
+        });
+
+        setMovie(response.data);
+      } catch {
+        setMovie(undefined);
+        setLoadError("Could not load this movie.");
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     requestMovieDetail();
@@ -91,12 +116,26 @@ const MovieDetail = ({ route }: Props) => {
     ? `https://www.youtube.com/embed/${movieTrailer.key}?autoplay=1&fs=1`
     : undefined;
 
+  const closeTrailer = () => {
+    if (trailerLoadingTimeoutRef.current) {
+      clearTimeout(trailerLoadingTimeoutRef.current);
+      trailerLoadingTimeoutRef.current = undefined;
+    }
+    setIsTrailerOpen(false);
+    setIsTrailerLoading(false);
+  };
+
   const playTrailer = () => {
     if (!trailerUrl) {
       return;
     }
 
     if (Platform.OS === "web") {
+      focusedElementBeforeModalRef.current =
+        playTrailerButtonRef.current ?? (document.activeElement as HTMLElement | null);
+      focusedElementBeforeModalRef.current?.blur();
+      trailerOpenAtRef.current = Date.now();
+      setIsTrailerLoading(true);
       setIsTrailerOpen(true);
       return;
     }
@@ -111,7 +150,7 @@ const MovieDetail = ({ route }: Props) => {
 
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsTrailerOpen(false);
+        closeTrailer();
       }
     };
 
@@ -122,8 +161,93 @@ const MovieDetail = ({ route }: Props) => {
     };
   }, [isTrailerOpen]);
 
-  if (!movie) {
-    return null;
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      return;
+    }
+
+    if (restoreFocusAnimationFrameRef.current !== undefined) {
+      cancelAnimationFrame(restoreFocusAnimationFrameRef.current);
+      restoreFocusAnimationFrameRef.current = undefined;
+    }
+
+    if (isTrailerOpen) {
+      const focusInModal = requestAnimationFrame(() => {
+        trailerCloseButtonRef.current?.focus();
+      });
+
+      return () => {
+        cancelAnimationFrame(focusInModal);
+      };
+    }
+
+    let attempts = 0;
+
+    const restoreFocus = () => {
+      const previousFocusTarget = focusedElementBeforeModalRef.current;
+      const focusTarget =
+        previousFocusTarget && previousFocusTarget.isConnected
+          ? previousFocusTarget
+          : playTrailerButtonRef.current;
+
+      if (!focusTarget) {
+        return;
+      }
+
+      const hiddenAncestor = focusTarget.closest('[aria-hidden="true"]');
+
+      if (hiddenAncestor && attempts < 8) {
+        attempts += 1;
+        restoreFocusAnimationFrameRef.current = requestAnimationFrame(restoreFocus);
+        return;
+      }
+
+      focusTarget.focus();
+      focusedElementBeforeModalRef.current = null;
+      restoreFocusAnimationFrameRef.current = undefined;
+    };
+
+    restoreFocusAnimationFrameRef.current = requestAnimationFrame(restoreFocus);
+
+    return () => {
+      if (restoreFocusAnimationFrameRef.current !== undefined) {
+        cancelAnimationFrame(restoreFocusAnimationFrameRef.current);
+        restoreFocusAnimationFrameRef.current = undefined;
+      }
+    };
+  }, [isTrailerOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (restoreFocusAnimationFrameRef.current !== undefined) {
+        cancelAnimationFrame(restoreFocusAnimationFrameRef.current);
+        restoreFocusAnimationFrameRef.current = undefined;
+      }
+
+      if (trailerLoadingTimeoutRef.current) {
+        clearTimeout(trailerLoadingTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={styles.centerState} testID="movie-detail-loading-state">
+        <ActivityIndicator color={Theme.colors.warning} size="large" />
+        <Text style={styles.errorMessage}>Loading movie details...</Text>
+      </View>
+    );
+  }
+
+  if (loadError || !movie) {
+    return (
+      <View style={styles.centerState} testID="movie-detail-error-state">
+        <Text style={styles.errorMessage}>{loadError || "Movie details unavailable."}</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("Home")} testID="movie-detail-back-home">
+          <Text style={styles.backHomeText}>Back to discover</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -166,14 +290,29 @@ const MovieDetail = ({ route }: Props) => {
           <Text style={[styles.title, { fontSize: isLandscape ? 36 : 48 }]}>{movie.title.toUpperCase()}</Text>
           <Text style={styles.overview}>{movie.overview}</Text>
           <View style={styles.play}>
-            <TouchableOpacity
-              style={styles.playButton}
-              onPress={playTrailer}
-              accessibilityLabel="Play trailer"
-              testID="play-trailer-button"
-            >
-              <Ionicons name="play-sharp" color={Theme.colors.primaryDarker} size={24} />
-            </TouchableOpacity>
+            {Platform.OS === "web" ? (
+              React.createElement(
+                "button",
+                {
+                  ref: playTrailerButtonRef,
+                  onClick: playTrailer,
+                  type: "button",
+                  "aria-label": "Play trailer",
+                  "data-testid": "play-trailer-button",
+                  style: styles.webPlayButton as never,
+                },
+                <Ionicons name="play-sharp" color={Theme.colors.primaryDarker} size={24} />
+              )
+            ) : (
+              <TouchableOpacity
+                style={styles.playButton}
+                onPress={playTrailer}
+                accessibilityLabel="Play trailer"
+                testID="play-trailer-button"
+              >
+                <Ionicons name="play-sharp" color={Theme.colors.primaryDarker} size={24} />
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       </ImageBackground>
@@ -181,35 +320,87 @@ const MovieDetail = ({ route }: Props) => {
         visible={Platform.OS === "web" && isTrailerOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsTrailerOpen(false)}
+        accessibilityViewIsModal
+        onRequestClose={closeTrailer}
       >
-        <Pressable style={styles.trailerBackdrop} onPress={() => setIsTrailerOpen(false)}>
+        <Pressable style={styles.trailerBackdrop} onPress={closeTrailer}>
           <Pressable
             onPress={(event) => event.stopPropagation()}
             style={styles.trailerPanel}
+            accessibilityRole={Platform.OS === "web" ? "dialog" : undefined}
+            aria-modal={Platform.OS === "web" ? true : undefined}
+            aria-label={Platform.OS === "web" ? "Trailer modal" : undefined}
             testID="trailer-overlay"
           >
-            <TouchableOpacity
-              style={styles.trailerCloseButton}
-              onPress={() => setIsTrailerOpen(false)}
-              accessibilityLabel="Close trailer"
-              testID="trailer-overlay-close"
+            <ImageBackground
+              source={{ uri: `https://image.tmdb.org/t/p/w780${movie.backdrop_path}` }}
+              style={styles.trailerBackdropPreview}
+              resizeMode="cover"
             >
-              <Ionicons name="close" size={22} color={Theme.colors.accent} />
-            </TouchableOpacity>
-            {trailerUrl ? (
-              Platform.OS === "web" ? (
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                React.createElement("iframe" as any, {
-                  src: trailerUrl,
-                  style: { width: "100%", height: "100%", border: "none" },
-                  allow:
-                    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
-                  allowFullScreen: true,
-                  title: "Trailer",
-                })
-              ) : null
-            ) : null}
+              <LinearGradient
+                colors={[Theme.colors.overlay, Theme.colors.primaryDarker]}
+                start={[0.1, 0.0]}
+                style={StyleSheet.absoluteFillObject}
+              />
+            </ImageBackground>
+            {Platform.OS === "web" ? (
+              React.createElement(
+                "button",
+                {
+                  ref: trailerCloseButtonRef,
+                  onClick: closeTrailer,
+                  type: "button",
+                  "aria-label": "Close trailer",
+                  "data-testid": "trailer-overlay-close",
+                  style: styles.webTrailerCloseButton as never,
+                },
+                <Ionicons name="close" size={22} color={Theme.colors.accent} />
+              )
+            ) : (
+              <TouchableOpacity
+                style={styles.trailerCloseButton}
+                onPress={closeTrailer}
+                accessibilityLabel="Close trailer"
+                testID="trailer-overlay-close"
+              >
+                <Ionicons name="close" size={22} color={Theme.colors.accent} />
+              </TouchableOpacity>
+            )}
+            <View style={styles.trailerFrameContainer}>
+              {trailerUrl
+                ? Platform.OS === "web"
+                  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    React.createElement("iframe" as any, {
+                      src: trailerUrl,
+                      style: { width: "100%", height: "100%", border: "none" },
+                      allow:
+                        "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+                      allowFullScreen: true,
+                      onLoad: () => {
+                        const elapsedMs = Date.now() - trailerOpenAtRef.current;
+                        const remainingLoadingMs = Math.max(0, 250 - elapsedMs);
+
+                        if (remainingLoadingMs === 0) {
+                          setIsTrailerLoading(false);
+                          return;
+                        }
+
+                        trailerLoadingTimeoutRef.current = setTimeout(() => {
+                          setIsTrailerLoading(false);
+                          trailerLoadingTimeoutRef.current = undefined;
+                        }, remainingLoadingMs);
+                      },
+                      title: "Trailer",
+                    })
+                  : null
+                : null}
+            </View>
+            {isTrailerLoading && (
+              <View style={styles.trailerLoading} testID="trailer-overlay-loading">
+                <ActivityIndicator color={Theme.colors.warning} size="large" />
+                <Text style={styles.trailerLoadingText}>Loading trailer...</Text>
+              </View>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
@@ -278,6 +469,13 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 18,
   },
+  webPlayButton: {
+    backgroundColor: Theme.colors.warning,
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 0,
+    cursor: "pointer",
+  },
   trailerBackdrop: {
     flex: 1,
     backgroundColor: Theme.colors.backdrop,
@@ -295,13 +493,57 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Theme.colors.surfaceAlt,
   },
+  trailerBackdropPreview: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  trailerFrameContainer: {
+    flex: 1,
+  },
+  trailerLoading: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: Theme.colors.overlay,
+  },
+  trailerLoadingText: {
+    color: Theme.colors.accent,
+    fontWeight: "bold",
+  },
   trailerCloseButton: {
     position: "absolute",
     top: 10,
     right: 10,
-    zIndex: 1,
+    zIndex: 3,
     backgroundColor: Theme.colors.overlay,
     borderRadius: 20,
     padding: 6,
+  },
+  webTrailerCloseButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 3,
+    backgroundColor: Theme.colors.overlay,
+    borderRadius: 20,
+    padding: 6,
+    borderWidth: 0,
+    cursor: "pointer",
+  },
+  centerState: {
+    flex: 1,
+    backgroundColor: Theme.colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingHorizontal: 20,
+  },
+  errorMessage: {
+    color: Theme.colors.accent,
+    textAlign: "center",
+  },
+  backHomeText: {
+    color: Theme.colors.warning,
+    fontWeight: "bold",
   },
 });
