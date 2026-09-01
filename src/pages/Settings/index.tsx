@@ -1,12 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import * as SecureStore from "expo-secure-store";
 import * as StoreReview from "expo-store-review";
 import React, { useEffect } from "react";
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
-import { TouchableOpacity } from "react-native-gesture-handler";
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { List, Switch } from "react-native-paper";
 import Theme from "../../theme";
+import { persistentStorage } from "@/utils/persistentStorage";
 
 const Settings = () => {
   const navigation = useNavigation();
@@ -16,7 +15,7 @@ const Settings = () => {
   useEffect(() => {
     async function initAdultContentState() {
       const willHideAdultContent =
-        (await SecureStore.getItemAsync("hide_adult_content")) === "true";
+        (await persistentStorage.getItem("hide_adult_content")) === "true";
 
       setHideAdultContent(willHideAdultContent);
     }
@@ -27,7 +26,7 @@ const Settings = () => {
   async function onToggleSwitch() {
     const willHideAdultContent = !hideAdultContent;
 
-    await SecureStore.setItemAsync("hide_adult_content", String(willHideAdultContent));
+    await persistentStorage.setItem("hide_adult_content", String(willHideAdultContent));
 
     setHideAdultContent(willHideAdultContent);
   }

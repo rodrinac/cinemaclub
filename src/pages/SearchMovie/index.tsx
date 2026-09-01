@@ -4,18 +4,21 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   KeyboardAvoidingView,
   NativeSyntheticEvent,
+  FlatList,
   Platform,
   StyleSheet,
   Text,
+  TextInput,
   TextInputSubmitEditingEventData,
+  TouchableOpacity,
   View,
 } from "react-native";
-import { FlatList, TextInput, TouchableOpacity } from "react-native-gesture-handler";
 
 import * as database from "@/api/database";
 import api, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
 import HorizontalMovieCard from "@/components/HorizontalMovieCard";
 import Theme from "@/theme";
+import { mergeUniqueMovies } from "@/utils/movieList";
 
 type PageToLoad = {
   number: number;
@@ -66,7 +69,7 @@ const SearchMovie = () => {
     if (currResponse) {
       moviesRef.current = {
         ...moviesRef.current,
-        results: [...moviesRef.current.results, ...currResponse.results],
+        results: mergeUniqueMovies(moviesRef.current.results, currResponse.results),
       };
     }
 
