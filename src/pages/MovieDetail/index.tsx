@@ -327,7 +327,7 @@ const MovieDetail = ({ route }: Props) => {
           <Pressable
             onPress={(event) => event.stopPropagation()}
             style={styles.trailerPanel}
-            accessibilityRole={Platform.OS === "web" ? "dialog" : undefined}
+            role={Platform.OS === "web" ? "dialog" : undefined}
             aria-modal={Platform.OS === "web" ? true : undefined}
             aria-label={Platform.OS === "web" ? "Trailer modal" : undefined}
             testID="trailer-overlay"
