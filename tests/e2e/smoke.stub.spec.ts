@@ -8,7 +8,35 @@ const imageRoutes = [
   "**://www.google.com/**",
 ];
 
-async function installStubRoutes(page: Page, requestPaths: string[] = [], requestUrls: string[] = []) {
+const buildScrollablePopularList = () => {
+  const baseMovies = tmdbStub.lists.popular.results;
+  const results = Array.from({ length: 60 }, (_, index) => {
+    const template = baseMovies[index % baseMovies.length];
+    return {
+      ...template,
+      id: 9200 + index,
+      title: `${template.title} ${index + 1}`,
+      original_title: `${template.original_title} ${index + 1}`,
+      overview: `${template.overview} (${index + 1})`,
+    };
+  });
+
+  return {
+    ...tmdbStub.lists.popular,
+    results,
+    total_results: results.length,
+    total_pages: 1,
+    page: 1,
+  };
+};
+
+async function installStubRoutes(
+  page: Page,
+  requestPaths: string[] = [],
+  requestUrls: string[] = [],
+  options?: { popularList?: typeof tmdbStub.lists.popular },
+) {
+  const popularList = options?.popularList ?? tmdbStub.lists.popular;
   await page.route("**://*/api/**", async (route) => {
     const requestUrl = new URL(route.request().url());
     const pathname = requestUrl.pathname;
@@ -17,7 +45,7 @@ async function installStubRoutes(page: Page, requestPaths: string[] = [], reques
     requestUrls.push(requestUrl.toString());
 
     if (pathname.endsWith("/api/movies/popular") || pathname.endsWith("/api/movie/popular")) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(tmdbStub.lists.popular) });
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(popularList) });
       return;
     }
 
@@ -96,6 +124,46 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page.getByText("DISCOVER", { exact: true })).toBeVisible();
     await expect(page.locator('[data-testid^="movie-poster-"]')).toHaveCount(3);
     await expect(page.getByTestId("movie-poster-2001")).toBeVisible();
+  });
+
+  test("home movie list is scrollable on web", async ({ page }) => {
+    const scrollablePopularList = buildScrollablePopularList();
+    await page.unroute("**://*/api/**");
+    await installStubRoutes(page, apiRequestPaths, apiRequestUrls, {
+      popularList: scrollablePopularList,
+    });
+
+    await page.goto("/");
+    const movieList = page.getByTestId("home-movie-list");
+    await expect(movieList).toBeVisible();
+    await expect(page.getByTestId("movie-poster-9200")).toBeVisible();
+
+    const beforeScrollMetrics = await movieList.evaluate((element) => {
+      const containers = [element, ...Array.from(element.querySelectorAll("*"))] as HTMLElement[];
+      const measurements = containers.map((container) => ({
+        overflow: container.scrollHeight - container.clientHeight,
+        scrollTop: container.scrollTop,
+      }));
+
+      return {
+        maxOverflow: Math.max(...measurements.map((measurement) => measurement.overflow)),
+        maxScrollTop: Math.max(...measurements.map((measurement) => measurement.scrollTop)),
+      };
+    });
+    expect(beforeScrollMetrics.maxOverflow).toBeGreaterThan(0);
+    expect(beforeScrollMetrics.maxScrollTop).toBe(0);
+
+    await movieList.hover();
+    await page.mouse.wheel(0, 1600);
+
+    await expect
+      .poll(async () =>
+        movieList.evaluate((element) => {
+          const containers = [element, ...Array.from(element.querySelectorAll("*"))] as HTMLElement[];
+          return Math.max(...containers.map((container) => container.scrollTop));
+        }),
+      )
+      .toBeGreaterThan(0);
   });
 
   test("uses distinct category endpoints and datasets", async ({ page }) => {
