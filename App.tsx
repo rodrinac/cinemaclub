@@ -12,7 +12,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback } from "react";
 import { StatusBar, View } from "react-native";
 import "react-native-gesture-handler";
-import { DefaultTheme, Provider as PaperProvider } from "react-native-paper";
+import { MD3DarkTheme, Provider as PaperProvider } from "react-native-paper";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,18 +42,44 @@ export default function App() {
   }
 
   const theme = {
-    ...DefaultTheme,
+    ...MD3DarkTheme,
     dark: true,
     colors: {
-      ...DefaultTheme.colors,
-      primary: Theme.colors.primary,
+      ...MD3DarkTheme.colors,
+      primary: Theme.colors.gold,
+      onPrimary: Theme.colors.primaryDarker,
+      primaryContainer: Theme.colors.goldDarker,
+      onPrimaryContainer: Theme.colors.primaryDarker,
+      secondary: Theme.colors.accentLighter,
+      onSecondary: Theme.colors.primaryDarker,
+      secondaryContainer: Theme.colors.surfaceAlt,
+      onSecondaryContainer: Theme.colors.text,
+      tertiary: Theme.colors.warning,
+      onTertiary: Theme.colors.primaryDarker,
+      tertiaryContainer: Theme.colors.surface,
+      onTertiaryContainer: Theme.colors.text,
+      error: Theme.colors.danger,
+      onError: Theme.colors.text,
       background: Theme.colors.background,
+      onBackground: Theme.colors.text,
       surface: Theme.colors.surface,
       onSurface: Theme.colors.text,
+      surfaceVariant: Theme.colors.surfaceAlt,
       onSurfaceVariant: Theme.colors.textMuted,
-      text: Theme.colors.text,
-      secondary: Theme.colors.gold,
       outline: Theme.colors.surfaceAlt,
+      outlineVariant: Theme.colors.primary,
+      elevation: {
+        level0: Theme.colors.background,
+        level1: Theme.colors.surface,
+        level2: Theme.colors.surfaceAlt,
+        level3: Theme.colors.surfaceAlt,
+        level4: Theme.colors.primary,
+        level5: Theme.colors.primary,
+      },
+      scrim: Theme.colors.backdrop,
+      inverseSurface: Theme.colors.accent,
+      inverseOnSurface: Theme.colors.primaryDarker,
+      inversePrimary: Theme.colors.warning,
     },
   };
 
