@@ -37,7 +37,7 @@ const GenreCard: React.FC<Props> = ({ genre, filterMode }) => {
   }, [genre]);
 
   const handlePress = () => {
-    (async () => await database.toggleGenreFilter(genre, filterMode))();
+    (async () => await database.toggleGenreFilter(genre))();
     console.log({ selected, genre, filterMode });
     setSelected(!selected);
   };
