@@ -8,6 +8,7 @@ import {
 } from "@expo-google-fonts/roboto-condensed";
 import { Ubuntu_700Bold, useFonts } from "@expo-google-fonts/ubuntu";
 import { Ionicons } from "@expo/vector-icons";
+import { isRunningInExpoGo } from "expo";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback } from "react";
 import { StatusBar, View } from "react-native";
@@ -16,10 +17,12 @@ import { MD3DarkTheme, Provider as PaperProvider } from "react-native-paper";
 
 SplashScreen.preventAutoHideAsync();
 
-SplashScreen.setOptions({
-  duration: 100,
-  fade: true,
-});
+if (!isRunningInExpoGo()) {
+  SplashScreen.setOptions({
+    duration: 100,
+    fade: true,
+  });
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
