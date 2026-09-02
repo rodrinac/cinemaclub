@@ -18,7 +18,12 @@ const initDB = async () => {
     await db.runAsync(`
       CREATE TABLE IF NOT EXISTS genre_filter (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        genre TEXT UNIQUE NOT NULL,
+        genre TEXT UNIQUE NOT NULL
+      );
+    `);
+    await db.runAsync(`
+      CREATE TABLE IF NOT EXISTS genre_filter_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
         mode TEXT NOT NULL
       );
     `);
@@ -28,11 +33,44 @@ const initDB = async () => {
     const tableInfo = await db.getAllAsync<{ name: string }>("PRAGMA table_info(genre_filter)");
     const hasMode = tableInfo.some((col) => col.name === "mode");
     const hasFilter = tableInfo.some((col) => col.name === "filter");
+    const hasGenre = tableInfo.some((col) => col.name === "genre");
 
     if (hasFilter && !hasMode) {
       await db.runAsync(
         "ALTER TABLE genre_filter ADD COLUMN mode TEXT NOT NULL DEFAULT 'EXCLUDING'",
       );
+    }
+
+    const settings = await db.getFirstAsync<{ mode: GenreFilterMode }>(
+      "SELECT mode FROM genre_filter_settings WHERE id = 1",
+    );
+
+    if (!settings && (hasMode || hasFilter)) {
+      const legacyMode = await db.getFirstAsync<{ mode: GenreFilterMode }>(
+        "SELECT mode FROM genre_filter WHERE mode IN ('INCLUDING', 'EXCLUDING') LIMIT 1",
+      );
+
+      if (legacyMode?.mode != null) {
+        await db.runAsync("INSERT INTO genre_filter_settings(id, mode) VALUES(1, ?)", [legacyMode.mode]);
+      }
+    }
+
+    if (hasMode || hasFilter || !hasGenre) {
+      await db.withTransactionAsync(async () => {
+        await db.runAsync(`
+          CREATE TABLE IF NOT EXISTS genre_filter_next (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            genre TEXT UNIQUE NOT NULL
+          );
+        `);
+        if (hasGenre) {
+          await db.runAsync(
+            "INSERT OR IGNORE INTO genre_filter_next(genre) SELECT genre FROM genre_filter WHERE genre IS NOT NULL",
+          );
+        }
+        await db.runAsync("DROP TABLE IF EXISTS genre_filter");
+        await db.runAsync("ALTER TABLE genre_filter_next RENAME TO genre_filter");
+      });
     }
   } catch {
     // Ignore migration check if table is fresh
@@ -66,7 +104,7 @@ const hasGenreFilter = async (genre: TmdbGenre): Promise<boolean> => {
   return result != null;
 };
 
-const toggleGenreFilter = async (genre: TmdbGenre, mode: GenreFilterMode) => {
+const toggleGenreFilter = async (genre: TmdbGenre) => {
   const hasFilter = await hasGenreFilter(genre);
 
   const db = await getDB();
@@ -74,14 +112,14 @@ const toggleGenreFilter = async (genre: TmdbGenre, mode: GenreFilterMode) => {
   if (hasFilter) {
     await db.runAsync("DELETE FROM genre_filter WHERE genre = ?", [genre.id]);
   } else {
-    await db.runAsync("INSERT INTO genre_filter(genre, mode) VALUES(?, ?)", [genre.id, mode]);
+    await db.runAsync("INSERT INTO genre_filter(genre) VALUES(?)", [genre.id]);
   }
 };
 
 const getGenreFilterMode = async (): Promise<GenreFilterMode> => {
   const db = await getDB();
   const genreFilter = await db.getFirstAsync<{ mode: GenreFilterMode }>(
-    "SELECT mode FROM genre_filter LIMIT 1",
+    "SELECT mode FROM genre_filter_settings WHERE id = 1",
   );
   return genreFilter?.mode ?? "UNDEFINED";
 };
@@ -97,7 +135,11 @@ const getGenreFilters = async (): Promise<number[]> => {
 const setGenreFilterMode = async (mode: GenreFilterMode) => {
   const db = await getDB();
 
-  await db.runAsync(`UPDATE genre_filter SET mode = ?`, [mode]);
+  await db.runAsync(
+    `INSERT INTO genre_filter_settings(id, mode) VALUES(1, ?)
+     ON CONFLICT(id) DO UPDATE SET mode = excluded.mode`,
+    [mode],
+  );
 };
 
 export {
