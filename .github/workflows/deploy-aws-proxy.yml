@@ -102,6 +102,30 @@ jobs:
             -backend-config="dynamodb_table=${{ vars.TF_STATE_LOCK_TABLE }}" \
             -backend-config="encrypt=true"
 
+      - name: Mask sensitive Terraform outputs from existing state
+        run: |
+          set -eu
+          # Terraform plan/apply print resource IDs (which embed rest_api_id,
+          # log group names, etc.) during state refresh, before the Lambda/API
+          # Gateway resources are (re)created. Mask any values already present
+          # in remote state now so they never appear in plaintext in the plan
+          # or apply step logs below. A fresh stack with no state yet will
+          # simply produce no output here, which is fine.
+          terraform -chdir=infra output -json > infra/terraform-output.json 2>/dev/null || echo '{}' > infra/terraform-output.json
+          for output_name in \
+            rest_api_id \
+            stage_invoke_url \
+            movies_api_base_url \
+            lambda_log_group_name \
+            api_access_log_group_name \
+            api_execution_log_group_name
+          do
+            value="$(jq -r --arg name "$output_name" '.[$name].value // empty' infra/terraform-output.json)"
+            if [ -n "$value" ]; then
+              echo "::add-mask::$value"
+            fi
+          done
+
       - name: Terraform plan
         run: |
           normalize_optional_tf_var() {
