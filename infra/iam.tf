@@ -58,42 +58,15 @@ resource "aws_iam_role" "apigateway_logs" {
   tags               = local.common_tags
 }
 
-data "aws_iam_policy_document" "apigateway_logs" {
-  statement {
-    sid = "WriteApiGatewayLogs"
-    actions = [
-      "logs:CreateLogGroup",
-      "logs:CreateLogStream",
-      "logs:DescribeLogStreams",
-      "logs:PutLogEvents",
-      "logs:GetLogEvents",
-      "logs:FilterLogEvents",
-    ]
-    resources = [
-      aws_cloudwatch_log_group.api_access.arn,
-      "${aws_cloudwatch_log_group.api_access.arn}:*",
-      aws_cloudwatch_log_group.api_execution.arn,
-      "${aws_cloudwatch_log_group.api_execution.arn}:*",
-    ]
-  }
-
-  statement {
-    sid       = "DescribeApiGatewayLogGroups"
-    actions   = ["logs:DescribeLogGroups"]
-    resources = ["*"]
-  }
-}
-
-resource "aws_iam_role_policy" "apigateway_logs" {
-  name   = substr("${local.name_prefix}-apigw-logs-policy", 0, 128)
-  role   = aws_iam_role.apigateway_logs.id
-  policy = data.aws_iam_policy_document.apigateway_logs.json
+resource "aws_iam_role_policy_attachment" "apigateway_logs" {
+  role       = aws_iam_role.apigateway_logs.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushCloudWatchLogs"
 }
 
 resource "aws_api_gateway_account" "this" {
   cloudwatch_role_arn = aws_iam_role.apigateway_logs.arn
 
   depends_on = [
-    aws_iam_role_policy.apigateway_logs,
+    aws_iam_role_policy_attachment.apigateway_logs,
   ]
 }
