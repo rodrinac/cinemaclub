@@ -54,8 +54,28 @@
     "react-native-screens": "~4.11.1",
     "react-native-svg": "15.11.2",
     "react-native-vector-icons": "^8.1.0",
-    "react-native-web": "^0.20.0",
-    "smart-request-balancer": "^2.1.1"
+    "react-native-web": "^0.20.0"
+  },
+  "overrides": {
+    "react-native": "0.79.6",
+    "@react-native/community-cli-plugin": "0.79.6",
+    "@react-native/debugger-frontend": "0.79.6",
+    "@react-native/dev-middleware": "0.79.6",
+    "@react-native/virtualized-lists": "0.79.6",
+    "metro": "0.82.5",
+    "metro-babel-transformer": "0.82.5",
+    "metro-cache": "0.82.5",
+    "metro-cache-key": "0.82.5",
+    "metro-config": "0.82.5",
+    "metro-core": "0.82.5",
+    "metro-file-map": "0.82.5",
+    "metro-minify-terser": "0.82.5",
+    "metro-resolver": "0.82.5",
+    "metro-runtime": "0.82.5",
+    "metro-source-map": "0.82.5",
+    "metro-symbolicate": "0.82.5",
+    "metro-transform-plugins": "0.82.5",
+    "metro-transform-worker": "0.82.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

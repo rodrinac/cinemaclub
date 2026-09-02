@@ -3,7 +3,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import * as database from "../../api/database";
-import { TmdbMovie, getQueued } from "../../api/tmdb";
+import type { TmdbMovie } from "../../api/tmdb";
+import { getQueued } from "../../api/tmdb/getQueued";
 import Theme from "../../theme";
 
 type Props = {
@@ -11,11 +12,13 @@ type Props = {
   onPosterPress?: () => void;
 };
 
+const LOADING_TEXT = "Loading...";
+
 const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
   const [bookmarked, setBookmarked] = useState<boolean>();
-  const [actors, setActors] = useState("Loading...");
-  const [directors, setDirectors] = useState("Loading...");
-  const [runtime, setRuntime] = useState("Loading...");
+  const [actors, setActors] = useState(LOADING_TEXT);
+  const [directors, setDirectors] = useState(LOADING_TEXT);
+  const [runtime, setRuntime] = useState(LOADING_TEXT);
 
   const voteAverage = Math.floor(movie.vote_average);
   const stars = [0, 2, 4, 6, 8].map((n) => voteAverage > n).map((v) => (v ? "⭐" : "☆"));
@@ -31,7 +34,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
         .map((credit) => credit.name)
         .join(", ");
 
-      setActors(foundActors || actors);
+      setActors(foundActors || LOADING_TEXT);
 
       const foundDirectors = movieDetails.credits?.crew
         .filter((credit) => credit.department === "Directing")
@@ -39,7 +42,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
         .map((credit) => credit.name)
         .join(", ");
 
-      setDirectors(foundDirectors || directors);
+      setDirectors(foundDirectors || LOADING_TEXT);
 
       const hours = Math.floor(movieDetails.runtime / 60);
       const minutes = movieDetails.runtime % 60;
@@ -48,7 +51,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
     }
 
     fetchExtraDetails();
-  }, [actors, directors, movie.id]);
+  }, [movie.id]);
 
   const toggleBookmarked = useCallback(async () => {
     if (bookmarked) {

@@ -1,17 +1,33 @@
 import axios, { AxiosRequestConfig, type AxiosResponse } from "axios";
+import Constants from "expo-constants";
 import { getLocales } from "expo-localization";
-import SmartQueue from "smart-request-balancer";
+import { Platform } from "react-native";
 import { persistentStorage } from "@/utils/persistentStorage";
 import {
   getDiscoverCategoryEndpoint,
   type DiscoverCategoryKey,
 } from "./discover";
+import { resolveMoviesApiBaseUrl } from "./baseUrl";
 import type { TmdbMovieList } from "./models";
 
 const getLocale = () => getLocales()[0]?.languageTag || "en-US";
 
+const moviesApiBaseUrlResolution = resolveMoviesApiBaseUrl({
+  envBaseUrl: process.env.EXPO_PUBLIC_MOVIES_API_URL,
+  expoHostUri:
+    Constants.expoConfig?.hostUri ||
+    Constants.platform?.hostUri ||
+    Constants.experienceUrl ||
+    Constants.linkingUri,
+  isWeb: Platform.OS === "web",
+});
+
+if (__DEV__ && moviesApiBaseUrlResolution.warning) {
+  console.warn(`[tmdb] ${moviesApiBaseUrlResolution.warning}`);
+}
+
 const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_MOVIES_API_URL || "http://localhost:3001/api",
+  baseURL: moviesApiBaseUrlResolution.baseUrl,
   params: {
     language: getLocale(),
   },
@@ -44,33 +60,7 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-const queue = new SmartQueue({
-  rules: {
-    common: {
-      rate: 5,
-      limit: 1,
-      priority: 1,
-    },
-  },
-  retryTime: 300,
-  ignoreOverallOverheat: true,
-});
-
-const getQueued = <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
-  return queue.request<T>(async (retry): Promise<T> => {
-    try {
-      const response = await api.get<T>(url, config);
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 429) {
-        return retry(error.response.data?.parameters?.retry_after ?? 1) as never;
-      }
-      throw error;
-    }
-  }, "default");
-};
-
 export default api;
 export * from "./models";
 export * from "./discover";
-export { getQueued };
+export const getMoviesApiBaseUrl = () => moviesApiBaseUrlResolution.baseUrl;
