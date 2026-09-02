@@ -7,7 +7,7 @@ import { useNavigation, type StaticScreenProps } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient";
 import { setStatusBarHidden } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ImageBackground,
@@ -121,7 +121,7 @@ const MovieDetail = ({ route }: Props) => {
     ? `https://www.youtube.com/embed/${movieTrailer.key}?autoplay=1&fs=1`
     : undefined;
 
-  const clearTrailerLoadingTimers = () => {
+  const clearTrailerLoadingTimers = useCallback(() => {
     if (trailerLoadingTimeoutRef.current) {
       clearTimeout(trailerLoadingTimeoutRef.current);
       trailerLoadingTimeoutRef.current = undefined;
@@ -131,7 +131,7 @@ const MovieDetail = ({ route }: Props) => {
       clearTimeout(trailerLoadFailSafeTimeoutRef.current);
       trailerLoadFailSafeTimeoutRef.current = undefined;
     }
-  };
+  }, []);
 
   const handleTrailerIframeReady = () => {
     clearTrailerLoadingTimers();
@@ -156,12 +156,12 @@ const MovieDetail = ({ route }: Props) => {
     setTrailerLoadError("Trailer failed to load. You can close this overlay and try again.");
   };
 
-  const closeTrailer = () => {
+  const closeTrailer = useCallback(() => {
     clearTrailerLoadingTimers();
     setIsTrailerOpen(false);
     setIsTrailerLoading(false);
     setTrailerLoadError(null);
-  };
+  }, [clearTrailerLoadingTimers]);
 
   const playTrailer = () => {
     if (!trailerUrl) {
@@ -202,7 +202,7 @@ const MovieDetail = ({ route }: Props) => {
     return () => {
       window.removeEventListener("keydown", onEscape);
     };
-  }, [isTrailerOpen]);
+  }, [closeTrailer, isTrailerOpen]);
 
   useEffect(() => {
     if (Platform.OS !== "web") {
