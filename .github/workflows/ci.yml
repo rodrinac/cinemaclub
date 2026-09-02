@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -43,7 +43,7 @@ jobs:
 
       - name: Run Test Suite & Smoke Tests
         env:
-          TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN || 'dummy_token_for_ci' }}
+          TMDB_API_TOKEN: 'dummy_token_for_ci'
         run: npm run test:ci
 
       - name: Upload Playwright artifacts on failure
@@ -86,7 +86,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
