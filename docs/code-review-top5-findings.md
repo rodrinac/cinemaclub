@@ -31,6 +31,8 @@ Scope: repository-wide review (client app, local API proxy, tests, configs). No 
 
 ## 2) Genre filter mode is not persisted when no genre rows exist
 
+**Status: ✅ IMPLEMENTED (2026-09-02)**
+
 **Evidence**
 - `src/api/database/index.ts`
   - `setGenreFilterMode` runs `UPDATE genre_filter SET mode = ?`.
@@ -45,6 +47,13 @@ Scope: repository-wide review (client app, local API proxy, tests, configs). No 
 **Suggested fix scope**
 - Persist mode in a dedicated settings table/key (or enforce single metadata row).
 - Migrate existing data safely and keep genre rows focused on selected genre ids only.
+
+**Implementation summary**
+- Added dedicated `genre_filter_settings` table in `src/api/database/index.ts` and moved mode reads/writes to that table.
+- Updated `setGenreFilterMode` to UPSERT the single settings row, so mode persists even when zero genres are selected.
+- Added safe migration logic that copies legacy mode from old `genre_filter.mode` when present, then rebuilds `genre_filter` to store selected genre ids only.
+- Updated `toggleGenreFilter` to insert/delete genre ids only (mode no longer stored per-genre row).
+- Added regression coverage in `tests/database.test.ts` for mode persistence with no selected genres.
 
 ---
 

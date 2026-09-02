@@ -42,12 +42,12 @@ describe("Database API (expo-sqlite abstraction)", () => {
       expect(await hasGenreFilter(genre)).toBe(false);
       expect(await getGenreFilters()).toEqual([]);
 
-      await toggleGenreFilter(genre, "INCLUDING");
+      await toggleGenreFilter(genre);
       expect(await hasGenreFilter(genre)).toBe(true);
       expect(await getGenreFilters()).toEqual([28]);
 
       // Toggling again removes it
-      await toggleGenreFilter(genre, "INCLUDING");
+      await toggleGenreFilter(genre);
       expect(await hasGenreFilter(genre)).toBe(false);
       expect(await getGenreFilters()).toEqual([]);
     });
@@ -55,13 +55,24 @@ describe("Database API (expo-sqlite abstraction)", () => {
     it("should get and set genre filter mode", async () => {
       expect(await getGenreFilterMode()).toBe("UNDEFINED");
 
-      const genre = { id: 18, name: "Drama" };
-      await toggleGenreFilter(genre, "INCLUDING");
+      await setGenreFilterMode("EXCLUDING");
+      expect(await getGenreFilterMode()).toBe("EXCLUDING");
 
+      await setGenreFilterMode("INCLUDING");
       expect(await getGenreFilterMode()).toBe("INCLUDING");
+    });
+
+    it("should persist genre filter mode without selected genres", async () => {
+      expect(await getGenreFilters()).toEqual([]);
+      expect(await getGenreFilterMode()).toBe("UNDEFINED");
 
       await setGenreFilterMode("EXCLUDING");
       expect(await getGenreFilterMode()).toBe("EXCLUDING");
+      expect(await getGenreFilters()).toEqual([]);
+
+      await initDB();
+      expect(await getGenreFilterMode()).toBe("EXCLUDING");
+      expect(await getGenreFilters()).toEqual([]);
     });
   });
 });
