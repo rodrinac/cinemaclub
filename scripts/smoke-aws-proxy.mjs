@@ -122,14 +122,39 @@ const run = async () => {
 
   if (rateLimitRps && rateLimitBurst) {
     const burst = Number(rateLimitBurst);
-    const requests = Array.from({ length: burst + 1 }, (_, index) =>
-      fetchJson(`${apiBaseUrl}/movies/popular?page=${index + 10}&language=en-US`, {
-        headers: corsAllowOrigin ? { Origin: corsAllowOrigin } : {},
-      }),
-    );
+    // API Gateway stage/method throttling (no usage plan involved here) is enforced by a
+    // distributed, best-effort token bucket rather than an exact per-millisecond counter.
+    // At very small burst sizes, firing only `burst + 1` requests -- even concurrently --
+    // is not reliably rejected because a handful of near-simultaneous requests can each be
+    // allowed by different internal counters before throttling "catches up". Empirically,
+    // bursts of ~4x the configured burst limit reliably trip the throttle, so we fire a
+    // larger burst and retry a few rounds (with unique `page` values to avoid the success
+    // cache) to make the assertion deterministic without weakening the rate-limit config.
+    const burstMultiplier = 4;
+    const maxAttempts = 3;
+    const requestsPerAttempt = Math.max(burst + 1, burst * burstMultiplier);
 
-    const results = await Promise.all(requests);
-    const rateLimited = results.find(({ response }) => response.status === 429);
+    let rateLimited = null;
+    for (let attempt = 0; attempt < maxAttempts && !rateLimited; attempt += 1) {
+      const requests = Array.from({ length: requestsPerAttempt }, (_, index) =>
+        fetchJson(
+          `${apiBaseUrl}/movies/popular?page=${((attempt * requestsPerAttempt + index) % 490) + 10}&language=en-US`,
+          {
+            headers: corsAllowOrigin ? { Origin: corsAllowOrigin } : {},
+          },
+        ),
+      );
+
+      // eslint-disable-next-line no-await-in-loop
+      const results = await Promise.all(requests);
+      rateLimited = results.find(({ response }) => response.status === 429) ?? null;
+
+      if (!rateLimited && attempt < maxAttempts - 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+
     assert(rateLimited, "Expected at least one 429 when rate limiting is enabled");
 
     const retryAfterHeader = rateLimited.response.headers.get("retry-after");
