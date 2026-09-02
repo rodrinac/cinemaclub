@@ -58,6 +58,18 @@ jobs:
           AWS_SECRET_ACCESS_KEY: dummy
           AWS_DEFAULT_REGION: eu-west-1
         run: |
+          # The real backend is S3 (partial config, filled in via -backend-config
+          # in the deploy workflow). This packaging-only check never touches real
+          # state, so it swaps in a throwaway local backend to avoid needing
+          # real backend credentials/config here.
+          cat > infra/override.tf <<'EOF'
+          terraform {
+            backend "local" {}
+          }
+          EOF
+          trap 'rm -f infra/override.tf infra/terraform.tfstate' EXIT
+
+          terraform -chdir=infra init -reconfigure -input=false
           terraform -chdir=infra plan -input=false -lock=false -refresh=false \
             -var='service_name=cinemaclub-tmdb-proxy' \
             -var='api_stage_name=prod' \
