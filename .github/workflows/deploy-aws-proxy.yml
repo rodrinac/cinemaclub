@@ -127,7 +127,7 @@ jobs:
           terraform -chdir=infra plan -input=false -out=deploy.tfplan
 
       - name: Terraform apply
-        run: terraform -chdir=infra apply -input=false -auto-approve deploy.tfplan
+        run: terraform -chdir=infra apply -input=false -auto-approve -no-color deploy.tfplan > infra/terraform-apply.log 2>&1 || (cat infra/terraform-apply.log && exit 1)
 
       - name: Export Terraform outputs
         run: terraform -chdir=infra output -json > infra/terraform-output.json
