@@ -1,0 +1,22 @@
+name: Badge Fury Webhook
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  notify-badgefury:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Badge Fury webhook
+        if: ${{ secrets.BADGE_FURY_WEBHOOK_URL != '' }}
+        env:
+          BADGE_FURY_WEBHOOK_URL: ${{ secrets.BADGE_FURY_WEBHOOK_URL }}
+        run: |
+          curl --fail --silent --show-error --location --request POST "$BADGE_FURY_WEBHOOK_URL"
