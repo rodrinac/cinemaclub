@@ -26,17 +26,20 @@ npm run api
 npm start
 ```
 
-The Expo app talks only to the local Movies API. The TMDB bearer token is read by that API from `.env` and never embedded in the client app. On a physical device, set `EXPO_PUBLIC_MOVIES_API_URL` to your machine's LAN address, for example `http://192.168.1.10:3001/api`.
+The Expo app talks only to the Movies API proxy. The TMDB bearer token is read by that API from `.env` locally or Secrets Manager in AWS, and it never gets embedded in the client app. On a physical device, set `EXPO_PUBLIC_MOVIES_API_URL` to your machine's LAN address, for example `http://192.168.1.10:3001/api`.
+
+The local API defaults to **no CORS headers** and **no in-memory rate limiting**. If you want to exercise the web app from a different origin locally, set `CORS_ALLOW_ORIGIN` to that exact origin before starting `npm run api`.
 
 ## Movies API
 
-`npm run api` starts a small read-only API on port `3001`.
+`npm run api` starts a small read-only API on port `3001`. The AWS deployment uses API Gateway REST API -> Node.js Lambda -> TMDB and keeps the same `/api` contract by setting `EXPO_PUBLIC_MOVIES_API_URL` to `<stage invoke url>/api`.
 
 - `GET /health`
 - `GET /api/movies/now-playing`, `/api/movies/popular`, `/api/movies/upcoming`
 - `GET /api/movies/:id`
 - `GET /api/search/movies?query=...`
 - `GET /api/genres`
+- compatibility aliases: `/api/movie/*`, `/api/search/movie`, `/api/genre/movie/list`
 
 ### Example movie details response
 
@@ -46,6 +49,7 @@ Sample payload: `tests/e2e/fixtures/movie-details.example.json`
 
 ```sh
 npm run test
+node --test tests/tmdb-lambda.test.mjs
 npm run test:e2e:stub
 npm run test:e2e:live
 ```
