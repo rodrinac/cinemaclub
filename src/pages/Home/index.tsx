@@ -1,4 +1,5 @@
-import { getDiscoverMovies, TmdbMovie, TmdbMovieList } from "@/api/tmdb";
+import axios from "axios";
+import { getDiscoverMovies, getMoviesApiBaseUrl, TmdbMovie, TmdbMovieList } from "@/api/tmdb";
 import FooterBar, { FOOTER_BAR_BASE_HEIGHT } from "@/components/FooterBar";
 import VerticalMovieCard from "@/components/VerticalMovieCard";
 import Theme from "@/theme";
@@ -28,6 +29,30 @@ import {
 type PageToLoad = {
   number: number;
   categoryKey: keyof typeof DISCOVER_CATEGORY_BY_KEY;
+};
+
+const DISCOVER_LOAD_ERROR = "Could not load discover movies. Please try again.";
+
+const getDiscoverLoadErrorMessage = (error: unknown) => {
+  if (!__DEV__) {
+    return DISCOVER_LOAD_ERROR;
+  }
+
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status ? `HTTP ${error.response.status}` : "Network error";
+    const detail =
+      typeof error.response?.data?.error === "string"
+        ? error.response.data.error
+        : error.message || "Request failed";
+
+    return `${DISCOVER_LOAD_ERROR} (${status}: ${detail})`;
+  }
+
+  if (error instanceof Error && error.message) {
+    return `${DISCOVER_LOAD_ERROR} (${error.message})`;
+  }
+
+  return DISCOVER_LOAD_ERROR;
 };
 
 const Home = () => {
@@ -113,12 +138,21 @@ const Home = () => {
             results: mergeUniqueMovies(currentMovieList, loadedMovies),
           };
         });
-      } catch {
+      } catch (error) {
         if (requestId !== requestIdRef.current) {
           return;
         }
 
-        setLoadError("Could not load discover movies. Please try again.");
+        if (__DEV__) {
+          console.warn("[home] Failed to load discover movies", {
+            baseUrl: getMoviesApiBaseUrl(),
+            categoryKey: pageToLoad.categoryKey,
+            page: pageToLoad.number,
+            error,
+          });
+        }
+
+        setLoadError(getDiscoverLoadErrorMessage(error));
       } finally {
         if (requestId === requestIdRef.current) {
           isFetchingNextPageRef.current = false;
