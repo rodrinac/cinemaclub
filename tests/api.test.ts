@@ -76,4 +76,15 @@ describe("TMDB Proxy API Server (server/movies-api.mjs)", () => {
     const body = await res.json();
     expect(body.error).toContain("Missing required search query parameter");
   });
+
+  it("should rate limit repeated requests", async () => {
+    const responses = await Promise.all(
+      Array.from({ length: 15 }, () => fetch(`${BASE_URL}/health`)),
+    );
+
+    expect(responses.some((response) => response.status === 429)).toBe(true);
+    const rateLimitedResponse = responses.find((response) => response.status === 429);
+    expect(rateLimitedResponse).toBeDefined();
+    expect(rateLimitedResponse?.headers.get("retry-after")).toBeTruthy();
+  });
 });

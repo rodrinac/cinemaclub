@@ -56,10 +56,60 @@ const POLICIES = Object.freeze({
 
 const ALLOWED_EXPANSIONS = new Set(["videos", "credits"]);
 
-const sendJson = (response, status, body) => {
+const RATE_LIMIT = Object.freeze({
+  refillRatePerSecond: 5,
+  burstCapacity: 5,
+});
+
+const rateLimitBuckets = new Map();
+
+const getClientIp = (request) => {
+  const forwardedFor = request.headers["x-forwarded-for"];
+
+  if (Array.isArray(forwardedFor) && forwardedFor.length > 0) {
+    return forwardedFor[0].trim() || "unknown";
+  }
+
+  if (typeof forwardedFor === "string") {
+    return forwardedFor.split(",")[0]?.trim() || "unknown";
+  }
+
+  return request.socket.remoteAddress || "unknown";
+};
+
+const enforceRateLimit = (request) => {
+  const clientIp = getClientIp(request);
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(clientIp) ?? {
+    tokens: RATE_LIMIT.burstCapacity,
+    lastRefill: now,
+  };
+
+  const elapsedSeconds = (now - bucket.lastRefill) / 1000;
+  if (elapsedSeconds > 0) {
+    bucket.tokens = Math.min(
+      RATE_LIMIT.burstCapacity,
+      bucket.tokens + elapsedSeconds * RATE_LIMIT.refillRatePerSecond,
+    );
+    bucket.lastRefill = now;
+  }
+
+  if (bucket.tokens < 1) {
+    const retryAfter = Math.max(1, Math.ceil((1 - bucket.tokens) / RATE_LIMIT.refillRatePerSecond));
+    rateLimitBuckets.set(clientIp, bucket);
+    return { allowed: false, retryAfter };
+  }
+
+  bucket.tokens -= 1;
+  rateLimitBuckets.set(clientIp, bucket);
+  return { allowed: true, retryAfter: 0 };
+};
+
+const sendJson = (response, status, body, extraHeaders = {}) => {
   response.writeHead(status, {
     "Access-Control-Allow-Origin": "*",
     "Content-Type": "application/json; charset=utf-8",
+    ...extraHeaders,
   });
   response.end(JSON.stringify(body));
 };
@@ -261,6 +311,17 @@ createServer(async (request, response) => {
 
   if (request.method !== "GET") {
     sendJson(response, 405, { error: "Only GET requests are supported." });
+    return;
+  }
+
+  const rateLimitResult = enforceRateLimit(request);
+  if (!rateLimitResult.allowed) {
+    sendJson(
+      response,
+      429,
+      { error: "Too many requests. Please retry shortly." },
+      { "Retry-After": String(rateLimitResult.retryAfter) },
+    );
     return;
   }
 
