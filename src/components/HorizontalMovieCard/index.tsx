@@ -4,7 +4,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import * as database from "../../api/database";
 import type { TmdbMovie } from "../../api/tmdb";
-import { getQueued } from "../../api/tmdb/getQueued";
+import { getMovieDetails } from "../../api/tmdb/movieDetailsCache";
 import Theme from "../../theme";
 
 type Props = {
@@ -24,33 +24,49 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
   const stars = [0, 2, 4, 6, 8].map((n) => voteAverage > n).map((v) => (v ? "⭐" : "☆"));
 
   useEffect(() => {
+    let isActive = true;
+
     async function fetchExtraDetails() {
-      const movieDetails = await getQueued<TmdbMovie>(`movies/${movie.id}`, {
-        params: { append_to_response: "credits" },
-      });
+      try {
+        const movieDetails = await getMovieDetails(movie.id);
 
-      const foundActors = movieDetails.credits?.cast
-        .slice(0, 2)
-        .map((credit) => credit.name)
-        .join(", ");
+        if (!isActive) {
+          return;
+        }
 
-      setActors(foundActors || LOADING_TEXT);
+        const foundActors = movieDetails.credits?.cast
+          .slice(0, 2)
+          .map((credit) => credit.name)
+          .join(", ");
 
-      const foundDirectors = movieDetails.credits?.crew
-        .filter((credit) => credit.department === "Directing")
-        .slice(0, 2)
-        .map((credit) => credit.name)
-        .join(", ");
+        setActors(foundActors || LOADING_TEXT);
 
-      setDirectors(foundDirectors || LOADING_TEXT);
+        const foundDirectors = movieDetails.credits?.crew
+          .filter((credit) => credit.department === "Directing")
+          .slice(0, 2)
+          .map((credit) => credit.name)
+          .join(", ");
 
-      const hours = Math.floor(movieDetails.runtime / 60);
-      const minutes = movieDetails.runtime % 60;
+        setDirectors(foundDirectors || LOADING_TEXT);
 
-      setRuntime(`${hours}h${minutes.toString().padStart(2, "0")}min`);
+        const hours = Math.floor(movieDetails.runtime / 60);
+        const minutes = movieDetails.runtime % 60;
+
+        setRuntime(`${hours}h${minutes.toString().padStart(2, "0")}min`);
+      } catch {
+        if (isActive) {
+          setActors(LOADING_TEXT);
+          setDirectors(LOADING_TEXT);
+          setRuntime(LOADING_TEXT);
+        }
+      }
     }
 
     fetchExtraDetails();
+
+    return () => {
+      isActive = false;
+    };
   }, [movie.id]);
 
   const toggleBookmarked = useCallback(async () => {
