@@ -60,7 +60,7 @@ resource "aws_iam_role" "apigateway_logs" {
 
 resource "aws_iam_role_policy_attachment" "apigateway_logs" {
   role       = aws_iam_role.apigateway_logs.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushCloudWatchLogs"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
 }
 
 resource "aws_api_gateway_account" "this" {

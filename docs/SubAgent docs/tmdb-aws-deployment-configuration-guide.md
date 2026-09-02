@@ -351,7 +351,7 @@ This deploy role needs permission to manage the Terraform-created resources only
 - Lambda function and Lambda invoke permission for API Gateway
 - IAM roles, inline role policies, and managed policy attachments for:
   - `${service_name}-${stage_name}-lambda-role`
-  - `${service_name}-${stage_name}-apigw-logs-role`
+  - `${service_name}-${stage_name}-apigw-logs-role` (attaches `arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs`)
 - CloudWatch log groups
 - CloudWatch alarms
 
