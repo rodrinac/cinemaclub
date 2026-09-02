@@ -68,16 +68,53 @@ To avoid future provider refresh failures, the following Lambda actions must als
 
 ---
 
-### 2.2 Issue 2: API Gateway CloudWatch Role Attachment Race Condition
+### 2.2 Issue 2: API Gateway CloudWatch Role Attachment & Permission Requirements
 
 #### Context
-In `infra/iam.tf` (lines 56–95):
+In `infra/iam.tf` (lines 44–99):
 
 ```hcl
+data "aws_iam_policy_document" "apigateway_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["apigateway.amazonaws.com"]
+    }
+  }
+}
+
 resource "aws_iam_role" "apigateway_logs" {
   name               = substr("${local.name_prefix}-apigw-logs-role", 0, 64)
   assume_role_policy = data.aws_iam_policy_document.apigateway_assume_role.json
   tags               = local.common_tags
+}
+
+data "aws_iam_policy_document" "apigateway_logs" {
+  statement {
+    sid = "WriteApiGatewayLogs"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:DescribeLogStreams",
+      "logs:PutLogEvents",
+      "logs:GetLogEvents",
+      "logs:FilterLogEvents",
+    ]
+    resources = [
+      aws_cloudwatch_log_group.api_access.arn,
+      "${aws_cloudwatch_log_group.api_access.arn}:*",
+      aws_cloudwatch_log_group.api_execution.arn,
+      "${aws_cloudwatch_log_group.api_execution.arn}:*",
+    ]
+  }
+
+  statement {
+    sid       = "DescribeApiGatewayLogGroups"
+    actions   = ["logs:DescribeLogGroups"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role_policy" "apigateway_logs" {
@@ -88,22 +125,46 @@ resource "aws_iam_role_policy" "apigateway_logs" {
 
 resource "aws_api_gateway_account" "this" {
   cloudwatch_role_arn = aws_iam_role.apigateway_logs.arn
+
+  depends_on = [
+    aws_iam_role_policy.apigateway_logs,
+  ]
 }
 ```
 
-#### Root Cause
-1. **Missing Explicit Dependency**:
-   - `aws_api_gateway_account.this` only implicitly depends on `aws_iam_role.apigateway_logs` via the ARN reference.
-   - Terraform builds its Directed Acyclic Graph (DAG) such that `aws_iam_role_policy.apigateway_logs` and `aws_api_gateway_account.this` are scheduled in parallel as soon as `aws_iam_role.apigateway_logs` is created.
-   - API Gateway immediately attempts to validate that the provided `cloudwatch_role_arn` can perform CloudWatch logging actions. If the inline policy has not finished attaching or IAM replication has not finished across AWS endpoints, API Gateway rejects the configuration:
-     ```text
-     BadRequestException: The role ARN pass to API Gateway must be validated against CloudWatch Logs. Please verify that the role exists and has the proper permissions.
-     ```
-2. **Inline Policy vs AWS Managed Policy**:
-   - `infra/iam.tf` currently creates an inline policy (`aws_iam_role_policy.apigateway_logs`) scoping permissions to the specific log groups.
-   - While valid, API Gateway's internal validation mechanism is tested and standardized against the AWS-managed policy `arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushCloudWatchLogs` (or equivalent wildcard `arn:aws:logs:*:*:*` permissions).
-   - If using `aws_iam_role_policy_attachment` with `AmazonAPIGatewayPushCloudWatchLogs`, `depends_on = [aws_iam_role_policy_attachment.apigateway_logs]` is required.
-   - If maintaining the custom inline policy `aws_iam_role_policy.apigateway_logs`, `depends_on = [aws_iam_role_policy.apigateway_logs]` is mandatory.
+#### Detailed Breakdown of the 8 Research Points:
+
+1. **Role Definition (`aws_iam_role.apigateway_logs`)**:
+   - The role is created with name `${local.name_prefix}-apigw-logs-role` and an assume role policy.
+2. **Current Policy Attachment Mechanism**:
+   - Currently uses an inline policy `aws_iam_role_policy.apigateway_logs` rather than `aws_iam_role_policy_attachment` referencing `arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushCloudWatchLogs`.
+3. **Current Actions/Resources vs API Gateway Requirements**:
+   - *Current `infra/iam.tf`:*
+     - `WriteApiGatewayLogs`: `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:DescribeLogStreams`, `logs:PutLogEvents`, `logs:GetLogEvents`, `logs:FilterLogEvents` on `aws_cloudwatch_log_group.api_access.arn`, `${aws_cloudwatch_log_group.api_access.arn}:*`, `aws_cloudwatch_log_group.api_execution.arn`, `${aws_cloudwatch_log_group.api_execution.arn}:*`.
+     - `DescribeApiGatewayLogGroups`: `logs:DescribeLogGroups` on `*`.
+   - *AWS Requirement:*
+     - AWS API Gateway `SetAccount` / `UpdateAccount` API performs an automated validation check against the role ARN passed in `cloudwatch_role_arn`.
+     - Restricting `logs:CreateLogGroup` and `logs:CreateLogStream` to specific log groups fails validation because API Gateway generates execution log groups dynamically (`API-Gateway-Execution-Logs_<rest_api_id>/<stage>`).
+     - AWS requires permissions across `arn:aws:logs:*:*:*` (or the AWS managed policy attachment `AmazonAPIGatewayPushCloudWatchLogs`).
+4. **AWS Managed Policy (`AmazonAPIGatewayPushCloudWatchLogs`)**:
+   - The canonical AWS policy `arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushCloudWatchLogs` provides:
+     - `logs:CreateLogGroup`
+     - `logs:CreateLogStream`
+     - `logs:DescribeLogGroups`
+     - `logs:DescribeLogStreams`
+     - `logs:PutLogEvents`
+     - `logs:GetLogEvents`
+     - `logs:FilterLogEvents`
+     on `*`. API Gateway's account validator checks for this standard policy or identical permission semantics.
+5. **Trust Policy**:
+   - `data.aws_iam_policy_document.apigateway_assume_role` grants `sts:AssumeRole` to principal `apigateway.amazonaws.com`. This is properly configured.
+6. **`aws_api_gateway_account.this` Definition**:
+   - Sets `cloudwatch_role_arn = aws_iam_role.apigateway_logs.arn`.
+7. **Regional Account Scope & Dependencies**:
+   - In AWS API Gateway REST API v1, `aws_api_gateway_account` is a per-region account setting.
+   - `depends_on = [aws_iam_role_policy_attachment.apigateway_logs]` ensures Terraform attaches the policy before API Gateway executes role validation.
+8. **Root Cause of `BadRequestException`**:
+   - API Gateway rejects the role assignment because the inline policy does not grant wildcard log creation/stream permissions or is not using the AWS managed policy `AmazonAPIGatewayPushCloudWatchLogs`, causing `BadRequestException: The role ARN does not have required permissions configured. Please grant trust permission for API Gateway and add the required role policy.`
 
 ---
 
