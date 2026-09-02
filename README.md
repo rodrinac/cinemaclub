@@ -1,12 +1,14 @@
-# Cinema Club
+# Cinema Club 🎬✨
 
-> React Native (Expo) Movie App
+> A cozy React Native (Expo) movie app with web support, powered by TMDB.
 
 [![GitHub version](https://badge.fury.io/gh/rodrinac%2Fcinemaclub.svg)](https://badge.fury.io/gh/rodrinac%2Fcinemaclub)
 
-This is a React Native application based on Expo, with web support, using the [TMDB api](https://www.themoviedb.org/).
+Cinema Club keeps movie discovery fun and clean across web + mobile, while routing all TMDB access through a local API layer.
 
-<img src="showcase/screenshot_01.png" width="195" /><img src="showcase/screenshot_02.png" width="195" /><img src="showcase/screenshot_03.png" width="195" />
+## App peek (live mobile captures)
+
+<img src="showcase/screenshot_01.png" width="195" alt="Discover screen" /><img src="showcase/screenshot_02.png" width="195" alt="Search screen" /><img src="showcase/screenshot_03.png" width="195" alt="Movie detail screen" />
 
 ## Installation
 
@@ -14,17 +16,17 @@ This is a React Native application based on Expo, with web support, using the [T
 npm install
 ```
 
-## Dev
+## Development
 
 ```sh
-# Copy .env.template to .env and set TMDB_API_TOKEN first.
+# 1) Copy .env.template to .env and set TMDB_API_TOKEN
 npm run api
 
-# In a second terminal, start Expo and choose web, iOS, or Android.
+# 2) In a second terminal, run Expo (web / iOS / Android)
 npm start
 ```
 
-The Expo app communicates only with the local Movies API; the TMDB bearer token is read by that API from `.env` and is never embedded in the app. On a physical device, set `EXPO_PUBLIC_MOVIES_API_URL` to your computer's LAN address, for example `http://192.168.1.10:3001/api`.
+The Expo app talks only to the local Movies API. The TMDB bearer token is read by that API from `.env` and never embedded in the client app. On a physical device, set `EXPO_PUBLIC_MOVIES_API_URL` to your machine's LAN address, for example `http://192.168.1.10:3001/api`.
 
 ## Movies API
 
@@ -36,9 +38,21 @@ The Expo app communicates only with the local Movies API; the TMDB bearer token 
 - `GET /api/search/movies?query=...`
 - `GET /api/genres`
 
+### Example movie details response
+
+Sample payload: `tests/e2e/fixtures/movie-details.example.json`
+
+## Testing
+
+```sh
+npm run test
+npm run test:e2e:stub
+npm run test:e2e:live
+```
+
 ## Milestones
 
-- [x] Start Page.
+- [x] Start Page
 - [x] Movies Search Page
 - [x] Movie Details Page
 - [x] Splash Screen
@@ -47,7 +61,7 @@ The Expo app communicates only with the local Movies API; the TMDB bearer token 
 - [ ] User lists
 - [ ] i18n
 - [ ] Tests (:D)
-- [ ] ... what more?
+- [ ] ...what more?
 
 ## Release History
 

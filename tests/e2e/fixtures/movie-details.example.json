@@ -1,0 +1,64 @@
+{
+  "runtime": 110,
+  "id": 2001,
+  "adult": false,
+  "backdrop_path": "/backdrop-2001.jpg",
+  "homepage": "",
+  "genre_ids": [28],
+  "genres": [
+    {
+      "id": 28,
+      "name": "Action"
+    }
+  ],
+  "original_language": "en",
+  "original_title": "Spider-Verse Echo",
+  "overview": "Spider-Verse Echo synopsis.",
+  "popularity": 70,
+  "poster_path": "/poster-2001.jpg",
+  "release_date": "2026-03-10",
+  "title": "Spider-Verse Echo",
+  "video": false,
+  "vote_average": 7.5,
+  "vote_count": 500,
+  "videos": {
+    "results": [
+      {
+        "id": "vid1",
+        "iso_3166_1": "US",
+        "iso_639_1": "en",
+        "key": "dQw4w9WgXcQ",
+        "name": "Official Trailer",
+        "site": "YouTube",
+        "size": 1080,
+        "type": "Trailer",
+        "published_at": "2026-03-01T10:00:00.000Z"
+      }
+    ]
+  },
+  "credits": {
+    "cast": [
+      {
+        "credit_id": "cast1",
+        "gender": 2,
+        "id": 1,
+        "name": "Shameik Moore",
+        "cast_id": 1,
+        "character": "Miles Morales",
+        "order": 1,
+        "profile_path": "/cast1.jpg"
+      }
+    ],
+    "crew": [
+      {
+        "credit_id": "crew1",
+        "gender": 2,
+        "id": 11,
+        "name": "Kemp Powers",
+        "department": "Directing",
+        "job": "Director",
+        "profile_path": "/crew1.jpg"
+      }
+    ]
+  }
+}
