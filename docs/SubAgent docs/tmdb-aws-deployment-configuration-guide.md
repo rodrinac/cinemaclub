@@ -394,7 +394,8 @@ Example inline policy template:
         "arn:aws:apigateway:AWS_REGION::/restapis/*/deployments/*",
         "arn:aws:apigateway:AWS_REGION::/restapis/*/stages",
         "arn:aws:apigateway:AWS_REGION::/restapis/*/stages/*",
-        "arn:aws:apigateway:AWS_REGION::/restapis/*/gatewayresponses/*"
+        "arn:aws:apigateway:AWS_REGION::/restapis/*/gatewayresponses/*",
+        "arn:aws:apigateway:AWS_REGION::/tags/*"
       ]
     },
     {
@@ -405,13 +406,20 @@ Example inline policy template:
         "lambda:DeleteFunction",
         "lambda:GetFunction",
         "lambda:GetFunctionConfiguration",
+        "lambda:GetFunctionCodeSigningConfig",
         "lambda:UpdateFunctionCode",
         "lambda:UpdateFunctionConfiguration",
         "lambda:AddPermission",
         "lambda:RemovePermission",
         "lambda:GetPolicy",
+        "lambda:ListVersionsByFunction",
+        "lambda:ListAliases",
+        "lambda:ListEventSourceMappings",
+        "lambda:ListProvisionedConcurrencyConfigs",
+        "lambda:ListFunctionUrlConfigs",
         "lambda:TagResource",
-        "lambda:UntagResource"
+        "lambda:UntagResource",
+        "lambda:ListTags"
       ],
       "Resource": "arn:aws:lambda:AWS_REGION:ACCOUNT_ID:function:SERVICE_NAME-STAGE_NAME-tmdb-proxy*"
     },
@@ -422,8 +430,14 @@ Example inline policy template:
         "iam:CreateRole",
         "iam:DeleteRole",
         "iam:GetRole",
+        "iam:GetRolePolicy",
         "iam:PutRolePolicy",
         "iam:DeleteRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfilesForRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
         "iam:TagRole",
         "iam:UntagRole",
         "iam:PassRole",
@@ -443,12 +457,16 @@ Example inline policy template:
         "logs:PutRetentionPolicy",
         "logs:DescribeLogGroups",
         "logs:TagResource",
-        "logs:UntagResource"
+        "logs:UntagResource",
+        "logs:ListTagsForResource",
+        "logs:ListTagsLogGroup",
+        "logs:FilterLogEvents"
       ],
       "Resource": [
         "arn:aws:logs:AWS_REGION:ACCOUNT_ID:log-group:/aws/lambda/SERVICE_NAME-STAGE_NAME-tmdb-proxy*",
         "arn:aws:logs:AWS_REGION:ACCOUNT_ID:log-group:/aws/apigateway/SERVICE_NAME-STAGE_NAME-access*",
-        "arn:aws:logs:AWS_REGION:ACCOUNT_ID:log-group:API-Gateway-Execution-Logs_*"
+        "arn:aws:logs:AWS_REGION:ACCOUNT_ID:log-group:API-Gateway-Execution-Logs_*",
+        "arn:aws:logs:AWS_REGION:ACCOUNT_ID:log-group:*"
       ]
     },
     {
@@ -459,9 +477,13 @@ Example inline policy template:
         "cloudwatch:DeleteAlarms",
         "cloudwatch:DescribeAlarms",
         "cloudwatch:TagResource",
-        "cloudwatch:UntagResource"
+        "cloudwatch:UntagResource",
+        "cloudwatch:ListTagsForResource"
       ],
-      "Resource": "arn:aws:cloudwatch:AWS_REGION:ACCOUNT_ID:alarm:SERVICE_NAME-STAGE_NAME-*"
+      "Resource": [
+        "arn:aws:cloudwatch:AWS_REGION:ACCOUNT_ID:alarm:SERVICE_NAME-STAGE_NAME-*",
+        "arn:aws:cloudwatch:AWS_REGION:ACCOUNT_ID:alarm:*"
+      ]
     }
   ]
 }
