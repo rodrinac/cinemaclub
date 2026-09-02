@@ -93,7 +93,14 @@ jobs:
           fi
 
       - name: Terraform init
-        run: terraform -chdir=infra init
+        run: |
+          terraform -chdir=infra init \
+            -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ vars.TF_STATE_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
 
       - name: Terraform plan
         run: |
