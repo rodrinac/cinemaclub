@@ -31,7 +31,7 @@ locals {
 
 check "cors_allow_origin_not_blank" {
   assert {
-    condition     = var.cors_allow_origin == null || trimspace(var.cors_allow_origin) != ""
+    condition     = var.cors_allow_origin == null ? true : trimspace(var.cors_allow_origin) != ""
     error_message = "cors_allow_origin must be null or a non-empty exact origin."
   }
 }

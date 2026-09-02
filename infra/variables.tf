@@ -46,7 +46,7 @@ variable "cors_allow_origin" {
   description = "Exact browser origin allowed for CORS. Leave null to disable CORS headers entirely."
 
   validation {
-    condition = var.cors_allow_origin == null || (
+    condition = var.cors_allow_origin == null ? true : (
       trimspace(var.cors_allow_origin) != "" &&
       length(regexall(",", var.cors_allow_origin)) == 0
     )
