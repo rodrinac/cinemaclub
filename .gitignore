@@ -26,3 +26,12 @@ playwright-report/
 .env
 .env.local
 .env.*.local
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!infra/terraform.tfvars.example
+*.tfplan
+infra/build/

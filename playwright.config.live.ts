@@ -12,6 +12,7 @@ export default defineConfig({
       env: {
         PORT: "3001",
         TMDB_API_TOKEN: process.env.TMDB_API_TOKEN || "dummy_token_for_ci",
+        CORS_ALLOW_ORIGIN: "http://127.0.0.1:8081",
       },
     },
     {

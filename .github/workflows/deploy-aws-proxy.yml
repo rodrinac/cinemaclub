@@ -1,0 +1,166 @@
+name: Deploy AWS TMDB Proxy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, main]
+    paths:
+      - "infra/**"
+      - "server/**"
+      - "scripts/smoke-aws-proxy.mjs"
+      - ".github/workflows/deploy-aws-proxy.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      TF_VAR_service_name: ${{ vars.TMDB_PROXY_SERVICE_NAME }}
+      TF_VAR_api_stage_name: ${{ vars.TMDB_PROXY_STAGE_NAME }}
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_tmdb_secret_arn: ${{ secrets.TMDB_SECRET_ARN }}
+      TF_VAR_log_retention_days: ${{ vars.TMDB_PROXY_LOG_RETENTION_DAYS }}
+      TF_VAR_cors_allow_origin: ${{ vars.TMDB_PROXY_CORS_ALLOW_ORIGIN }}
+      TF_VAR_rate_limit_rps: ${{ vars.TMDB_PROXY_RATE_LIMIT_RPS }}
+      TF_VAR_rate_limit_burst: ${{ vars.TMDB_PROXY_RATE_LIMIT_BURST }}
+      TF_VAR_alarm_notification_arn: ${{ vars.TMDB_PROXY_ALARM_NOTIFICATION_ARN }}
+      TF_VAR_lambda_error_alarm_threshold: ${{ vars.TMDB_PROXY_LAMBDA_ERROR_ALARM_THRESHOLD }}
+      TF_VAR_lambda_throttle_alarm_threshold: ${{ vars.TMDB_PROXY_LAMBDA_THROTTLE_ALARM_THRESHOLD }}
+      TF_VAR_lambda_duration_alarm_threshold_ms: ${{ vars.TMDB_PROXY_LAMBDA_DURATION_ALARM_THRESHOLD_MS }}
+      TF_VAR_api_5xx_alarm_threshold: ${{ vars.TMDB_PROXY_API_5XX_ALARM_THRESHOLD }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate deployment inputs
+        run: |
+          set -eu
+          trim_var() {
+            eval "value=\${$1:-}"
+            printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+          }
+
+          required_vars="TF_VAR_service_name TF_VAR_api_stage_name TF_VAR_aws_region TF_VAR_tmdb_secret_arn TF_VAR_log_retention_days"
+          for var_name in $required_vars; do
+            value="$(trim_var "$var_name")"
+            if [ -z "$value" ]; then
+              echo "$var_name is required for deployment" >&2
+              exit 1
+            fi
+          done
+
+          raw_cors_allow_origin="${TF_VAR_cors_allow_origin:-}"
+          if [ -n "$raw_cors_allow_origin" ] && [ -z "$(trim_var TF_VAR_cors_allow_origin)" ]; then
+            echo "TF_VAR_cors_allow_origin cannot be blank when provided" >&2
+            exit 1
+          fi
+
+          rate_limit_rps="$(trim_var TF_VAR_rate_limit_rps)"
+          rate_limit_burst="$(trim_var TF_VAR_rate_limit_burst)"
+          if [ -z "$rate_limit_rps" ] && [ -z "$rate_limit_burst" ]; then
+            echo "Hosted rate limiting disabled for this deployment."
+          elif [ -n "$rate_limit_rps" ] && [ -n "$rate_limit_burst" ]; then
+            echo "Hosted rate limiting enabled for this deployment."
+          else
+            echo "TF_VAR_rate_limit_rps and TF_VAR_rate_limit_burst must both be set to enable rate limiting" >&2
+            exit 1
+          fi
+
+      - name: Terraform init
+        run: terraform -chdir=infra init
+
+      - name: Terraform plan
+        run: |
+          normalize_optional_tf_var() {
+            eval "value=\${$1:-}"
+            if [ -z "$(printf '%s' "$value" | tr -d '[:space:]')" ]; then
+              unset "$1"
+            fi
+          }
+
+          for var_name in \
+            TF_VAR_cors_allow_origin \
+            TF_VAR_rate_limit_rps \
+            TF_VAR_rate_limit_burst \
+            TF_VAR_alarm_notification_arn \
+            TF_VAR_lambda_error_alarm_threshold \
+            TF_VAR_lambda_throttle_alarm_threshold \
+            TF_VAR_lambda_duration_alarm_threshold_ms \
+            TF_VAR_api_5xx_alarm_threshold
+          do
+            normalize_optional_tf_var "$var_name"
+          done
+
+          terraform -chdir=infra plan -input=false -out=deploy.tfplan
+
+      - name: Terraform apply
+        run: terraform -chdir=infra apply -input=false -auto-approve deploy.tfplan
+
+      - name: Export Terraform outputs
+        run: terraform -chdir=infra output -json > infra/terraform-output.json
+
+      - name: Run deployed smoke tests
+        run: |
+          export SMOKE_STAGE_URL="$(jq -r '.stage_invoke_url.value' infra/terraform-output.json)"
+          export SMOKE_CORS_ALLOW_ORIGIN="$(printf '%s' "${TF_VAR_cors_allow_origin:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          export SMOKE_RATE_LIMIT_RPS="$(printf '%s' "${TF_VAR_rate_limit_rps:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          export SMOKE_RATE_LIMIT_BURST="$(printf '%s' "${TF_VAR_rate_limit_burst:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          node scripts/smoke-aws-proxy.mjs
+
+      - name: Verify logs, stage settings, gateway responses, and alarms
+        run: |
+          set -eu
+          REST_API_ID="$(jq -r '.rest_api_id.value' infra/terraform-output.json)"
+          STAGE_NAME="$(jq -r '.stage_name.value' infra/terraform-output.json)"
+          LAMBDA_LOG_GROUP="$(jq -r '.lambda_log_group_name.value' infra/terraform-output.json)"
+          ACCESS_LOG_GROUP="$(jq -r '.api_access_log_group_name.value' infra/terraform-output.json)"
+          EXECUTION_LOG_GROUP="$(jq -r '.api_execution_log_group_name.value' infra/terraform-output.json)"
+          aws apigateway get-stage --rest-api-id "$REST_API_ID" --stage-name "$STAGE_NAME" > infra/apigateway-stage.json
+          jq -e '.accessLogSettings.destinationArn and .methodSettings' infra/apigateway-stage.json >/dev/null
+          aws logs describe-log-groups --log-group-name-prefix "$LAMBDA_LOG_GROUP" | jq -e --arg name "$LAMBDA_LOG_GROUP" '.logGroups[] | select(.logGroupName == $name)' >/dev/null
+          aws logs describe-log-groups --log-group-name-prefix "$ACCESS_LOG_GROUP" | jq -e --arg name "$ACCESS_LOG_GROUP" '.logGroups[] | select(.logGroupName == $name)' >/dev/null
+          aws logs describe-log-groups --log-group-name-prefix "$EXECUTION_LOG_GROUP" | jq -e --arg name "$EXECUTION_LOG_GROUP" '.logGroups[] | select(.logGroupName == $name)' >/dev/null
+          aws apigateway get-gateway-response --rest-api-id "$REST_API_ID" --response-type DEFAULT_4XX > infra/gateway-response.json
+          if [ -n "${TF_VAR_cors_allow_origin:-}" ]; then
+            expected_origin="'${TF_VAR_cors_allow_origin}'"
+            jq -e --arg expected "$expected_origin" '.responseParameters["gatewayresponse.header.Access-Control-Allow-Origin"] == $expected' infra/gateway-response.json >/dev/null
+          else
+            jq -e '(.responseParameters // {})["gatewayresponse.header.Access-Control-Allow-Origin"] == null' infra/gateway-response.json >/dev/null
+          fi
+          for alarm_name in $(jq -r '.alarm_names.value[]?' infra/terraform-output.json); do
+            aws cloudwatch describe-alarms --alarm-names "$alarm_name" | jq -e '.MetricAlarms[0].AlarmName' >/dev/null
+          done
+          for _ in 1 2 3 4 5; do
+            if aws logs filter-log-events --log-group-name "$LAMBDA_LOG_GROUP" --filter-pattern '{ $.cache = "hit" }' --limit 1 | jq -e '.events[0]' >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Expected a cache hit log entry after smoke tests" >&2
+          exit 1

@@ -23,6 +23,11 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+
       - name: Install dependencies
         run: npm ci
 
@@ -31,6 +36,37 @@ jobs:
 
       - name: Typecheck
         run: npx tsc --noEmit
+
+      - name: Validate Node proxy sources
+        run: |
+          node --check server/movies-api.mjs
+          node --check server/tmdb-proxy-core.mjs
+          node --check server/tmdb-lambda.mjs
+          node --check scripts/smoke-aws-proxy.mjs
+
+      - name: Terraform format check
+        run: terraform -chdir=infra fmt -check
+
+      - name: Terraform validate
+        run: |
+          terraform -chdir=infra init -backend=false
+          terraform -chdir=infra validate
+
+      - name: Terraform plan packaging check
+        env:
+          AWS_ACCESS_KEY_ID: dummy
+          AWS_SECRET_ACCESS_KEY: dummy
+          AWS_DEFAULT_REGION: eu-west-1
+        run: |
+          terraform -chdir=infra plan -input=false -lock=false -refresh=false \
+            -var='service_name=cinemaclub-tmdb-proxy' \
+            -var='api_stage_name=prod' \
+            -var='aws_region=eu-west-1' \
+            -var='tmdb_secret_arn=arn:aws:secretsmanager:REGION:ACCOUNT:secret:example' \
+            -var='log_retention_days=14' \
+            -var='rate_limit_rps=5' \
+            -var='rate_limit_burst=5' \
+            -var='skip_aws_provider_validation=true'
 
       - name: Prebuild Check
         run: npm run prebuild:check
@@ -43,8 +79,10 @@ jobs:
 
       - name: Run Test Suite & Smoke Tests
         env:
-          TMDB_API_TOKEN: 'dummy_token_for_ci'
-        run: npm run test:ci
+          TMDB_API_TOKEN: "dummy_token_for_ci"
+        run: |
+          node --test tests/tmdb-lambda.test.mjs
+          npm run test:ci
 
       - name: Upload Playwright artifacts on failure
         if: failure()

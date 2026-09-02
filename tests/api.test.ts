@@ -42,6 +42,7 @@ describe("TMDB Proxy API Server (server/movies-api.mjs)", () => {
   it("should respond 200 OK on GET /health", async () => {
     const res = await fetch(`${BASE_URL}/health`);
     expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
     const body = await res.json();
     expect(body).toEqual({ status: "ok" });
   });
@@ -49,6 +50,7 @@ describe("TMDB Proxy API Server (server/movies-api.mjs)", () => {
   it("should reject non-GET requests with 405", async () => {
     const res = await fetch(`${BASE_URL}/health`, { method: "POST" });
     expect(res.status).toBe(405);
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
     const body = await res.json();
     expect(body).toEqual({ error: "Only GET requests are supported." });
   });
@@ -58,7 +60,7 @@ describe("TMDB Proxy API Server (server/movies-api.mjs)", () => {
     expect(res.status).toBe(400);
   });
 
-  it("should reject invalid movie ID with 400", async () => {
+  it("should reject invalid movie ID with 404", async () => {
     const res = await fetch(`${BASE_URL}/api/movies/invalid-id`);
     expect(res.status).toBe(404);
   });
@@ -77,14 +79,11 @@ describe("TMDB Proxy API Server (server/movies-api.mjs)", () => {
     expect(body.error).toContain("Missing required search query parameter");
   });
 
-  it("should rate limit repeated requests", async () => {
+  it("should keep health checks available when local rate limiting is disabled", async () => {
     const responses = await Promise.all(
       Array.from({ length: 15 }, () => fetch(`${BASE_URL}/health`)),
     );
 
-    expect(responses.some((response) => response.status === 429)).toBe(true);
-    const rateLimitedResponse = responses.find((response) => response.status === 429);
-    expect(rateLimitedResponse).toBeDefined();
-    expect(rateLimitedResponse?.headers.get("retry-after")).toBeTruthy();
+    expect(responses.every((response) => response.status === 200)).toBe(true);
   });
 });
