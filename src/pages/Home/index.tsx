@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  FlatList,
   KeyboardAvoidingView,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -37,6 +38,24 @@ const Home = () => {
   const numColumns = width >= 1200 ? 4 : width >= 768 || isLandscape ? 3 : 2;
   const titleBaseSize = isLandscape ? 24 : 32;
   const footerOffset = FOOTER_BAR_BASE_HEIGHT + insets.bottom + 24;
+  const screenWebStyle =
+    Platform.OS === "web"
+      ? {
+          overflow: "hidden" as const,
+          height,
+          maxHeight: height,
+        }
+      : styles.screenWeb;
+  const movieListStyle =
+    Platform.OS === "web"
+      ? {
+          flex: 1,
+          flexShrink: 1,
+          minHeight: 0,
+          height: "100%" as const,
+        }
+      : styles.movieList;
+  const movieListContentStyle = { paddingHorizontal: 6, paddingBottom: footerOffset };
 
   const [movieList, setMovieList] = useState<TmdbMovieList>();
   const [isLoading, setIsLoading] = useState(false);
@@ -143,7 +162,7 @@ const Home = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={[styles.screen, Platform.OS === "web" ? styles.screenWeb : null]}
+      style={[styles.screen, Platform.OS === "web" ? screenWebStyle : null]}
     >
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <Animated.View
@@ -201,10 +220,10 @@ const Home = () => {
           </View>
         )}
         {movieList && (
-          <Animated.FlatList
+          <FlatList
             key={`discover-columns-${numColumns}`}
             data={movieList.results}
-            style={[styles.movieList, Platform.OS === "web" ? styles.movieListWeb : null]}
+            style={movieListStyle}
             numColumns={numColumns}
             renderItem={({ item }) => (
               <VerticalMovieCard
@@ -216,16 +235,16 @@ const Home = () => {
             keyExtractor={(item) => item.id.toString()}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.2}
-            contentContainerStyle={[styles.movieListContent, { paddingBottom: footerOffset }]}
+            contentContainerStyle={movieListContentStyle}
             scrollIndicatorInsets={{ bottom: footerOffset }}
-            onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-              useNativeDriver: false,
-              listener: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-                if (event.nativeEvent.contentOffset.y > 0) {
-                  hasUserScrollIntentRef.current = true;
-                }
-              },
-            })}
+            onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+              const scrollOffsetY = event.nativeEvent.contentOffset.y;
+              scrollY.setValue(scrollOffsetY);
+              if (scrollOffsetY > 0) {
+                hasUserScrollIntentRef.current = true;
+              }
+            }}
+            scrollEventThrottle={16}
             onScrollBeginDrag={() => {
               hasUserScrollIntentRef.current = true;
             }}
@@ -247,8 +266,6 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   screenWeb: {
-    height: "100vh",
-    maxHeight: "100vh",
     overflow: "hidden",
   },
   header: {
