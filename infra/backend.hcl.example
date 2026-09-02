@@ -1,0 +1,9 @@
+# Example partial backend config for local `terraform init -backend-config=infra/backend.hcl`.
+# CI passes the same values via -backend-config="key=value" flags (see
+# .github/workflows/deploy-aws-proxy.yml) using the repo/org vars below so this
+# file never needs to be committed with real values other than as this example.
+bucket         = "cinemaclub-tfstate-118462784293-euw1"
+key            = "tmdb-proxy/prod/terraform.tfstate"
+region         = "eu-west-1"
+dynamodb_table = "cinemaclub-tf-locks"
+encrypt        = true
