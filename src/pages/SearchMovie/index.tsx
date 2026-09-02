@@ -21,6 +21,7 @@ import api, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
 import HorizontalMovieCard from "@/components/HorizontalMovieCard";
 import Theme from "@/theme";
 import { mergeUniqueMovies } from "@/utils/movieList";
+import { shouldFetchSearchPage, shouldLoadNextSearchPage } from "./pagination";
 
 type PageToLoad = {
   number: number;
@@ -42,14 +43,16 @@ const SearchMovie = () => {
 
   const [filter, setFilter] = useState<database.GenreFilterMode>("INCLUDING");
   const [genreFilters, setGenreFilters] = useState<number[]>();
-  const [currResponse, setCurrResponse] = useState<TmdbMovieList>();
+  const [movieList, setMovieList] = useState<TmdbMovieList>(PRISTINE_EMPTY_LIST);
 
   const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
     number: 0,
     searchQuery: "",
   });
 
-  const moviesRef = useRef<TmdbMovieList>(PRISTINE_EMPTY_LIST);
+  const movieListRef = useRef<TmdbMovieList>(PRISTINE_EMPTY_LIST);
+  const isFetchingNextPageRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   const filterMovieList = useCallback(
     (movies: TmdbMovie[]): TmdbMovie[] => {
@@ -71,34 +74,57 @@ const SearchMovie = () => {
   );
 
   const movies = useMemo(() => {
-    if (currResponse) {
-      moviesRef.current = {
-        ...moviesRef.current,
-        results: mergeUniqueMovies(moviesRef.current.results, currResponse.results),
-      };
-    }
-
-    return filterMovieList(moviesRef.current.results);
-  }, [currResponse, filterMovieList]);
+    return filterMovieList(movieList.results);
+  }, [filterMovieList, movieList.results]);
 
   const fetchSearchMovies = useCallback(async () => {
-    const response = await api.get<TmdbMovieList>("search/movies", {
-      params: {
-        query: pageToLoad.searchQuery,
-        page: pageToLoad.number,
-        append_to_response: "credits",
-      },
-    });
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
 
-    setCurrResponse(response.data);
+    try {
+      const response = await api.get<TmdbMovieList>("search/movies", {
+        params: {
+          query: pageToLoad.searchQuery,
+          page: pageToLoad.number,
+          append_to_response: "credits",
+        },
+      });
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      setMovieList((previousMovieList) => {
+        const currentResults = pageToLoad.number === 1 ? [] : previousMovieList.results;
+        const nextMovieList = {
+          ...response.data,
+          results: mergeUniqueMovies(currentResults, response.data.results),
+        };
+
+        movieListRef.current = nextMovieList;
+        return nextMovieList;
+      });
+    } finally {
+      if (requestId === requestIdRef.current) {
+        isFetchingNextPageRef.current = false;
+      }
+    }
   }, [pageToLoad]);
 
   useEffect(() => {
-    const { page, total_pages } = moviesRef.current;
-    if (pageToLoad.number > 0 && (page === 0 || pageToLoad.number <= total_pages)) {
-      fetchSearchMovies();
+    if (
+      !shouldFetchSearchPage({
+        requestedPage: pageToLoad.number,
+        searchQuery: pageToLoad.searchQuery,
+        totalPages: movieListRef.current.total_pages,
+      })
+    ) {
+      isFetchingNextPageRef.current = false;
+      return;
     }
-  }, [fetchSearchMovies, pageToLoad.number]);
+
+    fetchSearchMovies();
+  }, [fetchSearchMovies, pageToLoad.number, pageToLoad.searchQuery]);
 
   const handleSubmitEditing = (event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => {
     const searchQuery = event.nativeEvent.text;
@@ -107,13 +133,34 @@ const SearchMovie = () => {
       return;
     }
 
-    moviesRef.current = PRISTINE_EMPTY_LIST;
+    isFetchingNextPageRef.current = false;
+    movieListRef.current = PRISTINE_EMPTY_LIST;
+    setMovieList(PRISTINE_EMPTY_LIST);
 
     setPageToLoad({
       number: 1,
       searchQuery,
     });
   };
+
+  const handleEndReached = useCallback(() => {
+    if (
+      !shouldLoadNextSearchPage({
+        hasQuery: pageToLoad.searchQuery.trim().length > 0,
+        page: movieListRef.current.page,
+        totalPages: movieListRef.current.total_pages,
+        isFetchingNextPage: isFetchingNextPageRef.current,
+      })
+    ) {
+      return;
+    }
+
+    isFetchingNextPageRef.current = true;
+    setPageToLoad((currentPage) => ({
+      ...currentPage,
+      number: currentPage.number + 1,
+    }));
+  }, [pageToLoad.searchQuery]);
 
   const goToMovieDetails = (movie: TmdbMovie) => {
     navigation.navigate("MovieDetail", { movieId: movie.id });
@@ -176,7 +223,7 @@ const SearchMovie = () => {
               <HorizontalMovieCard movie={item} onPosterPress={() => goToMovieDetails(item)} />
             )}
             keyExtractor={(item) => item.id.toString()}
-            onEndReached={() => setPageToLoad({ ...pageToLoad, number: pageToLoad.number + 1 })}
+            onEndReached={handleEndReached}
             onEndReachedThreshold={0.2}
           />
         )}
