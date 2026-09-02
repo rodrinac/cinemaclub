@@ -166,9 +166,23 @@ const run = async () => {
       "429 body retry_after did not match the header",
     );
 
-    const followUpHealth = await fetchJson(`${baseStageUrl}/health`, {
-      headers: corsAllowOrigin ? { Origin: corsAllowOrigin } : {},
-    });
+    // The throttle bucket is shared across the whole stage (`*/*`), so the burst above can
+    // still be depleted immediately after a 429 is observed. Wait out the reported
+    // Retry-After (plus a small buffer) and retry a couple of times before asserting that
+    // the health endpoint has recovered, rather than requiring instant recovery.
+    const followUpWaitMs = (Number(retryAfterHeader) + 1) * 1000;
+    let followUpHealth = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, followUpWaitMs));
+      // eslint-disable-next-line no-await-in-loop
+      followUpHealth = await fetchJson(`${baseStageUrl}/health`, {
+        headers: corsAllowOrigin ? { Origin: corsAllowOrigin } : {},
+      });
+      if (followUpHealth.response.status === 200) {
+        break;
+      }
+    }
     assert(followUpHealth.response.status === 200, "Health check was throttled unexpectedly");
   } else {
     const results = await Promise.all(
