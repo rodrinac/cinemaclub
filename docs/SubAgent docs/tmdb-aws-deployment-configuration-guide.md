@@ -349,7 +349,7 @@ This deploy role needs permission to manage the Terraform-created resources only
 
 - API Gateway REST API, resource, methods, integrations, deployment, stage, method settings, gateway responses, account logging role association
 - Lambda function and Lambda invoke permission for API Gateway
-- IAM roles and inline role policies for:
+- IAM roles, inline role policies, and managed policy attachments for:
   - `${service_name}-${stage_name}-lambda-role`
   - `${service_name}-${stage_name}-apigw-logs-role`
 - CloudWatch log groups
