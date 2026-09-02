@@ -1,0 +1,19 @@
+service_name                 = "cinemaclub-tmdb-proxy"
+api_stage_name               = "prod"
+aws_region                   = "eu-west-1"
+tmdb_secret_arn              = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:replace-me"
+log_retention_days           = 14
+cors_allow_origin            = null
+# Set both values to enable local Lambda rate limiting, or leave both null to disable it.
+rate_limit_rps               = null
+rate_limit_burst             = null
+cache_max_entries            = 100
+lambda_error_alarm_threshold = null
+lambda_throttle_alarm_threshold = null
+lambda_duration_alarm_threshold_ms = null
+api_5xx_alarm_threshold      = null
+alarm_notification_arn       = null
+# tags = {
+#   application = "cinemaclub"
+#   environment = "production"
+# }

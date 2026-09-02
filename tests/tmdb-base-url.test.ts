@@ -46,4 +46,14 @@ describe("resolveMoviesApiBaseUrl", () => {
 
     expect(resolution.baseUrl).toBe("http://192.168.1.99:3001/api");
   });
+
+  it("normalizes deployed API Gateway stage URLs to /api", () => {
+    const resolution = resolveMoviesApiBaseUrl({
+      envBaseUrl: "https://abc123.execute-api.eu-west-1.amazonaws.com/prod",
+      expoHostUri: null,
+      isWeb: true,
+    });
+
+    expect(resolution.baseUrl).toBe("https://abc123.execute-api.eu-west-1.amazonaws.com/prod/api");
+  });
 });

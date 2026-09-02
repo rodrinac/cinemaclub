@@ -4,6 +4,9 @@ import { getLocales } from "expo-localization";
 import { Platform } from "react-native";
 import { persistentStorage } from "@/utils/persistentStorage";
 import {
+  installTmdbRateLimitRetryInterceptor,
+} from "./retry";
+import {
   getDiscoverCategoryEndpoint,
   type DiscoverCategoryKey,
 } from "./discover";
@@ -59,6 +62,8 @@ api.interceptors.request.use(async (config) => {
 
   return config;
 });
+
+installTmdbRateLimitRetryInterceptor(api);
 
 export default api;
 export * from "./models";
