@@ -132,6 +132,23 @@ jobs:
       - name: Export Terraform outputs
         run: terraform -chdir=infra output -json > infra/terraform-output.json
 
+      - name: Mask sensitive Terraform outputs
+        run: |
+          set -eu
+          for output_name in \
+            rest_api_id \
+            stage_invoke_url \
+            movies_api_base_url \
+            lambda_log_group_name \
+            api_access_log_group_name \
+            api_execution_log_group_name
+          do
+            value="$(jq -r --arg name "$output_name" '.[$name].value // empty' infra/terraform-output.json)"
+            if [ -n "$value" ]; then
+              echo "::add-mask::$value"
+            fi
+          done
+
       - name: Run deployed smoke tests
         run: |
           export SMOKE_STAGE_URL="$(jq -r '.stage_invoke_url.value' infra/terraform-output.json)"
@@ -171,3 +188,19 @@ jobs:
           done
           echo "Expected a cache hit log entry after smoke tests" >&2
           exit 1
+
+      - name: Store movies API base URL in Secrets Manager
+        run: |
+          set -eu
+          SECRET_ID="cinemaclub/tmdb-proxy/prod/movies-api-base-url"
+          MOVIES_API_BASE_URL="$(jq -r '.movies_api_base_url.value' infra/terraform-output.json)"
+          if aws secretsmanager describe-secret --secret-id "$SECRET_ID" >/dev/null 2>&1; then
+            aws secretsmanager put-secret-value \
+              --secret-id "$SECRET_ID" \
+              --secret-string "$MOVIES_API_BASE_URL" >/dev/null
+          else
+            aws secretsmanager create-secret \
+              --name "$SECRET_ID" \
+              --secret-string "$MOVIES_API_BASE_URL" \
+              --tags Key=project,Value=cinemaclub Key=service,Value=tmdb-proxy >/dev/null
+          fi
