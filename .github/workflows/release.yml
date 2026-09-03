@@ -18,17 +18,21 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
 
     steps:
-      - name: Checkout deployed commit
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
-
-      - name: Determine version and tag
+      # Intentionally does not check out the deployed commit: "Deploy production" only
+      # triggers on push to main/master (never on pull_request/pull_request_target), so
+      # the commit is already trusted, but this workflow still avoids checking out and
+      # executing any repository code in this privileged (workflow_run) context. The
+      # version is read directly via the Contents API instead.
+      - name: Read version from package.json at the deployed commit
         id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          version="$(node -p "require('./package.json').version")"
+          version="$(
+            gh api "repos/${{ github.repository }}/contents/package.json?ref=${{ github.event.workflow_run.head_sha }}" \
+              --jq '.content' | base64 -d | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version"
+          )"
           tag="v${version}"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
@@ -44,14 +48,16 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create and push release tag
+      - name: Create release tag via the GitHub API
         if: steps.existing-tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
-          git push origin "${{ steps.version.outputs.tag }}"
+          gh api "repos/${{ github.repository }}/git/refs" \
+            --method POST \
+            -f "ref=refs/tags/${{ steps.version.outputs.tag }}" \
+            -f "sha=${{ github.event.workflow_run.head_sha }}"
 
       - name: Create GitHub release
         if: steps.existing-tag.outputs.exists == 'false'
