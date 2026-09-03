@@ -1,8 +1,9 @@
 import Theme from "@/theme";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AnimatedPressable from "@/components/AnimatedPressable";
 
 type Props = {
   elevated?: boolean;
@@ -24,22 +25,24 @@ const FooterBar = ({ elevated = true }: Props) => {
         Platform.OS !== "web" && elevated ? styles.elevated : undefined,
       ]}
     >
-      <TouchableOpacity
+      <AnimatedPressable
         accessibilityLabel="Open settings"
         onPress={() => navigation.navigate("Settings")}
-        style={styles.action}
+        contentStyle={styles.action}
+        borderless
         testID="footer-settings"
       >
         <Ionicons color={Theme.colors.accent} name="grid-outline" size={24} />
-      </TouchableOpacity>
-      <TouchableOpacity
+      </AnimatedPressable>
+      <AnimatedPressable
         accessibilityLabel="Open search"
         onPress={() => navigation.navigate("SearchMovie")}
-        style={styles.action}
+        contentStyle={styles.action}
+        borderless
         testID="footer-search"
       >
         <Ionicons color={Theme.colors.accent} name="search" size={24} />
-      </TouchableOpacity>
+      </AnimatedPressable>
     </View>
   );
 };

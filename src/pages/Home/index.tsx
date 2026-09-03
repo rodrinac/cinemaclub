@@ -2,6 +2,7 @@ import axios from "axios";
 import { getDiscoverMovies, getMoviesApiBaseUrl, TmdbMovie, TmdbMovieList } from "@/api/tmdb";
 import FooterBar, { FOOTER_BAR_BASE_HEIGHT } from "@/components/FooterBar";
 import VerticalMovieCard from "@/components/VerticalMovieCard";
+import AnimatedPressable from "@/components/AnimatedPressable";
 import Theme from "@/theme";
 import { mergeUniqueMovies } from "@/utils/movieList";
 import { blurActiveElementBeforeNavigate } from "@/utils/focus";
@@ -17,7 +18,6 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -218,16 +218,16 @@ const Home = () => {
             const isActive = pageToLoad.categoryKey === category.key;
 
             return (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={category.key}
-                style={styles.menuItem}
+                contentStyle={styles.menuItem}
                 onPress={() => onSelectCategory(category.key)}
                 testID={category.testId}
               >
                 <Text style={[styles.menuItemText, isActive ? styles.menuItemTextActive : {}]}>
                   {category.label}
                 </Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             );
           })}
           <Text style={styles.menuItem}> </Text>
@@ -243,7 +243,7 @@ const Home = () => {
         {!movieList && !isLoading && loadError && (
           <View style={styles.centerState} testID="home-error-state">
             <Text style={styles.errorText}>{loadError}</Text>
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() =>
                 setPageToLoad((currentPage) => ({
                   ...currentPage,
@@ -252,7 +252,7 @@ const Home = () => {
               testID="home-retry-button"
             >
               <Text style={styles.retryText}>Retry</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         )}
         {movieList && (

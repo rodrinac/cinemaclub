@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import * as database from "@/api/database";
 import { TmdbGenre } from "@/api/tmdb";
+import AnimatedPressable from "@/components/AnimatedPressable";
 import Theme from "@/theme";
 
 type Props = {
@@ -44,12 +45,14 @@ const GenreCard: React.FC<Props> = ({ genre, filterMode }) => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.button} onPress={handlePress}>
-        <Feather color={selected ? color : Theme.colors.accentLighter} name="circle" size={18} />
-        <Text style={[styles.title, { color: selected ? color : Theme.colors.accentLighter }]}>
-          {genre.name}
-        </Text>
-      </TouchableOpacity>
+      <AnimatedPressable contentStyle={styles.button} onPress={handlePress}>
+        <>
+          <Feather color={selected ? color : Theme.colors.accentLighter} name="circle" size={18} />
+          <Text style={[styles.title, { color: selected ? color : Theme.colors.accentLighter }]}>
+            {genre.name}
+          </Text>
+        </>
+      </AnimatedPressable>
     </View>
   );
 };

@@ -7,7 +7,6 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -16,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import * as database from "@/api/database";
 import api, { TmdbGenreList } from "@/api/tmdb";
+import AnimatedPressable from "@/components/AnimatedPressable";
 import GenreCard from "@/components/GenreCard";
 import Theme from "@/theme";
 
@@ -65,12 +65,12 @@ const SearchFilters = () => {
     >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <AnimatedPressable borderless onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
+          </AnimatedPressable>
+          <AnimatedPressable borderless onPress={() => navigation.navigate("Settings")}>
             <Ionicons name="options" color={Theme.colors.accent} size={24} />
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
         <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>FILTERS</Text>
         <View style={styles.menu}>

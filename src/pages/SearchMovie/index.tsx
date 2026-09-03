@@ -11,7 +11,6 @@ import {
   Text,
   TextInput,
   TextInputSubmitEditingEventData,
-  TouchableOpacity,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -20,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as database from "@/api/database";
 import api, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
 import HorizontalMovieCard from "@/components/HorizontalMovieCard";
+import AnimatedPressable from "@/components/AnimatedPressable";
 import Theme from "@/theme";
 import { mergeUniqueMovies } from "@/utils/movieList";
 import { blurActiveElementBeforeNavigate } from "@/utils/focus";
@@ -205,12 +205,12 @@ const SearchMovie = () => {
     >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <AnimatedPressable borderless onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
+          </AnimatedPressable>
+          <AnimatedPressable borderless onPress={() => navigation.navigate("Settings")}>
             <Ionicons name="options" size={24} color={Theme.colors.accent} />
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
         <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>SEARCH</Text>
         <View style={[styles.search, isLandscape ? styles.searchLandscape : null]}>
@@ -221,12 +221,13 @@ const SearchMovie = () => {
             onSubmitEditing={handleSubmitEditing}
             autoFocus
           />
-          <TouchableOpacity
-            style={styles.searchFilter}
+          <AnimatedPressable
+            borderless
+            contentStyle={styles.searchFilter}
             onPress={() => navigation.navigate("SearchFilters")}
           >
             <Ionicons name="filter" color={Theme.colors.accentLighter} size={36} />
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       </View>
       <View style={styles.main}>

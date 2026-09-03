@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import { Image, StyleSheet, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { Image, StyleSheet, View, useWindowDimensions } from "react-native";
 import * as database from "../../api/database";
 import { TmdbMovie } from "../../api/tmdb";
+import AnimatedPressable from "../AnimatedPressable";
 import Theme from "../../theme";
 
 type Props = {
@@ -47,14 +48,14 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress, columns = 2 
         size={18}
         onPress={changeBookmarkStatus}
       />
-      <TouchableOpacity onPress={onPosterPress} testID={`movie-poster-${movie.id}`}>
+      <AnimatedPressable onPress={onPosterPress} testID={`movie-poster-${movie.id}`}>
         <Image
           style={[styles.poster, { width: posterWidth, height: posterHeight }]}
           source={{ uri: posterUrl }}
           resizeMode="cover"
           borderRadius={12}
         />
-      </TouchableOpacity>
+      </AnimatedPressable>
     </View>
   );
 };
