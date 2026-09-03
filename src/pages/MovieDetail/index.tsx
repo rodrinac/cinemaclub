@@ -360,7 +360,7 @@ const MovieDetail = ({ route }: Props) => {
             {getReleaseYear()} • {movie.genres[0]?.name || "?"}
           </Text>
           <View style={styles.rating}>
-            <Text style={styles.ratingOwned}>{movie.vote_average} </Text>
+            <Text style={styles.ratingOwned}>{movie.vote_average.toFixed(1)} </Text>
             <Text style={styles.ratingBase}>/ 10</Text>
             <Text style={styles.ratingProvider}> TMDB</Text>
           </View>
