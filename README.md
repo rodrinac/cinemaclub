@@ -41,6 +41,34 @@ The local API defaults to **no CORS headers** and **no in-memory rate limiting**
 - `GET /api/genres`
 - compatibility aliases: `/api/movie/*`, `/api/search/movie`, `/api/genre/movie/list`
 
+### EAS remote builds
+
+- Local `.env` files are for local development only and are not uploaded to EAS Build.
+- Remote EAS preview/production builds must set `EXPO_PUBLIC_MOVIES_API_URL` in the matching EAS environment.
+- `EXPO_PUBLIC_MOVIES_API_URL` is public/plaintext because Expo embeds it in the client bundle.
+- `TMDB_API_TOKEN` stays server-only and must never be exposed through `EXPO_PUBLIC_*`.
+- The EAS pre-install guard fails remote preview/release builds when the public Movies API URL is missing, blank, localhost-style, or pointed at TMDB directly.
+- Production web releases run through the serialized GitHub Actions workflow
+  `.github/workflows/deploy-aws-proxy.yml`: it deploys the AWS proxy first,
+  resolves the live API Gateway `/api` URL via GitHub OIDC, writes that value to
+  the EAS `production` environment, runs `npm run build:web:production`, and
+  then deploys the generated `dist` export to Expo Hosting production.
+- The GitHub `production` environment must include `EXPO_TOKEN` so CI can update
+  the EAS `production` environment and publish the hosting release.
+
+```sh
+eas env:set production --name EXPO_PUBLIC_MOVIES_API_URL --value https://<stage invoke url>/api --visibility plaintext --scope project
+eas env:list --environment production
+npm run build:web:production
+npx eas deploy --environment production --prod
+```
+
+`npm run build:web:production` performs a clean web-only Expo export using the remote
+`production` EAS environment. Deploy that newly generated `dist` with
+`npx eas deploy --environment production --prod`. The `EXPO_PUBLIC_MOVIES_API_URL`
+value must always be the deployed AWS API Gateway proxy URL ending in `/api`.
+`npm run build:web` remains the local/CI export command.
+
 ### Example movie details response
 
 Sample payload: `tests/e2e/fixtures/movie-details.example.json`
@@ -53,24 +81,6 @@ node --test tests/tmdb-lambda.test.mjs
 npm run test:e2e:stub
 npm run test:e2e:live
 ```
-
-## Milestones
-
-- [x] Start Page
-- [x] Movies Search Page
-- [x] Movie Details Page
-- [x] Splash Screen
-- [ ] TMDB Authentication
-- [ ] Favorites Page
-- [ ] User lists
-- [ ] i18n
-- [ ] Tests (:D)
-- [ ] ...what more?
-
-## Release History
-
-- beta01
-  - Work in progress
 
 ## Spider-Man universe banners
 

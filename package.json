@@ -12,6 +12,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "api": "node --env-file=.env server/movies-api.mjs",
+    "validate:eas:movies-api-url": "node scripts/verify-eas-public-movies-api-url.mjs",
+    "eas-build-pre-install": "npm run validate:eas:movies-api-url",
     "lint": "eslint .",
     "test": "jest",
     "test:ci": "npm run test:ci:stub",
@@ -20,6 +22,7 @@
     "test:e2e:live:ci": "playwright test --config=playwright.config.live.ts",
     "test:e2e:stub": "playwright test --config=playwright.config.stub.ts",
     "build:web": "expo export --platform web",
+    "build:web:production": "eas env:exec production \"npx expo export --platform web --clear\" --non-interactive",
     "prebuild:check": "expo prebuild --clean --no-install"
   },
   "dependencies": {
