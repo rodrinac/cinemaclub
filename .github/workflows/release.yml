@@ -1,38 +1,35 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: ["Deploy production"]
-    types: [completed]
+  push:
+    branches: [master, main]
+    paths:
+      - "package.json"
+      - "app.json"
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.event.workflow_run.head_sha }}
+  group: release-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
   release:
+    if: ${{ contains(github.event.head_commit.message, '[skip version-bump]') }}
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
-      # Intentionally does not check out the deployed commit: "Deploy production" only
-      # triggers on push to main/master (never on pull_request/pull_request_target), so
-      # the commit is already trusted, but this workflow still avoids checking out and
-      # executing any repository code in this privileged (workflow_run) context. The
-      # version is read directly via the Contents API instead.
-      - name: Read version from package.json at the deployed commit
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Read version from package.json
         id: version
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          version="$(
-            gh api "repos/${{ github.repository }}/contents/package.json?ref=${{ github.event.workflow_run.head_sha }}" \
-              --jq '.content' | base64 -d | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version"
-          )"
+          version="$(node -p "require('./package.json').version")"
           tag="v${version}"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
@@ -58,7 +55,7 @@ jobs:
           gh api "repos/${{ github.repository }}/git/refs" \
             --method POST \
             -f "ref=refs/tags/${{ steps.version.outputs.tag }}" \
-            -f "sha=${{ github.event.workflow_run.head_sha }}"
+            -f "sha=${{ github.sha }}"
 
       - name: Create GitHub release
         if: steps.existing-tag.outputs.exists == 'false'
@@ -69,4 +66,4 @@ jobs:
           gh release create "${{ steps.version.outputs.tag }}" \
             --title "${{ steps.version.outputs.tag }}" \
             --generate-notes \
-            --target "${{ github.event.workflow_run.head_sha }}"
+            --target "${{ github.sha }}"
