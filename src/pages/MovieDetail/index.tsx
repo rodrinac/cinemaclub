@@ -30,6 +30,7 @@ type Props = StaticScreenProps<{
 
 const TRAILER_MIN_LOADING_MS = 250;
 const TRAILER_WEB_LOAD_FAILSAFE_MS = 4000;
+const WEB_MOVIE_DETAIL_FALLBACK_TITLE = "Cinema Club • Movie";
 
 const MovieDetail = ({ route }: Props) => {
   const navigation = useNavigation();
@@ -71,6 +72,7 @@ const MovieDetail = ({ route }: Props) => {
   useEffect(() => {
     const requestMovieDetail = async () => {
       if (!Number.isInteger(movieId) || movieId < 1) {
+        setMovie(undefined);
         setLoadError("Invalid movie link.");
         setIsLoading(false);
         return;
@@ -78,6 +80,7 @@ const MovieDetail = ({ route }: Props) => {
 
       try {
         setIsLoading(true);
+        setMovie(undefined);
         setLoadError(null);
         const response = await api.get<TmdbMovie>(`movies/${movieId}`, {
           params: { append_to_response: "videos" },
@@ -100,6 +103,14 @@ const MovieDetail = ({ route }: Props) => {
       setBookmarked(await hasBookmark({ id: movieId }));
     })();
   }, [movieId]);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      return;
+    }
+
+    document.title = movie?.title ? `Cinema Club • ${movie.title}` : WEB_MOVIE_DETAIL_FALLBACK_TITLE;
+  }, [movie?.title]);
 
   const changeBookmarkStatus = async () => {
     if (bookmarked) {

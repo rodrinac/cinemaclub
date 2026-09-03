@@ -210,6 +210,25 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page).toHaveURL(/\/movie\/2001$/);
   });
 
+  test("updates page titles on navigation", async ({ page }) => {
+    await page.goto("/");
+    await expect(page).toHaveTitle("Cinema Club");
+
+    await page.getByTestId("footer-search").click();
+    await expect(page).toHaveTitle("Cinema Club • Search");
+
+    await page.goto("/filters");
+    await expect(page).toHaveTitle("Cinema Club • Filters");
+
+    await page.goto("/");
+    await page.getByTestId("footer-settings").click();
+    await expect(page).toHaveTitle("Cinema Club • Settings");
+
+    await page.goto("/movie/1001");
+    await expect(page.getByTestId("play-trailer-button")).toBeVisible();
+    await expect(page).toHaveTitle("Cinema Club • Metro Pulse");
+  });
+
   test("opens trailer overlay from movie detail with loading state", async ({ page }) => {
     await page.goto("/");
 
