@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { List, Switch } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AnimatedPressable from "@/components/AnimatedPressable";
 import Theme from "../../theme";
 import { persistentStorage } from "@/utils/persistentStorage";
 
@@ -50,14 +51,14 @@ const Settings = () => {
     >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <AnimatedPressable borderless onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
         <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>SETTINGS</Text>
       </View>
       <View style={styles.main}>
-        <TouchableOpacity onPress={onToggleSwitch} style={styles.listItem}>
+        <AnimatedPressable onPress={onToggleSwitch} contentStyle={styles.listItem}>
           <List.Item
             title="Adult Content"
             description="Hide adult content"
@@ -67,7 +68,7 @@ const Settings = () => {
             style={{ flex: 1 }}
           />
           <Switch value={hideAdultContent} onValueChange={onToggleSwitch} color={Theme.colors.gold} />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <TouchableOpacity style={styles.listItem}>
           <List.Item
             title="Privacy"
@@ -78,7 +79,7 @@ const Settings = () => {
             style={{ flex: 1 }}
           />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.listItem} onPress={() => StoreReview.requestReview()}>
+        <AnimatedPressable contentStyle={styles.listItem} onPress={() => StoreReview.requestReview()}>
           <List.Item
             title="Review"
             description="Send your feedback"
@@ -87,7 +88,7 @@ const Settings = () => {
             accessibilityValue={{ text: "send.your.feedback" }}
             style={{ flex: 1 }}
           />
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     </KeyboardAvoidingView>
   );

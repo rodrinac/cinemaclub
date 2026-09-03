@@ -1,5 +1,6 @@
 import { addBookmark, hasBookmark, removeBookmark } from "@/api/database";
 import api, { TmdbMovie } from "@/api/tmdb";
+import AnimatedPressable from "@/components/AnimatedPressable";
 import FooterBar from "@/components/FooterBar";
 import Theme from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
@@ -343,16 +344,16 @@ const MovieDetail = ({ route }: Props) => {
           style={styles.linearGradient}
         />
         <View style={styles.nav}>
-          <TouchableOpacity onPress={() => navigation.goBack()} testID="movie-detail-back-button">
+          <AnimatedPressable borderless onPress={() => navigation.goBack()} testID="movie-detail-back-button">
             <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={changeBookmarkStatus}>
+          </AnimatedPressable>
+          <AnimatedPressable borderless onPress={changeBookmarkStatus}>
             <Ionicons
               name={bookmarked ? "bookmark" : "bookmark-outline"}
               color={Theme.colors.accent}
               size={24}
             />
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
 
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
@@ -381,14 +382,14 @@ const MovieDetail = ({ route }: Props) => {
                 <Ionicons name="play-sharp" color={Theme.colors.primaryDarker} size={24} />
               )
             ) : (
-              <TouchableOpacity
-                style={styles.playButton}
+              <AnimatedPressable
+                contentStyle={styles.playButton}
                 onPress={playTrailer}
                 accessibilityLabel="Play trailer"
                 testID="play-trailer-button"
               >
                 <Ionicons name="play-sharp" color={Theme.colors.primaryDarker} size={24} />
-              </TouchableOpacity>
+              </AnimatedPressable>
             )}
           </View>
         </ScrollView>
@@ -434,14 +435,14 @@ const MovieDetail = ({ route }: Props) => {
                 <Ionicons name="close" size={22} color={Theme.colors.accent} />
               )
             ) : (
-              <TouchableOpacity
-                style={styles.trailerCloseButton}
+              <AnimatedPressable
+                contentStyle={styles.trailerCloseButton}
                 onPress={closeTrailer}
                 accessibilityLabel="Close trailer"
                 testID="trailer-overlay-close"
               >
                 <Ionicons name="close" size={22} color={Theme.colors.accent} />
-              </TouchableOpacity>
+              </AnimatedPressable>
             )}
             <View style={styles.trailerFrameContainer}>
               {trailerUrl
