@@ -1,14 +1,24 @@
-name: Deploy AWS TMDB Proxy
+name: Deploy production
 
 on:
   workflow_dispatch:
   push:
     branches: [master, main]
     paths:
+      - "src/**"
+      - "assets/**"
+      - "app.json"
+      - "eas.json"
+      - "package.json"
+      - "package-lock.json"
       - "infra/**"
       - "server/**"
       - "scripts/smoke-aws-proxy.mjs"
       - ".github/workflows/deploy-aws-proxy.yml"
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -195,3 +205,145 @@ jobs:
               --tags Key=project,Value=cinemaclub Key=service,Value=tmdb-proxy >/dev/null
           fi
 
+  deploy-web:
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TMDB_PROXY_SERVICE_NAME: ${{ vars.TMDB_PROXY_SERVICE_NAME }}
+      TMDB_PROXY_STAGE_NAME: ${{ vars.TMDB_PROXY_STAGE_NAME }}
+      TMDB_PROXY_CORS_ALLOW_ORIGIN: ${{ vars.TMDB_PROXY_CORS_ALLOW_ORIGIN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: 23.2.0
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Resolve deployed Movies API URL
+        id: resolve-movies-api-url
+        run: |
+          set -euo pipefail
+
+          required_vars="AWS_REGION TMDB_PROXY_SERVICE_NAME TMDB_PROXY_STAGE_NAME TMDB_PROXY_CORS_ALLOW_ORIGIN"
+          for var_name in $required_vars; do
+            value="$(printenv "$var_name" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            if [ -z "$value" ]; then
+              echo "$var_name is required for web deployment" >&2
+              exit 1
+            fi
+          done
+
+          api_name="${TMDB_PROXY_SERVICE_NAME}-${TMDB_PROXY_STAGE_NAME}-rest-api"
+          mapfile -t api_ids < <(
+            aws apigateway get-rest-apis --region "$AWS_REGION" --output json |
+              jq -r --arg name "$api_name" '[.items[] | select(.name == $name) | .id] | .[]'
+          )
+
+          if [ "${#api_ids[@]}" -ne 1 ] || [ -z "${api_ids[0]:-}" ]; then
+            echo "Expected exactly one API Gateway REST API named $api_name, found ${#api_ids[@]}" >&2
+            exit 1
+          fi
+
+          movies_api_url="https://${api_ids[0]}.execute-api.${AWS_REGION}.amazonaws.com/${TMDB_PROXY_STAGE_NAME}/api"
+
+          case "$movies_api_url" in
+            https://*) ;;
+            *)
+              echo "Resolved Movies API URL must use HTTPS: $movies_api_url" >&2
+              exit 1
+              ;;
+          esac
+
+          case "$movies_api_url" in
+            */api) ;;
+            *)
+              echo "Resolved Movies API URL must end with /api: $movies_api_url" >&2
+              exit 1
+              ;;
+          esac
+
+          printf 'movies_api_url=%s\n' "$movies_api_url" >> "$GITHUB_OUTPUT"
+          printf 'stage_url=%s\n' "${movies_api_url%/api}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify live Movies API health and CORS
+        run: |
+          set -euo pipefail
+
+          health_response="$(
+            curl --fail-with-body --retry 6 --retry-all-errors --silent --show-error \
+              "${{ steps.resolve-movies-api-url.outputs.stage_url }}/health"
+          )"
+          printf '%s' "$health_response" | jq -e '.status == "ok"' >/dev/null
+
+          cors_headers="$(
+            curl --fail-with-body --silent --show-error \
+              --dump-header - \
+              --output /dev/null \
+              -H "Origin: ${TMDB_PROXY_CORS_ALLOW_ORIGIN}" \
+              "${{ steps.resolve-movies-api-url.outputs.movies_api_url }}/movies/now-playing"
+          )"
+          normalized_headers="$(printf '%s\n' "$cors_headers" | tr -d '\r')"
+
+          printf '%s\n' "$normalized_headers" |
+            grep -Fxi "Access-Control-Allow-Origin: ${TMDB_PROXY_CORS_ALLOW_ORIGIN}" >/dev/null
+          printf '%s\n' "$normalized_headers" | grep -Fxi "Vary: Origin" >/dev/null
+
+      - name: Sync EAS production Movies API URL
+        run: |
+          eas env:set production \
+            --name EXPO_PUBLIC_MOVIES_API_URL \
+            --value "${{ steps.resolve-movies-api-url.outputs.movies_api_url }}" \
+            --visibility plaintext \
+            --scope project \
+            --non-interactive
+
+      - name: Build Expo web export
+        run: npm run build:web:production
+
+      - name: Deploy Expo web export
+        id: deploy-expo-web
+        run: |
+          set -euo pipefail
+
+          deploy_json="$(
+            eas deploy \
+              --export-dir dist \
+              --environment production \
+              --prod \
+              --non-interactive \
+              --json
+          )"
+          printf '%s\n' "$deploy_json"
+
+          deployment_url="$(
+            DEPLOY_JSON="$deploy_json" node -e 'const data = JSON.parse(process.env.DEPLOY_JSON); const urls = []; const walk = (value) => { if (typeof value === "string") { if (/^https:\/\/[^\s]+\.expo\.app\/?$/.test(value)) { urls.push(value); } return; } if (Array.isArray(value)) { value.forEach(walk); return; } if (value && typeof value === "object") { Object.values(value).forEach(walk); } }; walk(data); const normalized = urls.map((value) => { try { const url = new URL(value); return `${url.origin}${url.pathname}`; } catch { return null; } }).filter(Boolean); const preferred = normalized.find((value) => !new URL(value).hostname.includes("--")) ?? normalized[0]; if (!preferred) { console.error("Unable to resolve Expo deployment URL from eas deploy output."); process.exit(1); } process.stdout.write(preferred);'
+          )"
+
+          printf 'deployment_url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deployed Expo web URL
+        run: |
+          curl --fail --retry 6 --retry-all-errors --silent --show-error --location \
+            "${{ steps.deploy-expo-web.outputs.deployment_url }}" >/dev/null
