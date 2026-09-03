@@ -38,3 +38,6 @@ infra/build/
 
 # Git worktrees
 .worktrees/
+
+# SubAgent docs
+/docs/SubAgent docs
