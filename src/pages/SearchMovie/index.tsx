@@ -22,6 +22,7 @@ import api, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
 import HorizontalMovieCard from "@/components/HorizontalMovieCard";
 import Theme from "@/theme";
 import { mergeUniqueMovies } from "@/utils/movieList";
+import { blurActiveElementBeforeNavigate } from "@/utils/focus";
 import { shouldFetchSearchPage, shouldLoadNextSearchPage } from "./pagination";
 
 type PageToLoad = {
@@ -175,6 +176,7 @@ const SearchMovie = () => {
   }, [pageToLoad.searchQuery]);
 
   const goToMovieDetails = (movie: TmdbMovie) => {
+    blurActiveElementBeforeNavigate();
     navigation.navigate("MovieDetail", { movieId: movie.id });
   };
 
