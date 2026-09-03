@@ -11,6 +11,8 @@ export const appLinkingConfig = {
     SearchMovie: "search",
     SearchFilters: "filters",
     Settings: "settings",
+    PrivacyPolicy: "privacy-policy",
+    TermsOfService: "terms-of-service",
     MovieDetail: {
       path: "movie/:movieId",
       parse: {
