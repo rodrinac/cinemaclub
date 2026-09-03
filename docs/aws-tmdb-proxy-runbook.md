@@ -38,17 +38,18 @@ Required environment secrets:
 
 - `AWS_ROLE_TO_ASSUME`
 - `TMDB_SECRET_ARN`
+- `EXPO_TOKEN` for the serialized `deploy-web` Expo Hosting release job
 
 Required environment vars:
 
 - `AWS_REGION`
 - `TMDB_PROXY_SERVICE_NAME`
 - `TMDB_PROXY_STAGE_NAME`
+- `TMDB_PROXY_CORS_ALLOW_ORIGIN`
 - `TMDB_PROXY_LOG_RETENTION_DAYS`
 
 Optional vars:
 
-- `TMDB_PROXY_CORS_ALLOW_ORIGIN`
 - `TMDB_PROXY_RATE_LIMIT_RPS`
 - `TMDB_PROXY_RATE_LIMIT_BURST`
 - `TMDB_PROXY_ALARM_NOTIFICATION_ARN`
@@ -56,15 +57,19 @@ Optional vars:
 - `TMDB_PROXY_LAMBDA_THROTTLE_ALARM_THRESHOLD`
 - `TMDB_PROXY_LAMBDA_DURATION_ALARM_THRESHOLD_MS`
 - `TMDB_PROXY_API_5XX_ALARM_THRESHOLD`
-- `TF_STATE_BUCKET`
-- `TF_STATE_KEY`
-- `TF_STATE_LOCK_TABLE`
+- Existing GitHub Actions backend vars used by the Terraform deploy job:
+  `TF_STATE_BUCKET`, `TF_STATE_KEY`, `TF_STATE_LOCK_TABLE`
 
 OIDC notes:
 
 - Role name: `cinemaclub-github-actions-production-deploy`
 - Trust subject:
   `repo:rodrinac/cinemaclub:environment:production`
+- The deploy role keeps the existing Terraform permissions and needs only one
+  extra read permission for the web job's API discovery:
+  `apigateway:GET` on `arn:aws:apigateway:${AWS_REGION}::/restapis/*`. If AWS
+  rejects resource scoping for `GetRestApis`, relax only that statement to
+  `Resource: "*"`.
 - API Gateway logging policy ARN must stay exactly
   `arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs`
 - Terraform refresh/apply for this stack needs Lambda read/list permissions,
@@ -150,3 +155,32 @@ Always-created log groups:
 
 The deploy smoke checks also expect Lambda logs to show at least one
 cache-hit event after a successful request.
+
+## EAS client URL wiring
+
+- The production GitHub Actions workflow stays serialized in
+  `.github/workflows/deploy-aws-proxy.yml`: `deploy` applies Terraform and
+  smoke-tests the proxy, then `deploy-web` resolves the live API Gateway REST
+  API ID from AWS, updates EAS, exports the web app, and deploys Expo Hosting
+  production.
+- The web job must not read Terraform remote state. It derives
+  `EXPO_PUBLIC_MOVIES_API_URL` from the live API Gateway control-plane lookup
+  using the deterministic REST API name
+  `<TMDB_PROXY_SERVICE_NAME>-<TMDB_PROXY_STAGE_NAME>-rest-api`.
+- Set the resolved `https://<rest-api-id>.execute-api.<AWS_REGION>.amazonaws.com/<stage>/api`
+  value in the EAS `production` environment for production builds:
+
+  ```sh
+  eas env:set production \
+    --name EXPO_PUBLIC_MOVIES_API_URL \
+    --value https://<stage invoke url>/api \
+    --visibility plaintext \
+    --scope project
+  ```
+
+- If you add preview builds, set the matching preview proxy URL in the EAS
+  `preview` environment too.
+- Rebuild app binaries after changing the EAS environment variable so the
+  updated public URL is embedded in the client bundle.
+- For SDK 53 OTA parity, publish with the matching environment:
+  `eas update --environment production` (or `preview` when applicable).

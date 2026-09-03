@@ -26,7 +26,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.anonymous.cinemaclub"
+      "bundleIdentifier": "com.anonymous.cinemaclub",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "plugins": [
       "expo-secure-store",
@@ -46,6 +49,12 @@
       ],
       "expo-font",
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d5f1cf03-fba3-4d98-8c6f-ed5771ff0ea4"
+      }
+    },
+    "owner": "josersinacio"
   }
 }

@@ -95,21 +95,31 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
 ## AWS TMDB Proxy Deployment
 
 - Main workflow: `.github/workflows/deploy-aws-proxy.yml`. It deploys from
-  the GitHub environment `production`.
-- Required `production` secrets: `AWS_ROLE_TO_ASSUME`, `TMDB_SECRET_ARN`.
+  the GitHub environment `production`, keeps the proxy and web release in one
+  serialized workflow, and runs `deploy-web` only after the proxy deploy and
+  smoke test succeed.
+- Required `production` secrets: `AWS_ROLE_TO_ASSUME`, `TMDB_SECRET_ARN`,
+  `EXPO_TOKEN`.
 - Required `production` vars: `AWS_REGION`, `TMDB_PROXY_SERVICE_NAME`,
-  `TMDB_PROXY_STAGE_NAME`, `TMDB_PROXY_LOG_RETENTION_DAYS`.
-- Optional deploy vars: `TMDB_PROXY_CORS_ALLOW_ORIGIN` (one exact origin
-  only), `TMDB_PROXY_RATE_LIMIT_RPS`, `TMDB_PROXY_RATE_LIMIT_BURST`, and
-  the `TMDB_PROXY_*ALARM*` thresholds.
+  `TMDB_PROXY_STAGE_NAME`, `TMDB_PROXY_CORS_ALLOW_ORIGIN`,
+  `TMDB_PROXY_LOG_RETENTION_DAYS`.
+- Optional deploy vars: `TMDB_PROXY_RATE_LIMIT_RPS`,
+  `TMDB_PROXY_RATE_LIMIT_BURST`, and the `TMDB_PROXY_*ALARM*` thresholds.
 - GitHub OIDC deploy role name:
   `cinemaclub-github-actions-production-deploy`. Trust subject:
   `repo:rodrinac/cinemaclub:environment:production`.
+- `deploy-web` must discover the live proxy URL from AWS API Gateway by the
+  deterministic name
+  `<TMDB_PROXY_SERVICE_NAME>-<TMDB_PROXY_STAGE_NAME>-rest-api`, then set
+  `EXPO_PUBLIC_MOVIES_API_URL=https://<stage invoke url>/api` in the EAS
+  `production` environment before `npm run build:web:production` and
+  `eas deploy --prod`. Do not read Terraform remote state in that web job.
 - Exact API Gateway log policy ARN:
   `arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs`.
   Keep `aws_api_gateway_account.this` dependent on that attachment. The
   deploy role also needs Lambda read actions like
-  `lambda:ListVersionsByFunction` for Terraform refresh/apply.
+  `lambda:ListVersionsByFunction` for Terraform refresh/apply, plus
+  `apigateway:GET` for the web job's REST API lookup.
 - See `docs/aws-tmdb-proxy-runbook.md` for the longer deploy/ops checklist.
 
 ## Terraform and Smoke-Test Gotchas
