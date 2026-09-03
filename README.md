@@ -2,7 +2,7 @@
 
 > A cozy React Native (Expo) movie app with web support, powered by TMDB.
 
-[![GitHub version](https://badge.fury.io/gh/rodrinac%2Fcinemaclub.svg)](https://badge.fury.io/gh/rodrinac%2Fcinemaclub)
+[![GitHub release](https://img.shields.io/github/v/release/rodrinac/cinemaclub)](https://github.com/rodrinac/cinemaclub/releases/latest)
 
 Cinema Club keeps movie discovery fun and clean across web + mobile, while routing all TMDB access through a local API layer.
 
