@@ -35,3 +35,6 @@ playwright-report/
 !infra/terraform.tfvars.example
 *.tfplan
 infra/build/
+
+# Git worktrees
+.worktrees/
