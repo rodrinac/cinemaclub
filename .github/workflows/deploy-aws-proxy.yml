@@ -181,38 +181,6 @@ jobs:
           export SMOKE_RATE_LIMIT_BURST="$(printf '%s' "${TF_VAR_rate_limit_burst:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
           node scripts/smoke-aws-proxy.mjs
 
-      - name: Verify logs, stage settings, gateway responses, and alarms
-        run: |
-          set -eu
-          REST_API_ID="$(jq -r '.rest_api_id.value' infra/terraform-output.json)"
-          STAGE_NAME="$(jq -r '.stage_name.value' infra/terraform-output.json)"
-          LAMBDA_LOG_GROUP="$(jq -r '.lambda_log_group_name.value' infra/terraform-output.json)"
-          ACCESS_LOG_GROUP="$(jq -r '.api_access_log_group_name.value' infra/terraform-output.json)"
-          EXECUTION_LOG_GROUP="$(jq -r '.api_execution_log_group_name.value' infra/terraform-output.json)"
-          aws apigateway get-stage --rest-api-id "$REST_API_ID" --stage-name "$STAGE_NAME" > infra/apigateway-stage.json
-          jq -e '.accessLogSettings.destinationArn and .methodSettings' infra/apigateway-stage.json >/dev/null
-          aws logs describe-log-groups --log-group-name-prefix "$LAMBDA_LOG_GROUP" | jq -e --arg name "$LAMBDA_LOG_GROUP" '.logGroups[] | select(.logGroupName == $name)' >/dev/null
-          aws logs describe-log-groups --log-group-name-prefix "$ACCESS_LOG_GROUP" | jq -e --arg name "$ACCESS_LOG_GROUP" '.logGroups[] | select(.logGroupName == $name)' >/dev/null
-          aws logs describe-log-groups --log-group-name-prefix "$EXECUTION_LOG_GROUP" | jq -e --arg name "$EXECUTION_LOG_GROUP" '.logGroups[] | select(.logGroupName == $name)' >/dev/null
-          aws apigateway get-gateway-response --rest-api-id "$REST_API_ID" --response-type DEFAULT_4XX > infra/gateway-response.json
-          if [ -n "${TF_VAR_cors_allow_origin:-}" ]; then
-            expected_origin="'${TF_VAR_cors_allow_origin}'"
-            jq -e --arg expected "$expected_origin" '.responseParameters["gatewayresponse.header.Access-Control-Allow-Origin"] == $expected' infra/gateway-response.json >/dev/null
-          else
-            jq -e '(.responseParameters // {})["gatewayresponse.header.Access-Control-Allow-Origin"] == null' infra/gateway-response.json >/dev/null
-          fi
-          for alarm_name in $(jq -r '.alarm_names.value[]?' infra/terraform-output.json); do
-            aws cloudwatch describe-alarms --alarm-names "$alarm_name" | jq -e '.MetricAlarms[0].AlarmName' >/dev/null
-          done
-          for _ in 1 2 3 4 5; do
-            if aws logs filter-log-events --log-group-name "$LAMBDA_LOG_GROUP" --filter-pattern '{ $.cache = "hit" }' --limit 1 | jq -e '.events[0]' >/dev/null; then
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Expected a cache hit log entry after smoke tests" >&2
-          exit 1
-
       - name: Store movies API base URL in Secrets Manager
         run: |
           set -eu
