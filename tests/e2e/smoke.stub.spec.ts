@@ -34,7 +34,10 @@ async function installStubRoutes(
   page: Page,
   requestPaths: string[] = [],
   requestUrls: string[] = [],
-  options?: { popularList?: typeof tmdbStub.lists.popular },
+  options?: {
+    popularList?: typeof tmdbStub.lists.popular;
+    imageRequestUrls?: string[];
+  },
 ) {
   const popularList = options?.popularList ?? tmdbStub.lists.popular;
   await page.route("**://*/api/**", async (route) => {
@@ -100,6 +103,7 @@ async function installStubRoutes(
 
   for (const pattern of imageRoutes) {
     await page.route(pattern, async (route) => {
+      options?.imageRequestUrls?.push(route.request().url());
       await route.fulfill({
         status: 200,
         contentType: "image/svg+xml",
@@ -112,11 +116,13 @@ async function installStubRoutes(
 test.describe("Web App Smoke Tests (stub)", () => {
   let apiRequestPaths: string[];
   let apiRequestUrls: string[];
+  let imageRequestUrls: string[];
 
   test.beforeEach(async ({ page }) => {
     apiRequestPaths = [];
     apiRequestUrls = [];
-    await installStubRoutes(page, apiRequestPaths, apiRequestUrls);
+    imageRequestUrls = [];
+    await installStubRoutes(page, apiRequestPaths, apiRequestUrls, { imageRequestUrls });
   });
 
   test("renders discover page with movie cards", async ({ page }) => {
@@ -227,6 +233,28 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await page.goto("/movie/1001");
     await expect(page.getByTestId("play-trailer-button")).toBeVisible();
     await expect(page).toHaveTitle("Cinema Club • Metro Pulse");
+  });
+
+  test("responsive banner switches hero image at the 768px breakpoint", async ({ page }) => {
+    const mobileHeroUrl = "https://image.tmdb.org/t/p/w500/poster-2001.jpg";
+    const wideHeroUrl = "https://image.tmdb.org/t/p/w780/backdrop-2001.jpg";
+    const countMovieDetailRequests = () =>
+      apiRequestUrls.filter((requestUrl) => {
+        const url = new URL(requestUrl);
+        return url.pathname.endsWith("/api/movies/2001");
+      }).length;
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/movie/2001");
+    await expect(page.getByTestId("play-trailer-button")).toBeVisible();
+
+    await expect.poll(() => countMovieDetailRequests()).toBe(1);
+    await expect.poll(() => imageRequestUrls.filter((url) => url === mobileHeroUrl).length).toBeGreaterThan(0);
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+
+    await expect.poll(() => imageRequestUrls.filter((url) => url === wideHeroUrl).length).toBeGreaterThan(0);
+    await expect.poll(() => countMovieDetailRequests()).toBe(1);
   });
 
   test("opens trailer overlay from movie detail with loading state", async ({ page }) => {

@@ -31,6 +31,10 @@ type Props = StaticScreenProps<{
 const TRAILER_MIN_LOADING_MS = 250;
 const TRAILER_WEB_LOAD_FAILSAFE_MS = 4000;
 const WEB_MOVIE_DETAIL_FALLBACK_TITLE = "Cinema Club • Movie";
+const MOVIE_DETAIL_LARGE_VIEWPORT_WIDTH = 768;
+
+const hasUsableTmdbImagePath = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
 
 const MovieDetail = ({ route }: Props) => {
   const navigation = useNavigation();
@@ -310,6 +314,19 @@ const MovieDetail = ({ route }: Props) => {
     );
   }
 
+  const isLargeViewport = width >= MOVIE_DETAIL_LARGE_VIEWPORT_WIDTH;
+  const heroImageSize = isLargeViewport ? "w780" : "w500";
+  const preferredHeroPath = isLargeViewport ? movie.backdrop_path : movie.poster_path;
+  const fallbackHeroPath = isLargeViewport ? movie.poster_path : movie.backdrop_path;
+  const heroImagePath = hasUsableTmdbImagePath(preferredHeroPath)
+    ? preferredHeroPath
+    : hasUsableTmdbImagePath(fallbackHeroPath)
+      ? fallbackHeroPath
+      : undefined;
+  const heroImageSource = heroImagePath
+    ? { uri: `https://image.tmdb.org/t/p/${heroImageSize}${heroImagePath}` }
+    : undefined;
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -317,7 +334,7 @@ const MovieDetail = ({ route }: Props) => {
     >
       <ImageBackground
         style={[styles.container, { paddingTop: insets.top + 8 }]}
-        source={{ uri: `https://image.tmdb.org/t/p/w500${movie.poster_path}` }}
+        source={heroImageSource}
         resizeMode="cover"
       >
         <LinearGradient
