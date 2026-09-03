@@ -173,6 +173,12 @@ jobs:
             fi
           done
 
+      - name: Run deployed smoke tests
+        run: |
+          export SMOKE_STAGE_URL="$(jq -r '.stage_invoke_url.value' infra/terraform-output.json)"
+          export SMOKE_CORS_ALLOW_ORIGIN="$(printf '%s' "${TF_VAR_cors_allow_origin:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          node scripts/smoke-aws-proxy.mjs
+
       - name: Store movies API base URL in Secrets Manager
         run: |
           set -eu
@@ -188,12 +194,4 @@ jobs:
               --secret-string "$MOVIES_API_BASE_URL" \
               --tags Key=project,Value=cinemaclub Key=service,Value=tmdb-proxy >/dev/null
           fi
-
-      - name: Run deployed smoke tests
-        run: |
-          export SMOKE_STAGE_URL="$(jq -r '.stage_invoke_url.value' infra/terraform-output.json)"
-          export SMOKE_CORS_ALLOW_ORIGIN="$(printf '%s' "${TF_VAR_cors_allow_origin:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          export SMOKE_RATE_LIMIT_RPS="$(printf '%s' "${TF_VAR_rate_limit_rps:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          export SMOKE_RATE_LIMIT_BURST="$(printf '%s' "${TF_VAR_rate_limit_burst:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          node scripts/smoke-aws-proxy.mjs
 

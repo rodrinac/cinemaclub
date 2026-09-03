@@ -125,10 +125,9 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
   both.
 - API Gateway stage throttling is distributed/best-effort. Do not write
   smoke tests that expect `burst + 1` concurrent requests to deterministically
-  yield a `429`; this repo uses ~4x burst, unique `page` values, and retries
-  to avoid cache hits and flaky assertions.
-- After observing a `429`, wait out `Retry-After` plus a small buffer before
-  asserting `/health` has recovered.
+  yield a `429`; `scripts/smoke-aws-proxy.mjs` deliberately skips asserting
+  hosted rate-limit behavior for this reason and only checks that a normal
+  request burst succeeds.
 - PR CI validates Terraform with `init -backend=false` and placeholder AWS
   settings. The deploy workflow relies on the runner's `aws` CLI; if future
   PR CI needs AWS CLI commands, add explicit setup/version checks.
