@@ -3,6 +3,17 @@ name: Version bump
 on:
   push:
     branches: [master, main]
+    paths:
+      - "src/**"
+      - "assets/**"
+      - "app.json"
+      - "eas.json"
+      - "package.json"
+      - "package-lock.json"
+      - "infra/**"
+      - "server/**"
+      - "scripts/smoke-aws-proxy.mjs"
+      - ".github/workflows/deploy-aws-proxy.yml"
 
 permissions:
   contents: write
