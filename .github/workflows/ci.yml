@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master, main]
+    branches: [main]
   pull_request:
-    branches: [master, main]
+    branches: [main]
 
 permissions:
   contents: read
@@ -114,6 +114,7 @@ jobs:
           if-no-files-found: ignore
 
   live-e2e-gate:
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     needs: ci
     outputs:
@@ -132,7 +133,7 @@ jobs:
           fi
 
   e2e-live:
-    if: ${{ needs.live-e2e-gate.outputs.has_tmdb_token == 'true' }}
+    if: ${{ github.event_name == 'pull_request' && needs.live-e2e-gate.outputs.has_tmdb_token == 'true' }}
     runs-on: ubuntu-latest
     needs: live-e2e-gate
 
