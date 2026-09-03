@@ -190,6 +190,7 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.gold,
     borderRadius: 8,
     paddingVertical: 14,
+    paddingHorizontal: 32,
     alignItems: "center",
     marginTop: 24,
   },
