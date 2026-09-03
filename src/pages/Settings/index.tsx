@@ -7,7 +7,6 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -69,16 +68,32 @@ const Settings = () => {
           />
           <Switch value={hideAdultContent} onValueChange={onToggleSwitch} color={Theme.colors.gold} />
         </AnimatedPressable>
-        <TouchableOpacity style={styles.listItem}>
+        <AnimatedPressable
+          contentStyle={styles.listItem}
+          onPress={() => navigation.navigate("PrivacyPolicy")}
+        >
           <List.Item
             title="Privacy"
+            description="Privacy Policy"
+            titleStyle={styles.listTitle}
+            descriptionStyle={styles.listDescription}
+            accessibilityValue={{ text: "privacy.policy" }}
+            style={{ flex: 1 }}
+          />
+        </AnimatedPressable>
+        <AnimatedPressable
+          contentStyle={styles.listItem}
+          onPress={() => navigation.navigate("TermsOfService")}
+        >
+          <List.Item
+            title="Terms"
             description="Terms of Service"
             titleStyle={styles.listTitle}
             descriptionStyle={styles.listDescription}
             accessibilityValue={{ text: "terms.of.service" }}
             style={{ flex: 1 }}
           />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <AnimatedPressable contentStyle={styles.listItem} onPress={() => StoreReview.requestReview()}>
           <List.Item
             title="Review"
