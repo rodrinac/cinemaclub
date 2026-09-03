@@ -2,19 +2,9 @@ name: Deploy production
 
 on:
   workflow_dispatch:
-  push:
-    branches: [master, main]
-    paths:
-      - "src/**"
-      - "assets/**"
-      - "app.json"
-      - "eas.json"
-      - "package.json"
-      - "package-lock.json"
-      - "infra/**"
-      - "server/**"
-      - "scripts/smoke-aws-proxy.mjs"
-      - ".github/workflows/deploy-aws-proxy.yml"
+  workflow_run:
+    workflows: ['Release']
+    types: [completed]
 
 concurrency:
   group: production-release
@@ -26,7 +16,7 @@ permissions:
 
 jobs:
   deploy:
-    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip version-bump]') }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     environment: production
     env:
