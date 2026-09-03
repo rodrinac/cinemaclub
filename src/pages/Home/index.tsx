@@ -4,6 +4,7 @@ import FooterBar, { FOOTER_BAR_BASE_HEIGHT } from "@/components/FooterBar";
 import VerticalMovieCard from "@/components/VerticalMovieCard";
 import Theme from "@/theme";
 import { mergeUniqueMovies } from "@/utils/movieList";
+import { blurActiveElementBeforeNavigate } from "@/utils/focus";
 import { useNavigation } from "@react-navigation/native";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -165,6 +166,7 @@ const Home = () => {
   }, [pageToLoad]);
 
   function handleMoviePosterPress(movie: TmdbMovie) {
+    blurActiveElementBeforeNavigate();
     navigation.navigate("MovieDetail", { movieId: movie.id });
   }
 
