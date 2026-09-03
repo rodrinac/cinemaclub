@@ -3,9 +3,18 @@ import { TmdbGenre, TmdbMovie } from "../tmdb";
 
 type GenreFilterMode = "INCLUDING" | "EXCLUDING" | "UNDEFINED";
 
-const getDB = async (): Promise<SQLite.SQLiteDatabase> => SQLite.openDatabaseAsync("CINEMA_CLUB");
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+
+const getDB = async (): Promise<SQLite.SQLiteDatabase> => {
+  if (!dbPromise) {
+    dbPromise = SQLite.openDatabaseAsync("CINEMA_CLUB");
+  }
+
+  return dbPromise;
+};
 
 const initDB = async () => {
+  dbPromise = null;
   const db = await getDB();
 
   await db.withTransactionAsync(async () => {
