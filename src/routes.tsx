@@ -6,9 +6,11 @@ import { Platform } from "react-native";
 import { appLinkingConfig } from "./navigation/linking";
 import Home from "./pages/Home";
 import MovieDetail from "./pages/MovieDetail";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import SearchFilters from "./pages/SearchFilters";
 import SearchMovie from "./pages/SearchMovie";
 import Settings from "./pages/Settings";
+import TermsOfService from "./pages/TermsOfService";
 
 const AppStack = createStackNavigator({
   screenOptions: {
@@ -36,6 +38,14 @@ const AppStack = createStackNavigator({
       screen: Settings,
       linking: appLinkingConfig.screens.Settings,
     },
+    PrivacyPolicy: {
+      screen: PrivacyPolicy,
+      linking: appLinkingConfig.screens.PrivacyPolicy,
+    },
+    TermsOfService: {
+      screen: TermsOfService,
+      linking: appLinkingConfig.screens.TermsOfService,
+    },
   },
 });
 
@@ -47,6 +57,8 @@ const WEB_ROUTE_TITLES = {
   SearchMovie: "Cinema Club • Search",
   SearchFilters: "Cinema Club • Filters",
   Settings: "Cinema Club • Settings",
+  PrivacyPolicy: "Cinema Club • Privacy Policy",
+  TermsOfService: "Cinema Club • Terms of Service",
 } as const;
 
 type WebTitleRouteName = keyof typeof WEB_ROUTE_TITLES;
