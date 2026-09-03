@@ -121,11 +121,12 @@ Why this matters:
 
 - API Gateway stage throttling is distributed/best-effort, so `burst + 1`
   concurrent requests is not a reliable `429` assertion.
-- `scripts/smoke-aws-proxy.mjs` uses ~4x the configured burst, unique `page`
-  values, and multiple attempts to avoid cache hits and flaky throttling
-  checks.
-- After a `429`, wait for `Retry-After` plus a small buffer before asserting
-  `/health` is back to `200`.
+- `scripts/smoke-aws-proxy.mjs` intentionally does not exercise hosted rate
+  limiting for this reason; it only checks that a normal request burst
+  doesn't get an unexpected `429`. Verify rate-limit behavior manually or
+  with a dedicated tool if needed.
+- The smoke test step now runs before the movies API base URL is stored in
+  Secrets Manager, so a failing smoke test blocks that secret update too.
 
 ## Useful outputs and logs
 
