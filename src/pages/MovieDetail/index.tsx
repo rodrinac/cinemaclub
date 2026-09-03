@@ -1,5 +1,5 @@
 import { addBookmark, hasBookmark, removeBookmark } from "@/api/database";
-import api, { TmdbMovie } from "@/api/tmdb";
+import { useMovieDetailsQuery } from "@/api/tmdb/queries";
 import AnimatedPressable from "@/components/AnimatedPressable";
 import FooterBar from "@/components/FooterBar";
 import Theme from "@/theme";
@@ -44,9 +44,18 @@ const MovieDetail = ({ route }: Props) => {
   const isLandscape = width > height;
 
   const movieId = route.params.movieId;
-  const [movie, setMovie] = useState<TmdbMovie>();
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const isValidMovieId = Number.isInteger(movieId) && movieId > 0;
+  const {
+    data: movie,
+    isPending: isMovieQueryPending,
+    isError: isMovieQueryError,
+  } = useMovieDetailsQuery(movieId);
+  const isLoading = isValidMovieId && isMovieQueryPending;
+  const loadError = !isValidMovieId
+    ? "Invalid movie link."
+    : isMovieQueryError
+      ? "Could not load this movie."
+      : null;
   const [bookmarked, setBookmarked] = useState<boolean>();
   const [isTrailerOpen, setIsTrailerOpen] = useState(false);
   const [isTrailerLoading, setIsTrailerLoading] = useState(false);
@@ -73,35 +82,6 @@ const MovieDetail = ({ route }: Props) => {
 
     return () => setStatusBarHidden(false, "fade");
   }, []);
-
-  useEffect(() => {
-    const requestMovieDetail = async () => {
-      if (!Number.isInteger(movieId) || movieId < 1) {
-        setMovie(undefined);
-        setLoadError("Invalid movie link.");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        setMovie(undefined);
-        setLoadError(null);
-        const response = await api.get<TmdbMovie>(`movies/${movieId}`, {
-          params: { append_to_response: "videos" },
-        });
-
-        setMovie(response.data);
-      } catch {
-        setMovie(undefined);
-        setLoadError("Could not load this movie.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    requestMovieDetail();
-  }, [movieId]);
 
   useEffect(() => {
     (async () => {
