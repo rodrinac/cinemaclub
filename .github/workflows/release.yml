@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: release
-  cancel-in-progress: false
+  group: release-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
 
 jobs:
   release:
@@ -42,7 +42,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+          tag="${{ steps.version.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1 || gh api "repos/${{ github.repository }}/git/ref/tags/$tag" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
