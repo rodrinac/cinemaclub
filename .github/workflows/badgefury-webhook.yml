@@ -14,8 +14,19 @@ jobs:
   notify-badgefury:
     runs-on: ubuntu-latest
     steps:
+      - name: Check Badge Fury webhook availability
+        id: webhook-check
+        env:
+          BADGE_FURY_WEBHOOK_URL: ${{ secrets.BADGE_FURY_WEBHOOK_URL }}
+        run: |
+          if [ -n "$BADGE_FURY_WEBHOOK_URL" ]; then
+            echo "has_webhook=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_webhook=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Trigger Badge Fury webhook
-        if: ${{ secrets.BADGE_FURY_WEBHOOK_URL != '' }}
+        if: ${{ steps.webhook-check.outputs.has_webhook == 'true' }}
         env:
           BADGE_FURY_WEBHOOK_URL: ${{ secrets.BADGE_FURY_WEBHOOK_URL }}
         run: |
