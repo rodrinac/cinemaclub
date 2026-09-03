@@ -9,11 +9,11 @@ import {
   setGenreFilterMode,
   toggleGenreFilter,
 } from "../src/api/database";
-import { resetMockDatabase } from "./mocks/expo-sqlite";
+import { resetMockMMKV } from "./mocks/react-native-mmkv";
 
-describe("Database API (expo-sqlite abstraction)", () => {
+describe("Database API (MMKV-backed)", () => {
   beforeEach(async () => {
-    resetMockDatabase();
+    resetMockMMKV();
     await initDB();
   });
 

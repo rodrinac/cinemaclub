@@ -3,11 +3,11 @@ import {
   shouldFetchSearchPage,
   shouldLoadNextSearchPage,
 } from "../src/pages/SearchMovie/pagination";
-import { resetMockDatabase } from "./mocks/expo-sqlite";
+import { resetMockMMKV } from "./mocks/react-native-mmkv";
 
 describe("Search pagination and filter persistence integration", () => {
   beforeEach(async () => {
-    resetMockDatabase();
+    resetMockMMKV();
     await database.initDB();
   });
 
