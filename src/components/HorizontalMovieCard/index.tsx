@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
 import * as database from "../../api/database";
 import type { TmdbMovie } from "../../api/tmdb";
 import { getMovieDetails } from "../../api/tmdb/movieDetailsCache";
+import AnimatedPressable from "../AnimatedPressable";
 import Theme from "../../theme";
 
 type Props = {
@@ -91,14 +92,14 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.posterWrapper} onPress={onPosterPress}>
+      <AnimatedPressable contentStyle={styles.posterWrapper} onPress={onPosterPress}>
         <Image
           style={styles.poster}
           source={{ uri: posterUrl }}
           resizeMode="cover"
           borderRadius={8}
         />
-      </TouchableOpacity>
+      </AnimatedPressable>
       <View style={styles.movieDetails}>
         <View style={styles.titleWrapper}>
           <Text style={styles.movieTitle} numberOfLines={1}>
