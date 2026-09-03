@@ -3,6 +3,6 @@ module.exports = {
   testEnvironment: "node",
   testMatch: ["**/tests/**/*.test.ts"],
   moduleNameMapper: {
-    "^expo-sqlite$": "<rootDir>/tests/mocks/expo-sqlite.ts",
+    "^react-native-mmkv$": "<rootDir>/tests/mocks/react-native-mmkv.js",
   },
 };
