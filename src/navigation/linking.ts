@@ -13,6 +13,7 @@ export const appLinkingConfig = {
     Settings: "settings",
     PrivacyPolicy: "privacy-policy",
     TermsOfService: "terms-of-service",
+    Feedback: "feedback",
     MovieDetail: {
       path: "movie/:movieId",
       parse: {

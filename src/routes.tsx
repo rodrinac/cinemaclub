@@ -4,6 +4,7 @@ import * as Linking from "expo-linking";
 import React from "react";
 import { Platform } from "react-native";
 import { appLinkingConfig } from "./navigation/linking";
+import Feedback from "./pages/Feedback";
 import Home from "./pages/Home";
 import MovieDetail from "./pages/MovieDetail";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -46,6 +47,10 @@ const AppStack = createStackNavigator({
       screen: TermsOfService,
       linking: appLinkingConfig.screens.TermsOfService,
     },
+    Feedback: {
+      screen: Feedback,
+      linking: appLinkingConfig.screens.Feedback,
+    },
   },
 });
 
@@ -59,6 +64,7 @@ const WEB_ROUTE_TITLES = {
   Settings: "Cinema Club • Settings",
   PrivacyPolicy: "Cinema Club • Privacy Policy",
   TermsOfService: "Cinema Club • Terms of Service",
+  Feedback: "Cinema Club • Feedback",
 } as const;
 
 type WebTitleRouteName = keyof typeof WEB_ROUTE_TITLES;
