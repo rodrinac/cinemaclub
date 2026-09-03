@@ -26,6 +26,7 @@ permissions:
 
 jobs:
   deploy:
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip version-bump]') }}
     runs-on: ubuntu-latest
     environment: production
     env:
