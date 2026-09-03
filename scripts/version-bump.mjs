@@ -21,6 +21,7 @@ const PACKAGE_JSON_PATH = path.join(REPO_ROOT, "package.json");
 const APP_JSON_PATH = path.join(REPO_ROOT, "app.json");
 
 const CONVENTIONAL_COMMIT_PATTERN = /^(\w+)(\([^)]*\))?(!)?:\s*(.+)$/;
+const BREAKING_CHANGE_PATTERN = /^BREAKING CHANGE:\s*/m;
 
 const run = (command, args) =>
   execFileSync(command, args, { cwd: REPO_ROOT, encoding: "utf8" }).trim();
@@ -62,7 +63,7 @@ const classifyBump = (commitMessages) => {
     }
 
     const [, type, , breakingBang] = match;
-    const isBreaking = Boolean(breakingBang) || /BREAKING CHANGE:/.test(body);
+    const isBreaking = Boolean(breakingBang) || BREAKING_CHANGE_PATTERN.test(body);
 
     if (isBreaking) {
       return "major";
