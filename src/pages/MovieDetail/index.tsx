@@ -3,6 +3,7 @@ import { useMovieDetailsQuery } from "@/api/tmdb/queries";
 import AnimatedPressable from "@/components/AnimatedPressable";
 import FooterBar from "@/components/FooterBar";
 import Theme from "@/theme";
+import { updateWebSeoMetadata } from "@/utils/seoMeta";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, type StaticScreenProps } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -32,6 +33,8 @@ type Props = StaticScreenProps<{
 const TRAILER_MIN_LOADING_MS = 250;
 const TRAILER_WEB_LOAD_FAILSAFE_MS = 4000;
 const WEB_MOVIE_DETAIL_FALLBACK_TITLE = "Cinema Club • Movie";
+const WEB_MOVIE_DETAIL_FALLBACK_DESCRIPTION = "Explore movie details, ratings, and overviews on Cinema Club.";
+const SEO_DESCRIPTION_MAX_LENGTH = 200;
 const MOVIE_DETAIL_LARGE_VIEWPORT_WIDTH = 768;
 
 const hasUsableTmdbImagePath = (value: unknown): value is string =>
@@ -94,8 +97,26 @@ const MovieDetail = ({ route }: Props) => {
       return;
     }
 
-    document.title = movie?.title ? `Cinema Club • ${movie.title}` : WEB_MOVIE_DETAIL_FALLBACK_TITLE;
-  }, [movie?.title]);
+    if (!movie) {
+      updateWebSeoMetadata({
+        title: WEB_MOVIE_DETAIL_FALLBACK_TITLE,
+        description: WEB_MOVIE_DETAIL_FALLBACK_DESCRIPTION,
+      });
+      return;
+    }
+
+    const description = movie.overview
+      ? movie.overview.slice(0, SEO_DESCRIPTION_MAX_LENGTH)
+      : WEB_MOVIE_DETAIL_FALLBACK_DESCRIPTION;
+    const ogImagePath = movie.poster_path ?? movie.backdrop_path;
+
+    updateWebSeoMetadata({
+      title: `Cinema Club • ${movie.title}`,
+      description,
+      image: ogImagePath ? `https://image.tmdb.org/t/p/w780${ogImagePath}` : undefined,
+      type: "video.movie",
+    });
+  }, [movie]);
 
   const changeBookmarkStatus = async () => {
     if (bookmarked) {

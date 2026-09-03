@@ -12,6 +12,7 @@ import SearchFilters from "./pages/SearchFilters";
 import SearchMovie from "./pages/SearchMovie";
 import Settings from "./pages/Settings";
 import TermsOfService from "./pages/TermsOfService";
+import { updateWebSeoMetadata } from "./utils/seoMeta";
 
 const AppStack = createStackNavigator({
   screenOptions: {
@@ -67,6 +68,17 @@ const WEB_ROUTE_TITLES = {
   Feedback: "Cinema Club • Feedback",
 } as const;
 
+const WEB_ROUTE_DESCRIPTIONS = {
+  Home: "Discover now playing, popular, and upcoming movies with Cinema Club.",
+  MovieDetail: "Explore movie details, ratings, and overviews on Cinema Club.",
+  SearchMovie: "Search thousands of movies by title on Cinema Club.",
+  SearchFilters: "Filter movie search results by genre, year, and rating on Cinema Club.",
+  Settings: "Manage your Cinema Club app preferences.",
+  PrivacyPolicy: "Read the Cinema Club privacy policy.",
+  TermsOfService: "Read the Cinema Club terms of service.",
+  Feedback: "Send feedback and feature requests to the Cinema Club team.",
+} as const;
+
 type WebTitleRouteName = keyof typeof WEB_ROUTE_TITLES;
 
 type NavigationStateLike = {
@@ -101,7 +113,10 @@ const updateWebDocumentTitle = (state?: NavigationStateLike) => {
   }
 
   const activeRouteName = getActiveRouteName(state) ?? "Home";
-  document.title = WEB_ROUTE_TITLES[activeRouteName];
+  updateWebSeoMetadata({
+    title: WEB_ROUTE_TITLES[activeRouteName],
+    description: WEB_ROUTE_DESCRIPTIONS[activeRouteName],
+  });
 };
 
 declare global {
