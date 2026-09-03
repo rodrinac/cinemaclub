@@ -1,3 +1,4 @@
+import "@/utils/suppressWebDeprecationWarnings";
 import { initDB } from "@/api/database";
 import Routes from "@/routes";
 import Theme from "@/theme";
@@ -10,7 +11,7 @@ import { Ubuntu_700Bold, useFonts } from "@expo-google-fonts/ubuntu";
 import { Ionicons } from "@expo/vector-icons";
 import { isRunningInExpoGo } from "expo";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import { StatusBar, View } from "react-native";
 import "react-native-gesture-handler";
 import { MD3DarkTheme, Provider as PaperProvider } from "react-native-paper";
@@ -32,10 +33,14 @@ export default function App() {
     Roboto_500Medium,
     Ubuntu_700Bold,
   });
+  const hasInitializedRef = useRef(false);
 
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
-      await initDB();
+      if (!hasInitializedRef.current) {
+        hasInitializedRef.current = true;
+        await initDB();
+      }
       SplashScreen.hide();
     }
   }, [fontsLoaded]);
