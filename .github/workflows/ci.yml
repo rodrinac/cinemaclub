@@ -12,6 +12,13 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # Skip pure version-bump commits/PRs: they only touch package.json/app.json
+    # version fields and add no value re-running the full lint/build/test suite.
+    if: >-
+      ${{
+        (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip version-bump]')) &&
+        (github.event_name != 'pull_request' || github.head_ref != 'chore/version-bump')
+      }}
 
     steps:
       - name: Checkout repository
