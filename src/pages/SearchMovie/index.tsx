@@ -3,6 +3,7 @@ import { useNavigation } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
+  NativeScrollEvent,
   NativeSyntheticEvent,
   FlatList,
   Platform,
@@ -40,6 +41,14 @@ const SearchMovie = () => {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
+  const screenWebStyle =
+    Platform.OS === "web"
+      ? {
+          overflow: "hidden" as const,
+          height,
+          maxHeight: height,
+        }
+      : null;
 
   const [filter, setFilter] = useState<database.GenreFilterMode>("INCLUDING");
   const [genreFilters, setGenreFilters] = useState<number[]>();
@@ -52,6 +61,7 @@ const SearchMovie = () => {
 
   const movieListRef = useRef<TmdbMovieList>(PRISTINE_EMPTY_LIST);
   const isFetchingNextPageRef = useRef(false);
+  const hasUserScrollIntentRef = useRef(false);
   const requestIdRef = useRef(0);
 
   const filterMovieList = useCallback(
@@ -133,6 +143,7 @@ const SearchMovie = () => {
       return;
     }
 
+    hasUserScrollIntentRef.current = false;
     isFetchingNextPageRef.current = false;
     movieListRef.current = PRISTINE_EMPTY_LIST;
     setMovieList(PRISTINE_EMPTY_LIST);
@@ -145,6 +156,7 @@ const SearchMovie = () => {
 
   const handleEndReached = useCallback(() => {
     if (
+      !hasUserScrollIntentRef.current ||
       !shouldLoadNextSearchPage({
         hasQuery: pageToLoad.searchQuery.trim().length > 0,
         page: movieListRef.current.page,
@@ -187,7 +199,7 @@ const SearchMovie = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1 }}
+      style={[{ flex: 1 }, screenWebStyle]}
     >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
@@ -218,6 +230,7 @@ const SearchMovie = () => {
       <View style={styles.main}>
         {movies.length > 0 && (
           <FlatList
+            style={styles.movieList}
             data={movies}
             renderItem={({ item }) => (
               <HorizontalMovieCard movie={item} onPosterPress={() => goToMovieDetails(item)} />
@@ -225,6 +238,15 @@ const SearchMovie = () => {
             keyExtractor={(item) => item.id.toString()}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.2}
+            onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+              if (event.nativeEvent.contentOffset.y > 0) {
+                hasUserScrollIntentRef.current = true;
+              }
+            }}
+            onScrollBeginDrag={() => {
+              hasUserScrollIntentRef.current = true;
+            }}
+            scrollEventThrottle={16}
           />
         )}
       </View>
@@ -276,10 +298,18 @@ const styles = StyleSheet.create({
   },
   main: {
     flex: 1,
+    flexShrink: 1,
+    minHeight: 0,
     justifyContent: "center",
     backgroundColor: Theme.colors.background,
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 12,
+    ...(Platform.OS === "web" ? { overflow: "hidden" as const } : null),
+  },
+  movieList: {
+    flex: 1,
+    flexShrink: 1,
+    minHeight: 0,
   },
 });
