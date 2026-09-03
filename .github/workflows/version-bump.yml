@@ -1,0 +1,73 @@
+name: Version bump
+
+on:
+  push:
+    branches: [master, main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    # Skip runs triggered by the bump commit itself to avoid an infinite loop.
+    if: ${{ !contains(github.event.head_commit.message, '[skip version-bump]') }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Check for an existing open version-bump PR
+        id: existing-pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          existing="$(gh pr list --head chore/version-bump --state open --json number --jq '.[0].number // empty')"
+          echo "number=${existing}" >> "$GITHUB_OUTPUT"
+
+      - name: Run version bump script
+        id: bump
+        if: steps.existing-pr.outputs.number == ''
+        run: |
+          set -euo pipefail
+          next_version="$(node scripts/version-bump.mjs)"
+          if [ -z "${next_version}" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "version=${next_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Open version bump pull request
+        if: steps.existing-pr.outputs.number == '' && steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          branch="chore/version-bump"
+          git checkout -b "$branch"
+          git add package.json app.json
+          git commit -m "chore(release): bump version to v${{ steps.bump.outputs.version }} [skip version-bump]"
+          git push origin "$branch" --force
+
+          gh pr create \
+            --base "${{ github.ref_name }}" \
+            --head "$branch" \
+            --title "chore(release): bump version to v${{ steps.bump.outputs.version }}" \
+            --body "Automated version bump to \`v${{ steps.bump.outputs.version }}\`, determined from Conventional Commits merged since the last release tag. Merging this PR will trigger the release workflow once the next production deploy completes."
