@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import * as StoreReview from "expo-store-review";
 import React, { useEffect } from "react";
 import {
   KeyboardAvoidingView,
@@ -94,7 +93,10 @@ const Settings = () => {
             style={{ flex: 1 }}
           />
         </AnimatedPressable>
-        <AnimatedPressable contentStyle={styles.listItem} onPress={() => StoreReview.requestReview()}>
+        <AnimatedPressable
+          contentStyle={styles.listItem}
+          onPress={() => navigation.navigate("Feedback")}
+        >
           <List.Item
             title="Review"
             description="Send your feedback"
