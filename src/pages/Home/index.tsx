@@ -1,13 +1,13 @@
 import axios from "axios";
-import { getDiscoverMovies, getMoviesApiBaseUrl, TmdbMovie, TmdbMovieList } from "@/api/tmdb";
+import { TmdbMovie } from "@/api/tmdb";
+import { useDiscoverMoviesInfiniteQuery } from "@/api/tmdb/queries";
 import FooterBar, { FOOTER_BAR_BASE_HEIGHT } from "@/components/FooterBar";
 import VerticalMovieCard from "@/components/VerticalMovieCard";
 import AnimatedPressable from "@/components/AnimatedPressable";
 import Theme from "@/theme";
-import { mergeUniqueMovies } from "@/utils/movieList";
 import { blurActiveElementBeforeNavigate } from "@/utils/focus";
 import { useNavigation } from "@react-navigation/native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -26,11 +26,6 @@ import {
   DISCOVER_CATEGORIES,
   DISCOVER_CATEGORY_BY_KEY,
 } from "./discoverCategories";
-
-type PageToLoad = {
-  number: number;
-  categoryKey: keyof typeof DISCOVER_CATEGORY_BY_KEY;
-};
 
 const DISCOVER_LOAD_ERROR = "Could not load discover movies. Please try again.";
 
@@ -83,18 +78,24 @@ const Home = () => {
       : styles.movieList;
   const movieListContentStyle = { paddingHorizontal: 6, paddingBottom: footerOffset };
 
-  const [movieList, setMovieList] = useState<TmdbMovieList>();
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
-    number: 1,
-    categoryKey: "POPULAR",
-  });
+  const [categoryKey, setCategoryKey] =
+    useState<keyof typeof DISCOVER_CATEGORY_BY_KEY>("POPULAR");
 
-  const requestIdRef = useRef(0);
-  const isFetchingNextPageRef = useRef(false);
   const hasUserScrollIntentRef = useRef(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  const {
+    data: movieList,
+    isPending: isLoading,
+    isError,
+    error: loadErrorObject,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refetch,
+  } = useDiscoverMoviesInfiniteQuery(categoryKey);
+
+  const loadError = isError ? getDiscoverLoadErrorMessage(loadErrorObject) : null;
 
   const titleOpacity = scrollY.interpolate({
     inputRange: [0, 100],
@@ -114,85 +115,22 @@ const Home = () => {
     extrapolate: "clamp",
   });
 
-  useEffect(() => {
-    const requestDiscoverMovies = async () => {
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
-      setIsLoading(true);
-      setLoadError(null);
-
-      try {
-        const category = DISCOVER_CATEGORY_BY_KEY[pageToLoad.categoryKey];
-        const response = await getDiscoverMovies(category.key, pageToLoad.number);
-
-        if (requestId !== requestIdRef.current) {
-          return;
-        }
-
-        const responseData = response.data;
-        const loadedMovies = responseData.results;
-
-        setMovieList((prevMovieList) => {
-          const currentMovieList = pageToLoad.number === 1 ? [] : prevMovieList?.results || [];
-          return {
-            ...responseData,
-            results: mergeUniqueMovies(currentMovieList, loadedMovies),
-          };
-        });
-      } catch (error) {
-        if (requestId !== requestIdRef.current) {
-          return;
-        }
-
-        if (__DEV__) {
-          console.warn("[home] Failed to load discover movies", {
-            baseUrl: getMoviesApiBaseUrl(),
-            categoryKey: pageToLoad.categoryKey,
-            page: pageToLoad.number,
-            error,
-          });
-        }
-
-        setLoadError(getDiscoverLoadErrorMessage(error));
-      } finally {
-        if (requestId === requestIdRef.current) {
-          isFetchingNextPageRef.current = false;
-          setIsLoading(false);
-        }
-      }
-    };
-
-    requestDiscoverMovies();
-  }, [pageToLoad]);
-
   function handleMoviePosterPress(movie: TmdbMovie) {
     blurActiveElementBeforeNavigate();
     navigation.navigate("MovieDetail", { movieId: movie.id });
   }
 
-  const onSelectCategory = (categoryKey: keyof typeof DISCOVER_CATEGORY_BY_KEY) => {
-    isFetchingNextPageRef.current = false;
+  const onSelectCategory = (nextCategoryKey: keyof typeof DISCOVER_CATEGORY_BY_KEY) => {
     hasUserScrollIntentRef.current = false;
-    setPageToLoad({
-      number: 1,
-      categoryKey,
-    });
+    setCategoryKey(nextCategoryKey);
   };
 
   const handleEndReached = () => {
-    if (!hasUserScrollIntentRef.current || isLoading || isFetchingNextPageRef.current || !movieList) {
+    if (!hasUserScrollIntentRef.current || isLoading || isFetchingNextPage || !hasNextPage) {
       return;
     }
 
-    if (movieList.page >= movieList.total_pages) {
-      return;
-    }
-
-    isFetchingNextPageRef.current = true;
-    setPageToLoad((currentPage) => ({
-      ...currentPage,
-      number: currentPage.number + 1,
-    }));
+    fetchNextPage();
   };
 
   return (
@@ -215,7 +153,7 @@ const Home = () => {
 
         <View style={styles.menu}>
           {DISCOVER_CATEGORIES.map((category) => {
-            const isActive = pageToLoad.categoryKey === category.key;
+            const isActive = categoryKey === category.key;
 
             return (
               <AnimatedPressable
@@ -243,14 +181,7 @@ const Home = () => {
         {!movieList && !isLoading && loadError && (
           <View style={styles.centerState} testID="home-error-state">
             <Text style={styles.errorText}>{loadError}</Text>
-            <AnimatedPressable
-              onPress={() =>
-                setPageToLoad((currentPage) => ({
-                  ...currentPage,
-                }))
-              }
-              testID="home-retry-button"
-            >
+            <AnimatedPressable onPress={() => refetch()} testID="home-retry-button">
               <Text style={styles.retryText}>Retry</Text>
             </AnimatedPressable>
           </View>

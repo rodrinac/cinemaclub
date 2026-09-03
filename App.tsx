@@ -1,5 +1,6 @@
 import "@/utils/suppressWebDeprecationWarnings";
 import { initDB } from "@/api/database";
+import { queryClient } from "@/api/queryClient";
 import Routes from "@/routes";
 import Theme from "@/theme";
 import { Roboto_400Regular, Roboto_500Medium } from "@expo-google-fonts/roboto";
@@ -9,6 +10,7 @@ import {
 } from "@expo-google-fonts/roboto-condensed";
 import { Ubuntu_700Bold, useFonts } from "@expo-google-fonts/ubuntu";
 import { Ionicons } from "@expo/vector-icons";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { isRunningInExpoGo } from "expo";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useRef } from "react";
@@ -107,7 +109,9 @@ export default function App() {
           ),
         }}
       >
-        <Routes />
+        <QueryClientProvider client={queryClient}>
+          <Routes />
+        </QueryClientProvider>
       </PaperProvider>
     </View>
   );

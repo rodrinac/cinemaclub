@@ -17,25 +17,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import * as database from "@/api/database";
-import api, { TmdbMovie, TmdbMovieList } from "@/api/tmdb";
+import { TmdbMovie } from "@/api/tmdb";
+import { useSearchMoviesInfiniteQuery } from "@/api/tmdb/queries";
 import HorizontalMovieCard from "@/components/HorizontalMovieCard";
 import AnimatedPressable from "@/components/AnimatedPressable";
 import Theme from "@/theme";
-import { mergeUniqueMovies } from "@/utils/movieList";
 import { blurActiveElementBeforeNavigate } from "@/utils/focus";
-import { shouldFetchSearchPage, shouldLoadNextSearchPage } from "./pagination";
-
-type PageToLoad = {
-  number: number;
-  searchQuery: string;
-};
-
-const PRISTINE_EMPTY_LIST: TmdbMovieList = {
-  page: 0,
-  results: [],
-  total_pages: 0,
-  total_results: 0,
-};
 
 const SearchMovie = () => {
   const navigation = useNavigation();
@@ -53,17 +40,16 @@ const SearchMovie = () => {
 
   const [filter, setFilter] = useState<database.GenreFilterMode>("INCLUDING");
   const [genreFilters, setGenreFilters] = useState<number[]>();
-  const [movieList, setMovieList] = useState<TmdbMovieList>(PRISTINE_EMPTY_LIST);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [pageToLoad, setPageToLoad] = useState<PageToLoad>({
-    number: 0,
-    searchQuery: "",
-  });
-
-  const movieListRef = useRef<TmdbMovieList>(PRISTINE_EMPTY_LIST);
-  const isFetchingNextPageRef = useRef(false);
   const hasUserScrollIntentRef = useRef(false);
-  const requestIdRef = useRef(0);
+
+  const {
+    data: movieList,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useSearchMoviesInfiniteQuery(searchQuery);
 
   const filterMovieList = useCallback(
     (movies: TmdbMovie[]): TmdbMovie[] => {
@@ -85,95 +71,27 @@ const SearchMovie = () => {
   );
 
   const movies = useMemo(() => {
-    return filterMovieList(movieList.results);
-  }, [filterMovieList, movieList.results]);
-
-  const fetchSearchMovies = useCallback(async () => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-
-    try {
-      const response = await api.get<TmdbMovieList>("search/movies", {
-        params: {
-          query: pageToLoad.searchQuery,
-          page: pageToLoad.number,
-          append_to_response: "credits",
-        },
-      });
-
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-
-      setMovieList((previousMovieList) => {
-        const currentResults = pageToLoad.number === 1 ? [] : previousMovieList.results;
-        const nextMovieList = {
-          ...response.data,
-          results: mergeUniqueMovies(currentResults, response.data.results),
-        };
-
-        movieListRef.current = nextMovieList;
-        return nextMovieList;
-      });
-    } finally {
-      if (requestId === requestIdRef.current) {
-        isFetchingNextPageRef.current = false;
-      }
-    }
-  }, [pageToLoad]);
-
-  useEffect(() => {
-    if (
-      !shouldFetchSearchPage({
-        requestedPage: pageToLoad.number,
-        searchQuery: pageToLoad.searchQuery,
-        totalPages: movieListRef.current.total_pages,
-      })
-    ) {
-      isFetchingNextPageRef.current = false;
-      return;
-    }
-
-    fetchSearchMovies();
-  }, [fetchSearchMovies, pageToLoad.number, pageToLoad.searchQuery]);
+    return filterMovieList(movieList?.results ?? []);
+  }, [filterMovieList, movieList?.results]);
 
   const handleSubmitEditing = (event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => {
-    const searchQuery = event.nativeEvent.text;
+    const query = event.nativeEvent.text;
 
-    if (searchQuery.trim().length < 1) {
+    if (query.trim().length < 1) {
       return;
     }
 
     hasUserScrollIntentRef.current = false;
-    isFetchingNextPageRef.current = false;
-    movieListRef.current = PRISTINE_EMPTY_LIST;
-    setMovieList(PRISTINE_EMPTY_LIST);
-
-    setPageToLoad({
-      number: 1,
-      searchQuery,
-    });
+    setSearchQuery(query);
   };
 
   const handleEndReached = useCallback(() => {
-    if (
-      !hasUserScrollIntentRef.current ||
-      !shouldLoadNextSearchPage({
-        hasQuery: pageToLoad.searchQuery.trim().length > 0,
-        page: movieListRef.current.page,
-        totalPages: movieListRef.current.total_pages,
-        isFetchingNextPage: isFetchingNextPageRef.current,
-      })
-    ) {
+    if (!hasUserScrollIntentRef.current || isFetchingNextPage || !hasNextPage) {
       return;
     }
 
-    isFetchingNextPageRef.current = true;
-    setPageToLoad((currentPage) => ({
-      ...currentPage,
-      number: currentPage.number + 1,
-    }));
-  }, [pageToLoad.searchQuery]);
+    fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const goToMovieDetails = (movie: TmdbMovie) => {
     blurActiveElementBeforeNavigate();
