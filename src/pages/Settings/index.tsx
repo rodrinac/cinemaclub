@@ -53,9 +53,6 @@ const Settings = () => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
           </TouchableOpacity>
-          <TouchableOpacity>
-            <Ionicons name="help-circle-outline" color={Theme.colors.accent} size={24} />
-          </TouchableOpacity>
         </View>
         <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>SETTINGS</Text>
       </View>
