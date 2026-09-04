@@ -5,27 +5,23 @@ on:
   workflow_run:
     workflows: ["Release"]
     types: [completed]
+    branches: [main]
 
 concurrency:
   group: production-release
   cancel-in-progress: false
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
 
 jobs:
   verify-release:
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       should_deploy: ${{ steps.gate.outputs.should_deploy }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-
       - name: Evaluate release gate
         id: gate
         env:
@@ -41,7 +37,7 @@ jobs:
           fi
 
           head_sha="${{ github.event.workflow_run.head_sha }}"
-          version="$(node -p "require('./package.json').version")"
+          version="$(gh api "repos/${{ github.repository }}/contents/package.json?ref=${head_sha}" --jq '.content' | base64 -d | jq -r '.version')"
           tag="v${version}"
 
           echo "Checking release status for tag ${tag} at commit ${head_sha}..."
@@ -72,6 +68,9 @@ jobs:
     needs: verify-release
     if: ${{ needs.verify-release.outputs.should_deploy == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     environment: production
     env:
       TF_VAR_service_name: ${{ vars.TMDB_PROXY_SERVICE_NAME }}
@@ -255,6 +254,9 @@ jobs:
   deploy-web:
     needs: deploy
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     environment: production
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
