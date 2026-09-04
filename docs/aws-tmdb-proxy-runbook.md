@@ -160,10 +160,14 @@ cache-hit event after a successful request.
 
 - The production GitHub Actions workflow stays serialized in
   `.github/workflows/deploy-aws-proxy.yml`: `verify-release` verifies a GitHub
-  release was published for the triggering commit, `deploy` applies Terraform and
-  smoke-tests the proxy, then `deploy-web` resolves the live API Gateway REST
-  API ID from AWS, updates EAS, exports the web app, and deploys Expo Hosting
-  production. All checkout steps pin `ref: ${{ github.event.workflow_run.head_sha || github.sha }}`.
+  release was published for the triggering commit, `detect-changes` determines
+  whether backend (`infra/`, `server/`, `scripts/smoke-aws-proxy.mjs`), web UI
+  (`src/`, `App.tsx`, `assets/`, `public/`, `eas.json`, etc.), or shared root files
+  changed, `deploy` applies Terraform and smoke-tests the proxy (if backend changed),
+  and `deploy-web` resolves the live API Gateway REST API ID from AWS, updates EAS,
+  exports the web app, and deploys Expo Hosting production (if web UI changed).
+  Manual dispatches (`workflow_dispatch`) support selecting `target: auto|all|backend|web`
+  and custom `base_ref`. All checkout steps pin `ref: ${{ github.event.workflow_run.head_sha || github.sha }}`.
 - The web job must not read Terraform remote state. It derives
   `EXPO_PUBLIC_MOVIES_API_URL` from the live API Gateway control-plane lookup
   using the deterministic REST API name

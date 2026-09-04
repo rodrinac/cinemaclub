@@ -2,6 +2,22 @@ name: Deploy production
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Deployment target scope"
+        required: true
+        type: choice
+        default: "auto"
+        options:
+          - auto
+          - all
+          - backend
+          - web
+      base_ref:
+        description: "Custom base tag/SHA/branch for diff comparison (used when target is 'auto')"
+        required: false
+        type: string
+        default: ""
   workflow_run:
     workflows: ["Release"]
     types: [completed]
@@ -33,7 +49,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "should_deploy=true" >> "$GITHUB_OUTPUT"
             echo "### 🚀 Manual Dispatch" >> "$GITHUB_STEP_SUMMARY"
-            echo "Workflow triggered manually via \`workflow_dispatch\`. Proceeding with deployment." >> "$GITHUB_STEP_SUMMARY"
+            echo "Workflow triggered manually via \`workflow_dispatch\` (target: \`${{ inputs.target }}\`). Proceeding." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -69,9 +85,186 @@ jobs:
             echo "Release \`${tag}\` target (\`${target_commit}\`) does not match triggering commit \`${head_sha}\`. Skipping deployment." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  deploy:
+  detect-changes:
     needs: verify-release
     if: ${{ needs.verify-release.outputs.should_deploy == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      deploy_backend: ${{ steps.filter.outputs.deploy_backend }}
+      deploy_web: ${{ steps.filter.outputs.deploy_web }}
+    steps:
+      - name: Detect changed paths
+        id: filter
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TARGET: ${{ inputs.target || 'auto' }}
+          INPUT_BASE_REF: ${{ inputs.base_ref || '' }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          node - << 'EOF'
+          const { execSync } = require('child_process');
+          const fs = require('fs');
+
+          const ghRepo = process.env.GH_REPO;
+          const eventName = process.env.EVENT_NAME;
+          const inputTarget = process.env.INPUT_TARGET || 'auto';
+          const inputBaseRef = process.env.INPUT_BASE_REF || '';
+          const headSha = process.env.HEAD_SHA;
+          const githubOutput = process.env.GITHUB_OUTPUT;
+          const githubSummary = process.env.GITHUB_STEP_SUMMARY;
+
+          function setOutput(key, value) {
+            fs.appendFileSync(githubOutput, `${key}=${value}\n`);
+          }
+
+          function appendSummary(text) {
+            fs.appendFileSync(githubSummary, `${text}\n`);
+          }
+
+          console.log(`Evaluating change detection (event: ${eventName}, target: ${inputTarget}, head: ${headSha})`);
+
+          // 1. Handle explicit manual target overrides
+          if (eventName === 'workflow_dispatch' && inputTarget !== 'auto') {
+            const deployBackend = (inputTarget === 'all' || inputTarget === 'backend');
+            const deployWeb = (inputTarget === 'all' || inputTarget === 'web');
+
+            setOutput('deploy_backend', deployBackend.toString());
+            setOutput('deploy_web', deployWeb.toString());
+
+            appendSummary(`### 🎯 Manual Target Selection`);
+            appendSummary(`- **Target:** \`${inputTarget}\``);
+            appendSummary(`- **Deploy Backend (AWS Proxy):** \`${deployBackend}\``);
+            appendSummary(`- **Deploy Web UI (Expo EAS):** \`${deployWeb}\``);
+            process.exit(0);
+          }
+
+          // 2. Determine base ref for comparison
+          let baseRef = inputBaseRef;
+          if (!baseRef) {
+            try {
+              // Look up all releases to find previous release tag
+              const releasesJson = execSync(
+                `gh api repos/${ghRepo}/releases --jq '[.[].tag_name]'`,
+                { encoding: 'utf8' }
+              ).trim();
+              const tags = JSON.parse(releasesJson || '[]');
+
+              // Determine current release tag if possible
+              const pkgJsonContent = execSync(
+                `gh api "repos/${ghRepo}/contents/package.json?ref=${headSha}" --jq '.content'`,
+                { encoding: 'utf8' }
+              ).trim();
+              const version = JSON.parse(Buffer.from(pkgJsonContent, 'base64').toString('utf8')).version;
+              const currentTag = `v${version}`;
+
+              const currentIdx = tags.indexOf(currentTag);
+              if (currentIdx !== -1 && currentIdx + 1 < tags.length) {
+                baseRef = tags[currentIdx + 1];
+              } else if (tags.length > 1) {
+                baseRef = tags.find(t => t !== currentTag) || tags[1];
+              }
+            } catch (err) {
+              console.warn('Unable to resolve previous release tag via API:', err.message);
+            }
+          }
+
+          // Fallback if no base ref found (e.g. initial repository release) -> deploy all
+          if (!baseRef) {
+            console.log('No base ref found for diff comparison. Defaulting to deploy all.');
+            setOutput('deploy_backend', 'true');
+            setOutput('deploy_web', 'true');
+            appendSummary(`### 🚀 Full Deployment (Default / Initial Release)`);
+            appendSummary(`No prior release tag found to diff against. Triggering both Backend and Web deployments.`);
+            process.exit(0);
+          }
+
+          console.log(`Comparing diff: ${baseRef}...${headSha}`);
+
+          // 3. Fetch changed files from GitHub Compare API
+          let changedFiles = [];
+          try {
+            const compareJson = execSync(
+              `gh api "repos/${ghRepo}/compare/${baseRef}...${headSha}" --jq '[.files[].filename]'`,
+              { encoding: 'utf8' }
+            ).trim();
+            changedFiles = JSON.parse(compareJson || '[]');
+          } catch (err) {
+            console.warn(`Failed to compare ${baseRef}...${headSha}:`, err.message);
+            // On compare failure, fallback to deploy all for safety
+            setOutput('deploy_backend', 'true');
+            setOutput('deploy_web', 'true');
+            appendSummary(`### ⚠️ Compare API Fallback`);
+            appendSummary(`Could not compare \`${baseRef}..${headSha}\`. Defaulting to full deployment.`);
+            process.exit(0);
+          }
+
+          console.log(`Changed files (${changedFiles.length}):`, changedFiles);
+
+          // 4. Pattern matching classification
+          const backendPatterns = [
+            /^infra\//,
+            /^server\//,
+            /^scripts\/smoke-aws-proxy\.mjs$/,
+          ];
+
+          const webPatterns = [
+            /^src\//,
+            /^App\.tsx$/,
+            /^app\.json$/,
+            /^assets\//,
+            /^public\//,
+            /^eas\.json$/,
+            /^metro\.config\.js$/,
+            /^babel\.config\.js$/,
+            /^scripts\/verify-eas-public-movies-api-url\.mjs$/,
+          ];
+
+          const sharedPatterns = [
+            /^package\.json$/,
+            /^package-lock\.json$/,
+            /^\.github\/workflows\/deploy-aws-proxy\.yml$/,
+            /^tsconfig\.json$/,
+          ];
+
+          let hasBackendChanges = false;
+          let hasWebChanges = false;
+          let hasSharedChanges = false;
+
+          for (const file of changedFiles) {
+            if (sharedPatterns.some(p => p.test(file))) {
+              hasSharedChanges = true;
+              hasBackendChanges = true;
+              hasWebChanges = true;
+            }
+            if (backendPatterns.some(p => p.test(file))) {
+              hasBackendChanges = true;
+            }
+            if (webPatterns.some(p => p.test(file))) {
+              hasWebChanges = true;
+            }
+          }
+
+          setOutput('deploy_backend', hasBackendChanges.toString());
+          setOutput('deploy_web', hasWebChanges.toString());
+
+          appendSummary(`### 🔍 Path Change Detection Summary`);
+          appendSummary(`- **Base Ref:** \`${baseRef}\``);
+          appendSummary(`- **Head Ref:** \`${headSha}\``);
+          appendSummary(`- **Total Files Changed:** \`${changedFiles.length}\``);
+          appendSummary(`- **Deploy Backend (AWS Proxy):** \`${hasBackendChanges}\``);
+          appendSummary(`- **Deploy Web UI (Expo EAS):** \`${hasWebChanges}\``);
+          if (hasSharedChanges) {
+            appendSummary(`- *Note:* Shared root configuration changed (triggers full deployment).`);
+          }
+          EOF
+
+  deploy:
+    needs: [verify-release, detect-changes]
+    if: ${{ needs.verify-release.outputs.should_deploy == 'true' && needs.detect-changes.outputs.deploy_backend == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -257,7 +450,15 @@ jobs:
           fi
 
   deploy-web:
-    needs: deploy
+    needs: [verify-release, detect-changes, deploy]
+    if: >-
+      ${{
+        !cancelled() &&
+        !failure() &&
+        needs.verify-release.outputs.should_deploy == 'true' &&
+        needs.detect-changes.outputs.deploy_web == 'true' &&
+        (needs.deploy.result == 'success' || needs.deploy.result == 'skipped')
+      }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
