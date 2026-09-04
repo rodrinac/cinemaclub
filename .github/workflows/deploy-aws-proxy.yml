@@ -26,6 +26,7 @@ jobs:
         id: gate
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
 
@@ -42,7 +43,11 @@ jobs:
 
           echo "Checking release status for tag ${tag} at commit ${head_sha}..."
 
-          release_info="$(gh release view "$tag" --json tagName,targetCommitish 2>/dev/null || true)"
+          release_info=""
+          if ! release_info="$(gh release view "$tag" --repo "${{ github.repository }}" --json tagName,targetCommitish 2>&1)"; then
+            echo "::warning::Failed to retrieve GitHub release for tag ${tag}: ${release_info}"
+            release_info=""
+          fi
 
           if [ -z "$release_info" ]; then
             echo "should_deploy=false" >> "$GITHUB_OUTPUT"
