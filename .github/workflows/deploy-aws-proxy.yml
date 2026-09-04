@@ -117,7 +117,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Validate deployment inputs
         run: |
@@ -282,7 +282,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Setup Expo and EAS
         uses: expo/expo-github-action@v8
