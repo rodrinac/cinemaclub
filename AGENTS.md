@@ -95,9 +95,11 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
 ## AWS TMDB Proxy Deployment
 
 - Main workflow: `.github/workflows/deploy-aws-proxy.yml`. It deploys from
-  the GitHub environment `production`, keeps the proxy and web release in one
-  serialized workflow, and runs `deploy-web` only after the proxy deploy and
-  smoke test succeed.
+  the GitHub environment `production`, gates execution with a `verify-release`
+  job (ensuring a GitHub release was created for the trigger commit), pins
+  checkout refs to `${{ github.event.workflow_run.head_sha || github.sha }}`,
+  keeps the proxy and web release in one serialized workflow, and runs
+  `deploy-web` only after the proxy deploy and smoke test succeed.
 - Required `production` secrets: `AWS_ROLE_TO_ASSUME`, `TMDB_SECRET_ARN`,
   `EXPO_TOKEN`.
 - Required `production` vars: `AWS_REGION`, `TMDB_PROXY_SERVICE_NAME`,
