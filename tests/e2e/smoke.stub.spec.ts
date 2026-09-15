@@ -48,27 +48,50 @@ async function installStubRoutes(
     requestUrls.push(requestUrl.toString());
 
     if (pathname.endsWith("/api/movies/popular") || pathname.endsWith("/api/movie/popular")) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(popularList) });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(popularList),
+      });
       return;
     }
 
     if (pathname.endsWith("/api/movies/upcoming") || pathname.endsWith("/api/movie/upcoming")) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(tmdbStub.lists.upcoming) });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(tmdbStub.lists.upcoming),
+      });
       return;
     }
 
-    if (pathname.endsWith("/api/movies/now-playing") || pathname.endsWith("/api/movie/now_playing")) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(tmdbStub.lists.nowPlaying) });
+    if (
+      pathname.endsWith("/api/movies/now-playing") ||
+      pathname.endsWith("/api/movie/now_playing")
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(tmdbStub.lists.nowPlaying),
+      });
       return;
     }
 
     if (pathname.endsWith("/api/genres") || pathname.endsWith("/api/genre/movie/list")) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(tmdbStub.genres) });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(tmdbStub.genres),
+      });
       return;
     }
 
     if (pathname.endsWith("/api/search/movies") || pathname.endsWith("/api/search/movie")) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(tmdbStub.search) });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(tmdbStub.search),
+      });
       return;
     }
 
@@ -85,7 +108,11 @@ async function installStubRoutes(
       return;
     }
 
-    await route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "Not found" }) });
+    await route.fulfill({
+      status: 404,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Not found" }),
+    });
   });
 
   await page.route("**://www.youtube.com/embed/**", async (route) => {
@@ -165,7 +192,10 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect
       .poll(async () =>
         movieList.evaluate((element) => {
-          const containers = [element, ...Array.from(element.querySelectorAll("*"))] as HTMLElement[];
+          const containers = [
+            element,
+            ...Array.from(element.querySelectorAll("*")),
+          ] as HTMLElement[];
           return Math.max(...containers.map((container) => container.scrollTop));
         }),
       )
@@ -208,7 +238,8 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page).toHaveURL(/\/search$/);
 
     await page.goto("/movie/1001");
-    await expect(page.getByTestId("play-trailer-button")).toBeVisible();
+    await expect(page.getByText("METRO PULSE", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("play-trailer-button")).toHaveCount(0);
     await expect(page).toHaveURL(/\/movie\/1001$/);
 
     await page.goto("/");
@@ -231,7 +262,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page).toHaveTitle("Cinema Club • Settings");
 
     await page.goto("/movie/1001");
-    await expect(page.getByTestId("play-trailer-button")).toBeVisible();
+    await expect(page.getByText("METRO PULSE", { exact: true })).toBeVisible();
     await expect(page).toHaveTitle("Cinema Club • Metro Pulse");
   });
 
@@ -249,15 +280,19 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page.getByTestId("play-trailer-button")).toBeVisible();
 
     await expect.poll(() => countMovieDetailRequests()).toBe(1);
-    await expect.poll(() => imageRequestUrls.filter((url) => url === mobileHeroUrl).length).toBeGreaterThan(0);
+    await expect
+      .poll(() => imageRequestUrls.filter((url) => url === mobileHeroUrl).length)
+      .toBeGreaterThan(0);
 
     await page.setViewportSize({ width: 1024, height: 768 });
 
-    await expect.poll(() => imageRequestUrls.filter((url) => url === wideHeroUrl).length).toBeGreaterThan(0);
+    await expect
+      .poll(() => imageRequestUrls.filter((url) => url === wideHeroUrl).length)
+      .toBeGreaterThan(0);
     await expect.poll(() => countMovieDetailRequests()).toBe(1);
   });
 
-  test("opens trailer overlay from movie detail with loading state", async ({ page }) => {
+  test("plays the trailer over the movie detail backdrop with loading state", async ({ page }) => {
     await page.goto("/");
 
     await page.locator('[data-testid^="movie-poster-"]').first().click();
@@ -265,15 +300,23 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page.getByTestId("play-trailer-button")).toBeVisible();
     await page.getByTestId("play-trailer-button").click();
 
-    await expect(page.getByTestId("trailer-overlay")).toBeVisible();
-    await expect(page.getByTestId("trailer-overlay-close")).toBeFocused();
-    await expect(page.getByTestId("trailer-overlay-loading")).toBeVisible();
+    const hero = page.getByTestId("movie-detail-hero");
+    const player = page.getByTestId("trailer-inline-player");
+    await expect(player).toBeVisible();
+    await expect(page.getByTestId("trailer-player-close")).toBeFocused();
+    await expect(page.getByTestId("trailer-player-loading")).toBeVisible();
     await expect(page.locator('iframe[title="Trailer"]')).toBeVisible();
-    await expect(page.getByTestId("trailer-overlay-loading")).toHaveCount(0);
+    await expect(page.getByTestId("trailer-player-loading")).toHaveCount(0);
+    await expect
+      .poll(async () => (await player.boundingBox())?.width)
+      .toBe((await hero.boundingBox())?.width);
+    await expect
+      .poll(async () => (await player.boundingBox())?.height)
+      .toBe((await hero.boundingBox())?.height);
 
-    await page.getByTestId("trailer-overlay-close").click();
-    await expect(page.getByTestId("trailer-overlay")).toHaveCount(0);
-    await expect(page.getByTestId("play-trailer-button")).toBeVisible();
+    await page.getByTestId("trailer-player-close").click();
+    await expect(player).toHaveCount(0);
+    await expect(page.getByTestId("play-trailer-button")).toBeFocused();
   });
 
   test("prevents discover pagination runaway when no next page exists", async ({ page }) => {
@@ -310,7 +353,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect.poll(countPopularPageTwoRequests).toBe(0);
   });
 
-  test("recovers trailer overlay when iframe load stalls", async ({ page }) => {
+  test("recovers the inline trailer player when iframe load stalls", async ({ page }) => {
     await page.unroute("**://www.youtube.com/embed/**");
     await page.route("**://www.youtube.com/embed/**", async (route) => {
       await new Promise<void>((resolve) => {
@@ -324,13 +367,13 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page.getByTestId("play-trailer-button")).toBeVisible();
 
     await page.getByTestId("play-trailer-button").click();
-    await expect(page.getByTestId("trailer-overlay")).toBeVisible();
-    await expect(page.getByTestId("trailer-overlay-loading")).toBeVisible();
+    await expect(page.getByTestId("trailer-inline-player")).toBeVisible();
+    await expect(page.getByTestId("trailer-player-loading")).toBeVisible();
 
-    await expect(page.getByTestId("trailer-overlay-loading")).toHaveCount(0, { timeout: 7000 });
-    await expect(page.getByTestId("trailer-overlay-error")).toBeVisible();
-    await page.getByTestId("trailer-overlay-error-close").click();
-    await expect(page.getByTestId("trailer-overlay")).toHaveCount(0);
+    await expect(page.getByTestId("trailer-player-loading")).toHaveCount(0, { timeout: 7000 });
+    await expect(page.getByTestId("trailer-player-error")).toBeVisible();
+    await page.getByTestId("trailer-player-error-close").click();
+    await expect(page.getByTestId("trailer-inline-player")).toHaveCount(0);
 
     await page.getByTestId("movie-detail-back-button").click();
     await expect(page).toHaveURL(/\/$/);

@@ -28,7 +28,12 @@ test.describe("Web App Smoke Tests (live)", () => {
     await expect
       .poll(
         async () => {
-          if (await page.getByTestId("home-error-state").isVisible().catch(() => false)) {
+          if (
+            await page
+              .getByTestId("home-error-state")
+              .isVisible()
+              .catch(() => false)
+          ) {
             return "error";
           }
 
@@ -36,7 +41,12 @@ test.describe("Web App Smoke Tests (live)", () => {
             return "movies";
           }
 
-          if (await page.getByTestId("home-loading-state").isVisible().catch(() => false)) {
+          if (
+            await page
+              .getByTestId("home-loading-state")
+              .isVisible()
+              .catch(() => false)
+          ) {
             return "loading";
           }
 
@@ -48,23 +58,35 @@ test.describe("Web App Smoke Tests (live)", () => {
     await expect(page.getByTestId("home-loading-state")).toHaveCount(0);
   });
 
-  test("trailer modal can recover and release interaction", async ({ page }) => {
+  test("inline trailer can recover and release interaction", async ({ page }) => {
     await page.goto("/");
 
     await expect
       .poll(
         async () => {
-          if (await page.getByTestId("home-error-state").isVisible().catch(() => false)) {
+          if (
+            await page
+              .getByTestId("home-error-state")
+              .isVisible()
+              .catch(() => false)
+          ) {
             return "error";
           }
 
-          return (await page.locator('[data-testid^="movie-poster-"]').count()) > 0 ? "movies" : "loading";
+          return (await page.locator('[data-testid^="movie-poster-"]').count()) > 0
+            ? "movies"
+            : "loading";
         },
         { timeout: 20000 },
       )
       .toMatch(/movies|error/);
 
-    if (await page.getByTestId("home-error-state").isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByTestId("home-error-state")
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Skipping trailer check because live discover endpoint is unavailable.");
     }
 
@@ -75,16 +97,21 @@ test.describe("Web App Smoke Tests (live)", () => {
     }
 
     await page.getByTestId("play-trailer-button").click();
-    await expect(page.getByTestId("trailer-overlay")).toBeVisible();
+    await expect(page.getByTestId("trailer-inline-player")).toBeVisible();
 
     await expect
       .poll(
         async () => {
-          if ((await page.getByTestId("trailer-overlay-loading").count()) === 0) {
+          if ((await page.getByTestId("trailer-player-loading").count()) === 0) {
             return "ready";
           }
 
-          if (await page.getByTestId("trailer-overlay-error").isVisible().catch(() => false)) {
+          if (
+            await page
+              .getByTestId("trailer-player-error")
+              .isVisible()
+              .catch(() => false)
+          ) {
             return "error";
           }
 
@@ -94,13 +121,13 @@ test.describe("Web App Smoke Tests (live)", () => {
       )
       .toMatch(/ready|error/);
 
-    if ((await page.getByTestId("trailer-overlay-error-close").count()) > 0) {
-      await page.getByTestId("trailer-overlay-error-close").click();
+    if ((await page.getByTestId("trailer-player-error-close").count()) > 0) {
+      await page.getByTestId("trailer-player-error-close").click();
     } else {
-      await page.getByTestId("trailer-overlay-close").click();
+      await page.getByTestId("trailer-player-close").click();
     }
 
-    await expect(page.getByTestId("trailer-overlay")).toHaveCount(0);
+    await expect(page.getByTestId("trailer-inline-player")).toHaveCount(0);
     await page.getByTestId("movie-detail-back-button").click();
     await expect(page).toHaveURL(/\/$/);
     await page.getByTestId("home-tab-now").click();

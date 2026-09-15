@@ -12,7 +12,7 @@ on:
       - "package-lock.json"
       - "infra/**"
       - "server/**"
-      - "scripts/smoke-aws-proxy.mjs"
+      - "scripts/**"
       - ".github/workflows/deploy-aws-proxy.yml"
 
 permissions:
