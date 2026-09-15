@@ -56,9 +56,6 @@ jobs:
       - name: Web Build Check
         run: npm run build:web
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
-
       - name: Run Test Suite & Smoke Tests
         env:
           TMDB_API_TOKEN: "dummy_token_for_ci"
@@ -172,9 +169,6 @@ jobs:
 
       - name: Web Build Check
         run: npm run build:web
-
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
 
       - name: Run live Playwright suite
         env:
