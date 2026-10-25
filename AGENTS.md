@@ -37,7 +37,8 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
   execution, observability, and audit logging. If unavailable, use the
   AWS CLI directly.
 - Before starting a task, check whether a relevant AWS skill is available.
-  Load the skill with `retrieve_skill` and prefer its guidance over
+  Load the skill (via the AWS MCP Server's `retrieve_skill` tool, or
+  invoke a local Claude Code skill with `/<skill-name>`) and prefer its guidance over
   general knowledge.
 - When uncertain about specific AWS details (API parameters, permissions,
   limits, error codes), verify against documentation rather than guessing.
@@ -51,7 +52,8 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
 
 ### Secret Safety
 
-- MUST load the `aws-secrets-manager` skill first for any secret,
+- MUST load the `aws-secrets-manager` skill (served by the AWS MCP
+  Server) first for any secret,
   credential, API key, token, or password task. MUST NOT call
   `secretsmanager get-secret-value` or `batch-get-secret-value`, and MUST
   NOT hit the Secrets Manager Agent daemon directly. MUST use
