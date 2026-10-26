@@ -6,6 +6,7 @@ import {
   parseCorsAllowOrigin,
   parseRateLimitConfig,
 } from "./tmdb-proxy-core.mjs";
+import { createBedrockPitchGenerator } from "./movie-pitch.mjs";
 
 const LAMBDA_UPSTREAM_TIMEOUT_MARGIN_MS = 2_000;
 
@@ -187,6 +188,7 @@ export const createLambdaHandler = ({
   logger = console,
   cache,
   getToken,
+  generateMoviePitch,
 } = {}) => {
   const corsAllowOrigin = parseCorsAllowOrigin(env.CORS_ALLOW_ORIGIN);
   const cacheMaxEntries = parseCacheMaxEntries(env.CACHE_MAX_ENTRIES);
@@ -196,6 +198,15 @@ export const createLambdaHandler = ({
   });
   const resolveToken = getToken ?? createSecretsManagerTokenProvider({ env });
   const resolvedCache = cache ?? createResponseCache({ maxEntries: cacheMaxEntries });
+  const pitchModelId = env.BEDROCK_PITCH_MODEL_ID?.trim();
+  const resolvedPitchGenerator =
+    generateMoviePitch ??
+    (pitchModelId
+      ? createBedrockPitchGenerator({
+          modelId: pitchModelId,
+          region: env.AWS_REGION || env.AWS_DEFAULT_REGION,
+        })
+      : null);
 
   const proxy = createTmdbProxy({
     getToken: resolveToken,
@@ -205,6 +216,7 @@ export const createLambdaHandler = ({
     log: logger,
     corsAllowOrigin,
     rateLimitConfig,
+    generateMoviePitch: resolvedPitchGenerator,
   });
 
   return async (event = {}, context = {}) => {
@@ -253,6 +265,7 @@ const buildHandlerSignature = (env) => {
     rateLimitBurst: env.RATE_LIMIT_BURST ?? null,
     cacheMaxEntries: env.CACHE_MAX_ENTRIES ?? null,
     tmdbSecretArn: env.TMDB_SECRET_ARN ?? null,
+    bedrockPitchModelId: env.BEDROCK_PITCH_MODEL_ID ?? null,
   });
 };
 

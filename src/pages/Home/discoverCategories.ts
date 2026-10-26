@@ -5,7 +5,7 @@ import {
 
 export type DiscoverCategory = {
   key: DiscoverCategoryKey;
-  label: "Now" | "Popular" | "Upcoming";
+  label: "Now" | "Top Rated" | "Upcoming";
   testId: string;
   endpoint: string;
 };
@@ -18,10 +18,10 @@ export const DISCOVER_CATEGORIES: DiscoverCategory[] = [
     endpoint: getDiscoverCategoryEndpoint("NOW"),
   },
   {
-    key: "POPULAR",
-    label: "Popular",
-    testId: "home-tab-popular",
-    endpoint: getDiscoverCategoryEndpoint("POPULAR"),
+    key: "TOP_RATED",
+    label: "Top Rated",
+    testId: "home-tab-top-rated",
+    endpoint: getDiscoverCategoryEndpoint("TOP_RATED"),
   },
   {
     key: "UPCOMING",

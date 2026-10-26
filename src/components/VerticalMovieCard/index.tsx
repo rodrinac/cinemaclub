@@ -1,9 +1,8 @@
-import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Image, StyleSheet, View, useWindowDimensions } from "react-native";
-import * as database from "../../api/database";
 import { TmdbMovie } from "../../api/tmdb";
 import AnimatedPressable from "../AnimatedPressable";
+import BookmarkButton from "../BookmarkButton";
 import Theme from "../../theme";
 
 type Props = {
@@ -13,27 +12,10 @@ type Props = {
 };
 
 const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress, columns = 2 }) => {
-  const [bookmarked, setBookmarked] = useState<boolean>();
   const { width } = useWindowDimensions();
 
   const posterWidth = Math.max(110, (width - 48 - (columns - 1) * 12) / columns);
   const posterHeight = (posterWidth / 140) * 210;
-
-  useEffect(() => {
-    (async () => {
-      setBookmarked(await database.hasBookmark(movie));
-    })();
-  }, [movie]);
-
-  async function changeBookmarkStatus() {
-    if (bookmarked) {
-      await database.removeBookmark(movie);
-    } else {
-      await database.addBookmark(movie);
-    }
-
-    setBookmarked(!bookmarked);
-  }
 
   const posterUrl = movie.poster_path
     ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
@@ -41,15 +23,15 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress, columns = 2 
 
   return (
     <View style={styles.container}>
-      <Ionicons
-        style={[styles.bookmark, { opacity: bookmarked ? 0.5 : 1 }]}
-        name={bookmarked ? "bookmark" : "bookmark-outline"}
-        color={Theme.colors.accent}
-        size={18}
-        onPress={changeBookmarkStatus}
-      />
-      <AnimatedPressable onPress={onPosterPress} testID={`movie-poster-${movie.id}`}>
+      <BookmarkButton movie={movie} size={18} style={styles.bookmark} />
+      <AnimatedPressable
+        onPress={onPosterPress}
+        accessibilityRole="button"
+        accessibilityLabel={movie.title}
+        testID={`movie-poster-${movie.id}`}
+      >
         <Image
+          accessible={false}
           style={[styles.poster, { width: posterWidth, height: posterHeight }]}
           source={{ uri: posterUrl }}
           resizeMode="cover"
@@ -74,8 +56,8 @@ const styles = StyleSheet.create({
   },
   bookmark: {
     position: "absolute",
-    top: 12,
-    right: 16,
+    top: 2,
+    right: 6,
     zIndex: 1,
   },
   poster: {

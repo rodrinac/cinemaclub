@@ -32,6 +32,12 @@ export type TmdbMovie = {
   };
 };
 
+export type MoviePitch = {
+  id: number;
+  pitch: string;
+  moods: string[];
+};
+
 export type TmdbGenreList = {
   genres: TmdbGenre[];
 };

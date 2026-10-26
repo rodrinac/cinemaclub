@@ -148,6 +148,21 @@ variable "cache_max_entries" {
   }
 }
 
+variable "pitch_model_id" {
+  type        = string
+  default     = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  nullable    = true
+  description = "Bedrock inference profile used for movie pitches. Set to null to disable the pitch route."
+
+  validation {
+    condition = (
+      var.pitch_model_id == null ? true :
+      can(regex("^(eu|us|apac|global)\\.[a-z0-9-]+\\.[a-z0-9.:-]+$", var.pitch_model_id))
+    )
+    error_message = "pitch_model_id must be null or a cross-region inference profile ID such as eu.anthropic.claude-haiku-4-5-20251001-v1:0."
+  }
+}
+
 variable "tags" {
   type        = map(string)
   default     = {}

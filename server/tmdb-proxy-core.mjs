@@ -4,6 +4,15 @@ const TMDB_API_PATH_PREFIX = TMDB_BASE_URL.pathname;
 const DEFAULT_CACHE_TTL_MS = 60_000;
 export const DEFAULT_CACHE_MAX_ENTRIES = 100;
 export const DEFAULT_UPSTREAM_TIMEOUT_MS = 10_000;
+export const PITCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+// Keeps the TMDB lookup plus the Bedrock call inside the 10s Lambda ceiling.
+const PITCH_TMDB_TIMEOUT_MS = 3_000;
+// Pitches cost a Bedrock call per cache miss, so they are always throttled per
+// client, independently of the optional proxy-wide rate limit.
+export const DEFAULT_PITCH_RATE_LIMIT = Object.freeze({
+  refillRatePerSecond: 0.2,
+  burstCapacity: 5,
+});
 const CORS_METHODS = "GET, OPTIONS";
 const CORS_HEADERS = "Content-Type";
 
@@ -20,7 +29,7 @@ export const FORBIDDEN_CORS_HEADER_NAMES = Object.freeze([
 const ENDPOINTS = Object.freeze({
   NOW_PLAYING: "movie/now_playing",
   POPULAR: "movie/popular",
-  UPCOMING: "movie/upcoming",
+  DISCOVER: "discover/movie",
   GENRES: "genre/movie/list",
   SEARCH: "search/movie",
   MOVIE: "movie",
@@ -32,22 +41,72 @@ const MOVIE_DETAIL_DESCRIPTOR = Object.freeze({
   canonicalPath: "/api/movies/:id",
 });
 
+const MOVIE_PITCH_DESCRIPTOR = Object.freeze({
+  endpoint: ENDPOINTS.MOVIE,
+  policy: "common",
+  canonicalPath: "/api/movies/:id/pitch",
+});
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const toTmdbDate = (timestampMs) => new Date(timestampMs).toISOString().slice(0, 10);
+
+const NOW_PLAYING_DESCRIPTOR = Object.freeze({
+  endpoint: ENDPOINTS.NOW_PLAYING,
+  policy: "regional",
+  canonicalPath: "/api/movies/now-playing",
+});
+
+// TMDB's own upcoming list counts any later release in any country, so movies
+// already in theaters show up there. Discover with a release-date floor keeps
+// the tab to films that are not out yet: in the client's region when it sends
+// one (theatrical releases), otherwise anywhere.
+const UPCOMING_DESCRIPTOR = Object.freeze({
+  endpoint: ENDPOINTS.DISCOVER,
+  policy: "regional",
+  canonicalPath: "/api/movies/upcoming",
+  buildUpstreamParams: (safeParams, nowMs) => {
+    const upstreamParams = new URLSearchParams(safeParams);
+    const tomorrow = toTmdbDate(nowMs + DAY_MS);
+
+    upstreamParams.set("sort_by", "popularity.desc");
+
+    if (upstreamParams.has("region")) {
+      upstreamParams.set("release_date.gte", tomorrow);
+      upstreamParams.set("with_release_type", "2|3");
+      // Regional re-releases of old films would otherwise count as upcoming.
+      upstreamParams.set("primary_release_date.gte", toTmdbDate(nowMs - 365 * DAY_MS));
+    } else {
+      upstreamParams.set("primary_release_date.gte", tomorrow);
+    }
+
+    return upstreamParams;
+  },
+});
+
+// TMDB's top_rated list lets low-vote new releases outrank the classics, so
+// rank by rating among films with a substantial vote count instead.
+const TOP_RATED_DESCRIPTOR = Object.freeze({
+  endpoint: ENDPOINTS.DISCOVER,
+  policy: "paged",
+  canonicalPath: "/api/movies/top-rated",
+  buildUpstreamParams: (safeParams) => {
+    const upstreamParams = new URLSearchParams(safeParams);
+    upstreamParams.set("sort_by", "vote_average.desc");
+    upstreamParams.set("vote_count.gte", "5000");
+    return upstreamParams;
+  },
+});
+
 const ROUTES = Object.freeze({
-  "/api/movies/now-playing": Object.freeze({
-    endpoint: ENDPOINTS.NOW_PLAYING,
-    policy: "paged",
-    canonicalPath: "/api/movies/now-playing",
-  }),
+  "/api/movies/now-playing": NOW_PLAYING_DESCRIPTOR,
   "/api/movies/popular": Object.freeze({
     endpoint: ENDPOINTS.POPULAR,
     policy: "paged",
     canonicalPath: "/api/movies/popular",
   }),
-  "/api/movies/upcoming": Object.freeze({
-    endpoint: ENDPOINTS.UPCOMING,
-    policy: "paged",
-    canonicalPath: "/api/movies/upcoming",
-  }),
+  "/api/movies/top-rated": TOP_RATED_DESCRIPTOR,
+  "/api/movies/upcoming": UPCOMING_DESCRIPTOR,
   "/api/genres": Object.freeze({
     endpoint: ENDPOINTS.GENRES,
     policy: "common",
@@ -58,21 +117,13 @@ const ROUTES = Object.freeze({
     policy: "search",
     canonicalPath: "/api/search/movies",
   }),
-  "/api/movie/now_playing": Object.freeze({
-    endpoint: ENDPOINTS.NOW_PLAYING,
-    policy: "paged",
-    canonicalPath: "/api/movies/now-playing",
-  }),
+  "/api/movie/now_playing": NOW_PLAYING_DESCRIPTOR,
   "/api/movie/popular": Object.freeze({
     endpoint: ENDPOINTS.POPULAR,
     policy: "paged",
     canonicalPath: "/api/movies/popular",
   }),
-  "/api/movie/upcoming": Object.freeze({
-    endpoint: ENDPOINTS.UPCOMING,
-    policy: "paged",
-    canonicalPath: "/api/movies/upcoming",
-  }),
+  "/api/movie/upcoming": UPCOMING_DESCRIPTOR,
   "/api/genre/movie/list": Object.freeze({
     endpoint: ENDPOINTS.GENRES,
     policy: "common",
@@ -91,6 +142,9 @@ const POLICIES = Object.freeze({
   }),
   paged: Object.freeze({
     allowedFields: new Set(["language", "include_adult", "page"]),
+  }),
+  regional: Object.freeze({
+    allowedFields: new Set(["language", "include_adult", "page", "region"]),
   }),
   detail: Object.freeze({
     allowedFields: new Set(["language", "include_adult", "append_to_response"]),
@@ -368,6 +422,8 @@ const validateLanguage = (value) => {
   return /^[a-zA-Z0-9]{2,8}(?:-[a-zA-Z0-9]{1,8})*$/.test(value);
 };
 
+const validateRegion = (value) => typeof value === "string" && /^[A-Z]{2}$/.test(value);
+
 const validateIncludeAdult = (value) => value === "true" || value === "false";
 
 const validatePage = (value) => {
@@ -435,6 +491,9 @@ export const validateQueryParams = (searchParams, policyName) => {
       case "include_adult":
         isValid = validateIncludeAdult(value);
         break;
+      case "region":
+        isValid = validateRegion(value);
+        break;
       case "page":
         isValid = validatePage(value);
         break;
@@ -479,12 +538,47 @@ const matchMovieIdRoute = (pathname) => {
   return movieId;
 };
 
+const matchMoviePitchRoute = (pathname) => {
+  const match = pathname.match(/^\/api\/movies\/([0-9]+)\/pitch$/);
+  if (!match) {
+    return undefined;
+  }
+
+  const idText = match[1];
+  const movieId = Number.parseInt(idText, 10);
+
+  if (!Number.isSafeInteger(movieId) || movieId < 0 || String(movieId) !== idText) {
+    return null;
+  }
+
+  return movieId;
+};
+
 export const matchRoute = (pathname) => {
   if (pathname === "/health") {
     return {
       kind: "health",
       supportedPath: true,
       canonicalPath: "/health",
+    };
+  }
+
+  const pitchMovieId = matchMoviePitchRoute(pathname);
+  if (pitchMovieId !== undefined) {
+    if (pitchMovieId === null) {
+      return {
+        kind: "invalid-movie-id",
+        supportedPath: true,
+        canonicalPath: "/api/movies/:id/pitch",
+      };
+    }
+
+    return {
+      kind: "pitch",
+      supportedPath: true,
+      descriptor: MOVIE_PITCH_DESCRIPTOR,
+      movieId: pitchMovieId,
+      canonicalPath: `/api/movies/${pitchMovieId}/pitch`,
     };
   }
 
@@ -581,12 +675,152 @@ export const createTmdbProxy = ({
   cache = createResponseCache(),
   now = () => Date.now(),
   upstreamTimeoutMs = DEFAULT_UPSTREAM_TIMEOUT_MS,
+  generateMoviePitch = null,
+  pitchCache = createResponseCache({ ttlMs: PITCH_CACHE_TTL_MS, now }),
+  pitchRateLimitConfig = DEFAULT_PITCH_RATE_LIMIT,
 } = {}) => {
   if (typeof getToken !== "function") {
     throw new Error("A getToken function is required to create the TMDB proxy.");
   }
 
   const rateLimiter = rateLimitConfig ? createRateLimiter({ ...rateLimitConfig, now }) : null;
+  const pitchRateLimiter = createRateLimiter({ ...pitchRateLimitConfig, now });
+
+  const rateLimitedResponse = (retryAfter, corsHeaders) =>
+    jsonResponse(
+      429,
+      {
+        error: "Too many requests. Please retry shortly.",
+        parameters: {
+          retry_after: retryAfter,
+        },
+      },
+      {
+        ...corsHeaders,
+        "Retry-After": String(retryAfter),
+      },
+    );
+
+  const resolveEffectiveUpstreamTimeoutMs = (requestUpstreamTimeoutMs, resolveRequestUpstreamTimeoutMs) => {
+    const resolvedRequestUpstreamTimeoutMs =
+      typeof resolveRequestUpstreamTimeoutMs === "function"
+        ? resolveRequestUpstreamTimeoutMs()
+        : undefined;
+
+    return Number.isFinite(requestUpstreamTimeoutMs) && requestUpstreamTimeoutMs > 0
+      ? requestUpstreamTimeoutMs
+      : Number.isFinite(resolvedRequestUpstreamTimeoutMs) && resolvedRequestUpstreamTimeoutMs > 0
+        ? resolvedRequestUpstreamTimeoutMs
+        : upstreamTimeoutMs;
+  };
+
+  const handlePitchRequest = async ({
+    routeMatch,
+    safeParams,
+    corsHeaders,
+    requestId,
+    clientKey,
+    effectiveUpstreamTimeoutMs,
+  }) => {
+    if (typeof generateMoviePitch !== "function") {
+      return jsonResponse(503, { error: "Movie pitches are unavailable." }, corsHeaders);
+    }
+
+    const cacheKey = buildCacheKey(routeMatch.canonicalPath, safeParams);
+    const cachedPitch = pitchCache.get(cacheKey);
+
+    if (cachedPitch) {
+      writeLog(log, "info", {
+        kind: "movie_pitch_request",
+        requestId,
+        route: routeMatch.descriptor.canonicalPath,
+        status: 200,
+        cache: "hit",
+      });
+
+      return jsonResponse(200, cachedPitch, {
+        ...corsHeaders,
+        "Cache-Control": SUCCESS_CACHE_CONTROL,
+      });
+    }
+
+    for (const limiter of [rateLimiter, pitchRateLimiter]) {
+      const rateLimitResult = limiter?.consume(clientKey);
+      if (rateLimitResult && !rateLimitResult.allowed) {
+        return rateLimitedResponse(rateLimitResult.retryAfter, corsHeaders);
+      }
+    }
+
+    let movie;
+    try {
+      const token = await getToken();
+      const response = await fetchImpl(
+        buildTmdbUrl(routeMatch.descriptor, routeMatch.movieId, safeParams),
+        {
+          redirect: "error",
+          signal: AbortSignal.timeout(Math.min(effectiveUpstreamTimeoutMs, PITCH_TMDB_TIMEOUT_MS)),
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.status === 404) {
+        return jsonResponse(404, { error: "Movie not found." }, corsHeaders);
+      }
+
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`TMDB responded with status ${response.status}`);
+      }
+
+      movie = await parseJsonResponse(response);
+    } catch (error) {
+      writeLog(log, "error", {
+        kind: "movie_pitch_error",
+        requestId,
+        route: routeMatch.descriptor.canonicalPath,
+        reason: "upstream_failure",
+        message: error instanceof Error ? error.message : "Unknown upstream error",
+      });
+      return jsonResponse(502, { error: "Unable to reach the movie service." }, corsHeaders);
+    }
+
+    const pitchStartedAt = now();
+    let pitch;
+    try {
+      pitch = await generateMoviePitch({
+        movie,
+        language: safeParams.get("language") || "en-US",
+      });
+    } catch (error) {
+      writeLog(log, "error", {
+        kind: "movie_pitch_error",
+        requestId,
+        route: routeMatch.descriptor.canonicalPath,
+        reason: "generation_failure",
+        message: error instanceof Error ? error.message : "Unknown generation error",
+      });
+      return jsonResponse(502, { error: "Unable to generate a pitch right now." }, corsHeaders);
+    }
+
+    const body = { id: routeMatch.movieId, pitch: pitch.pitch, moods: pitch.moods };
+    pitchCache.set(cacheKey, body);
+
+    writeLog(log, "info", {
+      kind: "movie_pitch_request",
+      requestId,
+      route: routeMatch.descriptor.canonicalPath,
+      status: 200,
+      cache: "miss",
+      generationLatencyMs: now() - pitchStartedAt,
+    });
+
+    return jsonResponse(200, body, {
+      ...corsHeaders,
+      "Cache-Control": SUCCESS_CACHE_CONTROL,
+    });
+  };
 
   return async ({
     method,
@@ -646,6 +880,20 @@ export const createTmdbProxy = ({
       return jsonResponse(400, { error: error.message || "Invalid query parameters." }, corsHeaders);
     }
 
+    if (routeMatch.kind === "pitch") {
+      return handlePitchRequest({
+        routeMatch,
+        safeParams,
+        corsHeaders,
+        requestId,
+        clientKey,
+        effectiveUpstreamTimeoutMs: resolveEffectiveUpstreamTimeoutMs(
+          requestUpstreamTimeoutMs,
+          resolveRequestUpstreamTimeoutMs,
+        ),
+      });
+    }
+
     const cacheKey = buildCacheKey(routeMatch.canonicalPath, safeParams);
     const cachedResponse = cache.get(cacheKey);
 
@@ -669,19 +917,7 @@ export const createTmdbProxy = ({
     if (rateLimiter) {
       const rateLimitResult = rateLimiter.consume(clientKey);
       if (!rateLimitResult.allowed) {
-        return jsonResponse(
-          429,
-          {
-            error: "Too many requests. Please retry shortly.",
-            parameters: {
-              retry_after: rateLimitResult.retryAfter,
-            },
-          },
-          {
-            ...corsHeaders,
-            "Retry-After": String(rateLimitResult.retryAfter),
-          },
-        );
+        return rateLimitedResponse(rateLimitResult.retryAfter, corsHeaders);
       }
     }
 
@@ -699,18 +935,15 @@ export const createTmdbProxy = ({
       return jsonResponse(502, { error: "Unable to reach the movie service." }, corsHeaders);
     }
 
-    const upstreamUrl = buildTmdbUrl(routeMatch.descriptor, routeMatch.movieId, safeParams);
+    const upstreamParams = routeMatch.descriptor.buildUpstreamParams
+      ? routeMatch.descriptor.buildUpstreamParams(safeParams, now())
+      : safeParams;
+    const upstreamUrl = buildTmdbUrl(routeMatch.descriptor, routeMatch.movieId, upstreamParams);
     const upstreamStartedAt = now();
-    const resolvedRequestUpstreamTimeoutMs =
-      typeof resolveRequestUpstreamTimeoutMs === "function"
-        ? resolveRequestUpstreamTimeoutMs()
-        : undefined;
-    const effectiveUpstreamTimeoutMs =
-      Number.isFinite(requestUpstreamTimeoutMs) && requestUpstreamTimeoutMs > 0
-        ? requestUpstreamTimeoutMs
-        : Number.isFinite(resolvedRequestUpstreamTimeoutMs) && resolvedRequestUpstreamTimeoutMs > 0
-          ? resolvedRequestUpstreamTimeoutMs
-          : upstreamTimeoutMs;
+    const effectiveUpstreamTimeoutMs = resolveEffectiveUpstreamTimeoutMs(
+      requestUpstreamTimeoutMs,
+      resolveRequestUpstreamTimeoutMs,
+    );
 
     try {
       const response = await fetchImpl(upstreamUrl, {

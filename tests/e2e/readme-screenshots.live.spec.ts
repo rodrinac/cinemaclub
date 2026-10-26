@@ -48,7 +48,7 @@ test.describe("README live mobile screenshots", () => {
 
     await page.getByTestId("footer-search").click();
     await expect(page.getByText("SEARCH", { exact: true })).toBeVisible();
-    await expect(page.getByPlaceholder("🔍 Search a movie")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Search movies" })).toBeVisible();
 
     await waitForSearchScreenshotReady(page);
     await page.screenshot({ path: "showcase/screenshot_02.png", fullPage: false });

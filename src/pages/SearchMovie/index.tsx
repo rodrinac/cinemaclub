@@ -21,6 +21,7 @@ import { TmdbMovie } from "@/api/tmdb";
 import { useSearchMoviesInfiniteQuery } from "@/api/tmdb/queries";
 import HorizontalMovieCard from "@/components/HorizontalMovieCard";
 import AnimatedPressable from "@/components/AnimatedPressable";
+import BackButton from "@/components/BackButton";
 import Theme from "@/theme";
 import { blurActiveElementBeforeNavigate } from "@/utils/focus";
 
@@ -46,6 +47,8 @@ const SearchMovie = () => {
 
   const {
     data: movieList,
+    isFetching,
+    isError,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
@@ -73,6 +76,21 @@ const SearchMovie = () => {
   const movies = useMemo(() => {
     return filterMovieList(movieList?.results ?? []);
   }, [filterMovieList, movieList?.results]);
+
+  const hiddenByFilters = (movieList?.results.length ?? 0) - movies.length;
+  const emptyState = !searchQuery
+    ? { title: "Find a movie", body: "Search by title, then tap a result for details." }
+    : isFetching
+      ? { title: "Searching…" }
+      : isError
+        ? { title: "Search isn't available right now", body: "Check your connection and try again." }
+        : hiddenByFilters > 0
+          ? {
+              title: `Your genre filters hid all ${hiddenByFilters} results`,
+              body: `for "${searchQuery}".`,
+              showFiltersAction: true,
+            }
+          : { title: `No movies match "${searchQuery}"`, body: "Try a shorter or different title." };
 
   const handleSubmitEditing = (event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => {
     const query = event.nativeEvent.text;
@@ -123,18 +141,25 @@ const SearchMovie = () => {
     >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
-          <AnimatedPressable borderless onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
-          </AnimatedPressable>
-          <AnimatedPressable borderless onPress={() => navigation.navigate("Settings")}>
-            <Ionicons name="options" size={24} color={Theme.colors.accent} />
+          <BackButton />
+          <AnimatedPressable
+            borderless
+            style={{ margin: -10 }}
+            contentStyle={{ padding: 10 }}
+            onPress={() => navigation.navigate("Settings")}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
+          >
+            <Ionicons name="settings-outline" size={24} color={Theme.colors.accent} />
           </AnimatedPressable>
         </View>
         <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>SEARCH</Text>
         <View style={[styles.search, isLandscape ? styles.searchLandscape : null]}>
           <TextInput
             style={styles.searchInput}
-            placeholder="🔍 Search a movie"
+            placeholder="Search a movie"
+            accessibilityLabel="Search movies"
+            returnKeyType="search"
             placeholderTextColor={Theme.colors.textMuted}
             onSubmitEditing={handleSubmitEditing}
             autoFocus
@@ -143,12 +168,32 @@ const SearchMovie = () => {
             borderless
             contentStyle={styles.searchFilter}
             onPress={() => navigation.navigate("SearchFilters")}
+            accessibilityRole="button"
+            accessibilityLabel={
+              genreFilters?.length ? `Genre filters, ${genreFilters.length} active` : "Genre filters"
+            }
           >
             <Ionicons name="filter" color={Theme.colors.accentLighter} size={36} />
           </AnimatedPressable>
         </View>
       </View>
       <View style={styles.main}>
+        {movies.length === 0 && (
+          <View style={styles.emptyState} testID="search-empty-state" aria-live="polite">
+            <Ionicons name="film-outline" size={40} color={Theme.colors.textMuted} />
+            <Text style={styles.emptyTitle}>{emptyState.title}</Text>
+            {emptyState.body && <Text style={styles.emptyBody}>{emptyState.body}</Text>}
+            {emptyState.showFiltersAction && (
+              <AnimatedPressable
+                onPress={() => navigation.navigate("SearchFilters")}
+                accessibilityRole="button"
+                contentStyle={styles.emptyAction}
+              >
+                <Text style={styles.emptyActionText}>Edit genre filters</Text>
+              </AnimatedPressable>
+            )}
+          </View>
+        )}
         {movies.length > 0 && (
           <FlatList
             style={styles.movieList}
@@ -232,5 +277,33 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 1,
     minHeight: 0,
+    width: "100%",
+    maxWidth: 760,
+    alignSelf: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    maxWidth: 420,
+    alignSelf: "center",
+  },
+  emptyTitle: {
+    color: Theme.colors.accent,
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  emptyBody: {
+    color: Theme.colors.textMuted,
+    textAlign: "center",
+  },
+  emptyAction: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  emptyActionText: {
+    color: Theme.colors.gold,
+    fontWeight: "bold",
   },
 });

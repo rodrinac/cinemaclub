@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import BackButton from "@/components/BackButton";
 import Theme from "@/theme";
 
 const RATING_LABELS = ["Poor", "Fair", "Good", "Great", "Excellent"];
@@ -58,9 +59,7 @@ const Feedback = () => {
     >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
-          <AnimatedPressable borderless onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
-          </AnimatedPressable>
+          <BackButton />
         </View>
         <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>FEEDBACK</Text>
       </View>

@@ -7,6 +7,9 @@ Persistent deploy/ops notes for the AWS-hosted Movies API proxy.
 ## Architecture
 
 - API Gateway REST API -> Node.js Lambda -> TMDB.
+- The movie pitch route additionally calls Amazon Bedrock (Converse API)
+  through the cross-region inference profile in Terraform `pitch_model_id`
+  (default `eu.anthropic.claude-haiku-4-5-20251001-v1:0`).
 - Expo/web/mobile clients talk to the proxy via `EXPO_PUBLIC_MOVIES_API_URL`.
 - Canonical client base URL after deploy is the Terraform output
   `movies_api_base_url` (`<stage invoke url>/api`).
@@ -100,17 +103,40 @@ Why this matters:
 - Canonical routes:
   - `GET /health`
   - `GET /api/movies/now-playing`
-  - `GET /api/movies/popular`
-  - `GET /api/movies/upcoming`
+  - `GET /api/movies/popular` (not used by the app tabs)
+  - `GET /api/movies/top-rated` (discover, `vote_average.desc` with
+    `vote_count.gte=5000`; TMDB's own `top_rated` lets low-vote new releases
+    outrank the classics)
+  - `GET /api/movies/upcoming` (discover with a release-date floor of
+    tomorrow; with `region`, regional theatrical releases plus a one-year
+    primary-release floor to drop re-releases)
   - `GET /api/movies/:id`
   - `GET /api/search/movies?query=...`
   - `GET /api/genres`
+  - `GET /api/movies/:id/pitch` (no legacy alias)
 - Keep compatibility aliases unless every caller/test is migrated together:
   `/api/movie/*`, `/api/search/movie`, `/api/genre/movie/list`
 - Only successful TMDB responses are cached; keep
   `Cache-Control: public, max-age=60`
 - 429 responses must include matching `Retry-After` and
   `parameters.retry_after`
+
+## Movie pitches (Bedrock)
+
+- `GET /api/movies/:id/pitch` fetches TMDB details, then asks Bedrock for a
+  spoiler-free pitch through a forced `submit_pitch` tool call. Output is
+  length-checked and stripped of control characters before it is returned.
+- Responses are cached per movie and `language` for 24 hours per warm
+  container. Cache misses are always throttled per client (burst 5, one
+  refill every 5 seconds), on top of the optional proxy-wide rate limit.
+- `pitch_model_id = null` removes `BEDROCK_PITCH_MODEL_ID` and the Bedrock IAM
+  statements; the route then returns `503`. Local `npm run api` has no Bedrock
+  client, so the route is `503` there too.
+- Claude models need the account's one-time Anthropic use case form in the
+  Bedrock console. Until it is submitted, generation fails and the route
+  returns `502`; the client hides the card.
+- Lambda IAM allows `bedrock:InvokeModel` on the inference profile, and on the
+  foundation model only when `bedrock:InferenceProfileArn` is that profile.
 
 ## CORS and rate limiting
 

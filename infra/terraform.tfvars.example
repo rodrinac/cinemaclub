@@ -8,6 +8,8 @@ cors_allow_origin            = null
 rate_limit_rps               = null
 rate_limit_burst             = null
 cache_max_entries            = 100
+# Bedrock inference profile for movie pitches; null disables the pitch route.
+pitch_model_id               = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
 lambda_error_alarm_threshold = null
 lambda_throttle_alarm_threshold = null
 lambda_duration_alarm_threshold_ms = null

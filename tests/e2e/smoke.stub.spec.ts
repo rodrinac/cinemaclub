@@ -8,8 +8,8 @@ const imageRoutes = [
   "**://www.google.com/**",
 ];
 
-const buildScrollablePopularList = () => {
-  const baseMovies = tmdbStub.lists.popular.results;
+const buildScrollableNowPlayingList = () => {
+  const baseMovies = tmdbStub.lists.nowPlaying.results;
   const results = Array.from({ length: 60 }, (_, index) => {
     const template = baseMovies[index % baseMovies.length];
     return {
@@ -22,7 +22,7 @@ const buildScrollablePopularList = () => {
   });
 
   return {
-    ...tmdbStub.lists.popular,
+    ...tmdbStub.lists.nowPlaying,
     results,
     total_results: results.length,
     total_pages: 1,
@@ -35,11 +35,11 @@ async function installStubRoutes(
   requestPaths: string[] = [],
   requestUrls: string[] = [],
   options?: {
-    popularList?: typeof tmdbStub.lists.popular;
+    nowPlayingList?: typeof tmdbStub.lists.nowPlaying;
     imageRequestUrls?: string[];
   },
 ) {
-  const popularList = options?.popularList ?? tmdbStub.lists.popular;
+  const nowPlayingList = options?.nowPlayingList ?? tmdbStub.lists.nowPlaying;
   await page.route("**://*/api/**", async (route) => {
     const requestUrl = new URL(route.request().url());
     const pathname = requestUrl.pathname;
@@ -47,11 +47,11 @@ async function installStubRoutes(
     requestPaths.push(pathname);
     requestUrls.push(requestUrl.toString());
 
-    if (pathname.endsWith("/api/movies/popular") || pathname.endsWith("/api/movie/popular")) {
+    if (pathname.endsWith("/api/movies/top-rated")) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(popularList),
+        body: JSON.stringify(tmdbStub.lists.topRated),
       });
       return;
     }
@@ -72,7 +72,7 @@ async function installStubRoutes(
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(tmdbStub.lists.nowPlaying),
+        body: JSON.stringify(nowPlayingList),
       });
       return;
     }
@@ -91,6 +91,22 @@ async function installStubRoutes(
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(tmdbStub.search),
+      });
+      return;
+    }
+
+    const pitchMatch = pathname.match(/\/api\/movies\/(\d+)\/pitch$/);
+    if (pitchMatch) {
+      const id = Number.parseInt(pitchMatch[1], 10);
+
+      await route.fulfill({
+        status: tmdbStub.detailById[id] ? 200 : 404,
+        contentType: "application/json",
+        body: JSON.stringify(
+          tmdbStub.detailById[id]
+            ? { id, pitch: "A stubbed spoiler-free pitch.", moods: ["date night", "big screen"] }
+            : { error: "Movie not found." },
+        ),
       });
       return;
     }
@@ -160,10 +176,10 @@ test.describe("Web App Smoke Tests (stub)", () => {
   });
 
   test("home movie list is scrollable on web", async ({ page }) => {
-    const scrollablePopularList = buildScrollablePopularList();
+    const scrollableNowPlayingList = buildScrollableNowPlayingList();
     await page.unroute("**://*/api/**");
     await installStubRoutes(page, apiRequestPaths, apiRequestUrls, {
-      popularList: scrollablePopularList,
+      nowPlayingList: scrollableNowPlayingList,
     });
 
     await page.goto("/");
@@ -209,7 +225,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page.getByTestId("movie-poster-2001")).toBeVisible();
     await expect(page.getByTestId("movie-poster-1001")).toHaveCount(0);
 
-    await page.getByTestId("home-tab-now").click();
+    await page.getByTestId("home-tab-top-rated").click();
     await expect(page.getByTestId("movie-poster-1001")).toBeVisible();
     await expect(page.getByTestId("movie-poster-3001")).toHaveCount(0);
 
@@ -218,7 +234,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page.getByTestId("movie-poster-2001")).toHaveCount(0);
 
     await expect
-      .poll(() => apiRequestPaths.filter((path) => path.endsWith("/api/movies/popular")).length)
+      .poll(() => apiRequestPaths.filter((path) => path.endsWith("/api/movies/top-rated")).length)
       .toBeGreaterThan(0);
     await expect
       .poll(() => apiRequestPaths.filter((path) => path.endsWith("/api/movies/now-playing")).length)
@@ -230,7 +246,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
 
   test("updates URLs and supports deep links", async ({ page }) => {
     await page.goto("/search");
-    await expect(page.getByText("SEARCH")).toBeVisible();
+    await expect(page.getByText("SEARCH", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/search$/);
 
     await page.goto("/");
@@ -319,12 +335,63 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page.getByTestId("play-trailer-button")).toBeFocused();
   });
 
+  test("shows the AI pitch on the movie detail page", async ({ page }) => {
+    await page.goto("/");
+
+    await page.locator('[data-testid^="movie-poster-"]').first().click();
+
+    await expect(page.getByTestId("movie-pitch-text")).toHaveText("A stubbed spoiler-free pitch.");
+    await expect(page.getByTestId("movie-pitch").getByText("date night")).toBeVisible();
+  });
+
+  test("marks the selected discover tab for assistive tech", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByRole("tab", { name: "Now" })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "Top Rated" }).click();
+    await expect(page.getByRole("tab", { name: "Top Rated" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByRole("tab", { name: "Now" })).toHaveAttribute("aria-selected", "false");
+  });
+
+  test("labels poster and bookmark buttons with the movie title", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByRole("button", { name: "Spider-Verse Echo", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Save Spider-Verse Echo" }).click();
+    await expect(
+      page.getByRole("button", { name: "Remove Spider-Verse Echo from saved" }),
+    ).toBeVisible();
+  });
+
+  test("guides the user before searching and when nothing matches", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("footer-search").click();
+
+    await expect(page.getByTestId("search-empty-state")).toContainText("Find a movie");
+
+    await page.route("**://*/api/search/movies**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ page: 1, results: [], total_pages: 1, total_results: 0 }),
+      });
+    });
+    const searchInput = page.getByRole("textbox", { name: "Search movies" });
+    await searchInput.fill("zzzz");
+    await searchInput.press("Enter");
+
+    await expect(page.getByTestId("search-empty-state")).toContainText('No movies match "zzzz"');
+  });
+
   test("prevents discover pagination runaway when no next page exists", async ({ page }) => {
     await page.goto("/");
 
     await expect(page.locator('[data-testid^="movie-poster-"]')).toHaveCount(3);
     await expect
-      .poll(() => apiRequestPaths.filter((path) => path.endsWith("/api/movies/popular")).length)
+      .poll(() => apiRequestPaths.filter((path) => path.endsWith("/api/movies/now-playing")).length)
       .toBe(1);
 
     for (let index = 0; index < 5; index += 1) {
@@ -333,7 +400,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
 
     await page.waitForTimeout(800);
     await expect
-      .poll(() => apiRequestPaths.filter((path) => path.endsWith("/api/movies/popular")).length)
+      .poll(() => apiRequestPaths.filter((path) => path.endsWith("/api/movies/now-playing")).length)
       .toBe(1);
   });
 
@@ -341,16 +408,16 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await page.goto("/");
     await expect(page.locator('[data-testid^="movie-poster-"]')).toHaveCount(3);
 
-    const countPopularPageTwoRequests = () =>
+    const countNowPlayingPageTwoRequests = () =>
       apiRequestUrls.filter((requestUrl) => {
         const url = new URL(requestUrl);
         const requestPage = url.searchParams.get("page") ?? "1";
-        return url.pathname.endsWith("/api/movies/popular") && requestPage === "2";
+        return url.pathname.endsWith("/api/movies/now-playing") && requestPage === "2";
       }).length;
 
-    await expect.poll(countPopularPageTwoRequests).toBe(0);
+    await expect.poll(countNowPlayingPageTwoRequests).toBe(0);
     await page.waitForTimeout(800);
-    await expect.poll(countPopularPageTwoRequests).toBe(0);
+    await expect.poll(countNowPlayingPageTwoRequests).toBe(0);
   });
 
   test("recovers the inline trailer player when iframe load stalls", async ({ page }) => {

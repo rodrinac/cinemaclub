@@ -32,7 +32,7 @@ const FooterBar = ({ elevated = true }: Props) => {
         borderless
         testID="footer-settings"
       >
-        <Ionicons color={Theme.colors.accent} name="grid-outline" size={24} />
+        <Ionicons color={Theme.colors.accent} name="settings-outline" size={24} />
       </AnimatedPressable>
       <AnimatedPressable
         accessibilityLabel="Open search"

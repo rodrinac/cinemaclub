@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import React, { useEffect } from "react";
 import {
@@ -12,6 +11,7 @@ import {
 import { List, Switch } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AnimatedPressable from "@/components/AnimatedPressable";
+import BackButton from "@/components/BackButton";
 import Theme from "../../theme";
 import { persistentStorage } from "@/utils/persistentStorage";
 
@@ -49,14 +49,18 @@ const Settings = () => {
     >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
-          <AnimatedPressable borderless onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
-          </AnimatedPressable>
+          <BackButton />
         </View>
         <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>SETTINGS</Text>
       </View>
       <View style={styles.main}>
-        <AnimatedPressable onPress={onToggleSwitch} contentStyle={styles.listItem}>
+        <AnimatedPressable
+          onPress={onToggleSwitch}
+          contentStyle={styles.listItem}
+          accessibilityRole="switch"
+          accessibilityLabel="Hide adult content"
+          aria-checked={hideAdultContent}
+        >
           <List.Item
             title="Adult Content"
             description="Hide adult content"
@@ -65,7 +69,10 @@ const Settings = () => {
             accessibilityValue={{ text: "adult.content" }}
             style={{ flex: 1 }}
           />
-          <Switch value={hideAdultContent} onValueChange={onToggleSwitch} color={Theme.colors.gold} />
+          {/* The whole row is the control; the switch only mirrors its state. */}
+          <View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+            <Switch value={hideAdultContent} color={Theme.colors.gold} />
+          </View>
         </AnimatedPressable>
         <AnimatedPressable
           contentStyle={styles.listItem}

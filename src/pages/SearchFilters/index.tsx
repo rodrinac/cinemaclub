@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as database from "@/api/database";
 import api, { TmdbGenreList } from "@/api/tmdb";
 import AnimatedPressable from "@/components/AnimatedPressable";
+import BackButton from "@/components/BackButton";
 import GenreCard from "@/components/GenreCard";
 import Theme from "@/theme";
 
@@ -65,9 +66,7 @@ const SearchFilters = () => {
     >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
-          <AnimatedPressable borderless onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
-          </AnimatedPressable>
+          <BackButton />
           <AnimatedPressable borderless onPress={() => navigation.navigate("Settings")}>
             <Ionicons name="options" color={Theme.colors.accent} size={24} />
           </AnimatedPressable>
