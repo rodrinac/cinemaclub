@@ -760,4 +760,12 @@ test("Lambda handler share pages fall back to generic redirects and validate inp
     () => createLambdaHandler({ env: createEnv({ SHARE_APP_ORIGIN: "https://cinemaclub.expo.app/app" }) }),
     /without a path/,
   );
+
+  // The live e2e suite runs the API with a 127.0.0.1 CORS origin and no SHARE_APP_ORIGIN.
+  const { handler: loopback } = createShareHandler({ env: { CORS_ALLOW_ORIGIN: "http://127.0.0.1:8081" } });
+  assert.match((await loopback(createShareEvent())).body, /content="0;url=http:\/\/127\.0\.0\.1:8081\/movie\/687163"/);
+
+  // A CORS origin share pages cannot use disables them instead of failing startup.
+  const { handler: unusable } = createShareHandler({ env: { CORS_ALLOW_ORIGIN: "http://example.com" } });
+  assert.equal((await unusable(createShareEvent())).statusCode, 503);
 });
