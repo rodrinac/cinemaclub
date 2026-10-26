@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import api, { getDiscoverMovies, type DiscoverCategoryKey } from "./index";
-import type { TmdbMovie, TmdbMovieList } from "./models";
+import type { MoviePitch, TmdbMovie, TmdbMovieList } from "./models";
 import { mergeUniqueMovies } from "@/utils/movieList";
 
 export const movieDetailsQueryKey = (movieId: number) => ["movie-details", movieId] as const;
@@ -18,6 +18,24 @@ export const useMovieDetailsQuery = (movieId: number) => {
     queryKey: movieDetailsQueryKey(movieId),
     queryFn: () => fetchMovieDetails(movieId),
     enabled: Number.isInteger(movieId) && movieId > 0,
+  });
+};
+
+export const moviePitchQueryKey = (movieId: number) => ["movie-pitch", movieId] as const;
+
+const fetchMoviePitch = async (movieId: number): Promise<MoviePitch> => {
+  const response = await api.get<MoviePitch>(`movies/${movieId}/pitch`);
+  return response.data;
+};
+
+export const useMoviePitchQuery = (movieId: number) => {
+  return useQuery({
+    queryKey: moviePitchQueryKey(movieId),
+    queryFn: () => fetchMoviePitch(movieId),
+    enabled: Number.isInteger(movieId) && movieId > 0,
+    // Each miss costs a model call, and the pitch is optional garnish on the page.
+    staleTime: Infinity,
+    retry: false,
   });
 };
 

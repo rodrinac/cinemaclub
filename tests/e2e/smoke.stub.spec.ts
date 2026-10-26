@@ -95,6 +95,22 @@ async function installStubRoutes(
       return;
     }
 
+    const pitchMatch = pathname.match(/\/api\/movies\/(\d+)\/pitch$/);
+    if (pitchMatch) {
+      const id = Number.parseInt(pitchMatch[1], 10);
+
+      await route.fulfill({
+        status: tmdbStub.detailById[id] ? 200 : 404,
+        contentType: "application/json",
+        body: JSON.stringify(
+          tmdbStub.detailById[id]
+            ? { id, pitch: "A stubbed spoiler-free pitch.", moods: ["date night", "big screen"] }
+            : { error: "Movie not found." },
+        ),
+      });
+      return;
+    }
+
     const idMatch = pathname.match(/\/api\/(?:movies|movie)\/(\d+)$/);
     if (idMatch) {
       const id = Number.parseInt(idMatch[1], 10);
@@ -317,6 +333,15 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await page.getByTestId("trailer-player-close").click();
     await expect(player).toHaveCount(0);
     await expect(page.getByTestId("play-trailer-button")).toBeFocused();
+  });
+
+  test("shows the AI pitch on the movie detail page", async ({ page }) => {
+    await page.goto("/");
+
+    await page.locator('[data-testid^="movie-poster-"]').first().click();
+
+    await expect(page.getByTestId("movie-pitch-text")).toHaveText("A stubbed spoiler-free pitch.");
+    await expect(page.getByTestId("movie-pitch").getByText("date night")).toBeVisible();
   });
 
   test("prevents discover pagination runaway when no next page exists", async ({ page }) => {

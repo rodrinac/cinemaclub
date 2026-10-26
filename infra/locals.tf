@@ -9,6 +9,8 @@ locals {
   stage_invoke_url             = "https://${aws_api_gateway_rest_api.tmdb_proxy.id}.execute-api.${var.aws_region}.amazonaws.com/${var.api_stage_name}"
   cors_enabled                 = var.cors_allow_origin != null
   rate_limit_enabled           = var.rate_limit_rps != null && var.rate_limit_burst != null
+  pitch_enabled                = var.pitch_model_id != null
+  pitch_foundation_model_id    = local.pitch_enabled ? regex("^[a-z]+\\.(.+)$", var.pitch_model_id)[0] : null
   gateway_throttle_retry_after = local.rate_limit_enabled ? ceil(1 / var.rate_limit_rps) : 1
   lambda_environment = merge(
     {
@@ -20,6 +22,7 @@ locals {
       RATE_LIMIT_RPS   = tostring(var.rate_limit_rps)
       RATE_LIMIT_BURST = tostring(var.rate_limit_burst)
     } : {},
+    local.pitch_enabled ? { BEDROCK_PITCH_MODEL_ID = var.pitch_model_id } : {},
   )
   alarm_actions = var.alarm_notification_arn == null ? [] : [var.alarm_notification_arn]
   api_gateway_response_parameters = local.cors_enabled ? {

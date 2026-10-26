@@ -67,8 +67,9 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
   `<stage invoke url>/api`, never directly at `api.themoviedb.org`.
 - Canonical routes are `GET /health`, `GET /api/movies/now-playing`,
   `GET /api/movies/popular`, `GET /api/movies/upcoming`,
-  `GET /api/movies/:id`, `GET /api/search/movies?query=...`, and
-  `GET /api/genres`. Keep legacy aliases (`/api/movie/*`,
+  `GET /api/movies/:id`, `GET /api/search/movies?query=...`,
+  `GET /api/genres`, and `GET /api/movies/:id/pitch` (Bedrock-generated,
+  no legacy alias). Keep legacy aliases (`/api/movie/*`,
   `/api/search/movie`, `/api/genre/movie/list`) unless you update every
   caller/test in the same change.
 - Keep the proxy read-only: GET only plus conditional `OPTIONS` preflight
@@ -79,6 +80,11 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
   inbound auth, cookies, or arbitrary headers upstream.
 - Cache only successful TMDB responses. Preserve
   `Cache-Control: public, max-age=60`.
+- Bedrock is the only other outbound call: the pitch route sends TMDB facts
+  (never client input beyond the movie id and `language`) to the model in
+  Terraform `pitch_model_id`, with a forced tool call and validated output.
+  Pitch cache misses are always rate limited per client because each one
+  costs a model call. See `docs/aws-tmdb-proxy-runbook.md`.
 
 ## TMDB Auth and Retry Notes
 

@@ -2,6 +2,7 @@ import { addBookmark, hasBookmark, removeBookmark } from "@/api/database";
 import { useMovieDetailsQuery } from "@/api/tmdb/queries";
 import AnimatedPressable from "@/components/AnimatedPressable";
 import FooterBar from "@/components/FooterBar";
+import MoviePitchCard from "@/components/MoviePitchCard";
 import Theme from "@/theme";
 import { updateWebSeoMetadata } from "@/utils/seoMeta";
 import { Ionicons } from "@expo/vector-icons";
@@ -382,6 +383,7 @@ const MovieDetail = ({ route }: Props) => {
             {movie.title.toUpperCase()}
           </Text>
           <Text style={styles.overview}>{movie.overview}</Text>
+          <MoviePitchCard movieId={movie.id} />
           {movieTrailer && (
             <View style={styles.play}>
               {Platform.OS === "web" ? (

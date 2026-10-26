@@ -4,6 +4,15 @@ const TMDB_API_PATH_PREFIX = TMDB_BASE_URL.pathname;
 const DEFAULT_CACHE_TTL_MS = 60_000;
 export const DEFAULT_CACHE_MAX_ENTRIES = 100;
 export const DEFAULT_UPSTREAM_TIMEOUT_MS = 10_000;
+export const PITCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+// Keeps the TMDB lookup plus the Bedrock call inside the 10s Lambda ceiling.
+const PITCH_TMDB_TIMEOUT_MS = 3_000;
+// Pitches cost a Bedrock call per cache miss, so they are always throttled per
+// client, independently of the optional proxy-wide rate limit.
+export const DEFAULT_PITCH_RATE_LIMIT = Object.freeze({
+  refillRatePerSecond: 0.2,
+  burstCapacity: 5,
+});
 const CORS_METHODS = "GET, OPTIONS";
 const CORS_HEADERS = "Content-Type";
 
@@ -30,6 +39,12 @@ const MOVIE_DETAIL_DESCRIPTOR = Object.freeze({
   endpoint: ENDPOINTS.MOVIE,
   policy: "detail",
   canonicalPath: "/api/movies/:id",
+});
+
+const MOVIE_PITCH_DESCRIPTOR = Object.freeze({
+  endpoint: ENDPOINTS.MOVIE,
+  policy: "common",
+  canonicalPath: "/api/movies/:id/pitch",
 });
 
 const ROUTES = Object.freeze({
@@ -479,12 +494,47 @@ const matchMovieIdRoute = (pathname) => {
   return movieId;
 };
 
+const matchMoviePitchRoute = (pathname) => {
+  const match = pathname.match(/^\/api\/movies\/([0-9]+)\/pitch$/);
+  if (!match) {
+    return undefined;
+  }
+
+  const idText = match[1];
+  const movieId = Number.parseInt(idText, 10);
+
+  if (!Number.isSafeInteger(movieId) || movieId < 0 || String(movieId) !== idText) {
+    return null;
+  }
+
+  return movieId;
+};
+
 export const matchRoute = (pathname) => {
   if (pathname === "/health") {
     return {
       kind: "health",
       supportedPath: true,
       canonicalPath: "/health",
+    };
+  }
+
+  const pitchMovieId = matchMoviePitchRoute(pathname);
+  if (pitchMovieId !== undefined) {
+    if (pitchMovieId === null) {
+      return {
+        kind: "invalid-movie-id",
+        supportedPath: true,
+        canonicalPath: "/api/movies/:id/pitch",
+      };
+    }
+
+    return {
+      kind: "pitch",
+      supportedPath: true,
+      descriptor: MOVIE_PITCH_DESCRIPTOR,
+      movieId: pitchMovieId,
+      canonicalPath: `/api/movies/${pitchMovieId}/pitch`,
     };
   }
 
@@ -581,12 +631,152 @@ export const createTmdbProxy = ({
   cache = createResponseCache(),
   now = () => Date.now(),
   upstreamTimeoutMs = DEFAULT_UPSTREAM_TIMEOUT_MS,
+  generateMoviePitch = null,
+  pitchCache = createResponseCache({ ttlMs: PITCH_CACHE_TTL_MS, now }),
+  pitchRateLimitConfig = DEFAULT_PITCH_RATE_LIMIT,
 } = {}) => {
   if (typeof getToken !== "function") {
     throw new Error("A getToken function is required to create the TMDB proxy.");
   }
 
   const rateLimiter = rateLimitConfig ? createRateLimiter({ ...rateLimitConfig, now }) : null;
+  const pitchRateLimiter = createRateLimiter({ ...pitchRateLimitConfig, now });
+
+  const rateLimitedResponse = (retryAfter, corsHeaders) =>
+    jsonResponse(
+      429,
+      {
+        error: "Too many requests. Please retry shortly.",
+        parameters: {
+          retry_after: retryAfter,
+        },
+      },
+      {
+        ...corsHeaders,
+        "Retry-After": String(retryAfter),
+      },
+    );
+
+  const resolveEffectiveUpstreamTimeoutMs = (requestUpstreamTimeoutMs, resolveRequestUpstreamTimeoutMs) => {
+    const resolvedRequestUpstreamTimeoutMs =
+      typeof resolveRequestUpstreamTimeoutMs === "function"
+        ? resolveRequestUpstreamTimeoutMs()
+        : undefined;
+
+    return Number.isFinite(requestUpstreamTimeoutMs) && requestUpstreamTimeoutMs > 0
+      ? requestUpstreamTimeoutMs
+      : Number.isFinite(resolvedRequestUpstreamTimeoutMs) && resolvedRequestUpstreamTimeoutMs > 0
+        ? resolvedRequestUpstreamTimeoutMs
+        : upstreamTimeoutMs;
+  };
+
+  const handlePitchRequest = async ({
+    routeMatch,
+    safeParams,
+    corsHeaders,
+    requestId,
+    clientKey,
+    effectiveUpstreamTimeoutMs,
+  }) => {
+    if (typeof generateMoviePitch !== "function") {
+      return jsonResponse(503, { error: "Movie pitches are unavailable." }, corsHeaders);
+    }
+
+    const cacheKey = buildCacheKey(routeMatch.canonicalPath, safeParams);
+    const cachedPitch = pitchCache.get(cacheKey);
+
+    if (cachedPitch) {
+      writeLog(log, "info", {
+        kind: "movie_pitch_request",
+        requestId,
+        route: routeMatch.descriptor.canonicalPath,
+        status: 200,
+        cache: "hit",
+      });
+
+      return jsonResponse(200, cachedPitch, {
+        ...corsHeaders,
+        "Cache-Control": SUCCESS_CACHE_CONTROL,
+      });
+    }
+
+    for (const limiter of [rateLimiter, pitchRateLimiter]) {
+      const rateLimitResult = limiter?.consume(clientKey);
+      if (rateLimitResult && !rateLimitResult.allowed) {
+        return rateLimitedResponse(rateLimitResult.retryAfter, corsHeaders);
+      }
+    }
+
+    let movie;
+    try {
+      const token = await getToken();
+      const response = await fetchImpl(
+        buildTmdbUrl(routeMatch.descriptor, routeMatch.movieId, safeParams),
+        {
+          redirect: "error",
+          signal: AbortSignal.timeout(Math.min(effectiveUpstreamTimeoutMs, PITCH_TMDB_TIMEOUT_MS)),
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.status === 404) {
+        return jsonResponse(404, { error: "Movie not found." }, corsHeaders);
+      }
+
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`TMDB responded with status ${response.status}`);
+      }
+
+      movie = await parseJsonResponse(response);
+    } catch (error) {
+      writeLog(log, "error", {
+        kind: "movie_pitch_error",
+        requestId,
+        route: routeMatch.descriptor.canonicalPath,
+        reason: "upstream_failure",
+        message: error instanceof Error ? error.message : "Unknown upstream error",
+      });
+      return jsonResponse(502, { error: "Unable to reach the movie service." }, corsHeaders);
+    }
+
+    const pitchStartedAt = now();
+    let pitch;
+    try {
+      pitch = await generateMoviePitch({
+        movie,
+        language: safeParams.get("language") || "en-US",
+      });
+    } catch (error) {
+      writeLog(log, "error", {
+        kind: "movie_pitch_error",
+        requestId,
+        route: routeMatch.descriptor.canonicalPath,
+        reason: "generation_failure",
+        message: error instanceof Error ? error.message : "Unknown generation error",
+      });
+      return jsonResponse(502, { error: "Unable to generate a pitch right now." }, corsHeaders);
+    }
+
+    const body = { id: routeMatch.movieId, pitch: pitch.pitch, moods: pitch.moods };
+    pitchCache.set(cacheKey, body);
+
+    writeLog(log, "info", {
+      kind: "movie_pitch_request",
+      requestId,
+      route: routeMatch.descriptor.canonicalPath,
+      status: 200,
+      cache: "miss",
+      generationLatencyMs: now() - pitchStartedAt,
+    });
+
+    return jsonResponse(200, body, {
+      ...corsHeaders,
+      "Cache-Control": SUCCESS_CACHE_CONTROL,
+    });
+  };
 
   return async ({
     method,
@@ -646,6 +836,20 @@ export const createTmdbProxy = ({
       return jsonResponse(400, { error: error.message || "Invalid query parameters." }, corsHeaders);
     }
 
+    if (routeMatch.kind === "pitch") {
+      return handlePitchRequest({
+        routeMatch,
+        safeParams,
+        corsHeaders,
+        requestId,
+        clientKey,
+        effectiveUpstreamTimeoutMs: resolveEffectiveUpstreamTimeoutMs(
+          requestUpstreamTimeoutMs,
+          resolveRequestUpstreamTimeoutMs,
+        ),
+      });
+    }
+
     const cacheKey = buildCacheKey(routeMatch.canonicalPath, safeParams);
     const cachedResponse = cache.get(cacheKey);
 
@@ -669,19 +873,7 @@ export const createTmdbProxy = ({
     if (rateLimiter) {
       const rateLimitResult = rateLimiter.consume(clientKey);
       if (!rateLimitResult.allowed) {
-        return jsonResponse(
-          429,
-          {
-            error: "Too many requests. Please retry shortly.",
-            parameters: {
-              retry_after: rateLimitResult.retryAfter,
-            },
-          },
-          {
-            ...corsHeaders,
-            "Retry-After": String(rateLimitResult.retryAfter),
-          },
-        );
+        return rateLimitedResponse(rateLimitResult.retryAfter, corsHeaders);
       }
     }
 
@@ -701,16 +893,10 @@ export const createTmdbProxy = ({
 
     const upstreamUrl = buildTmdbUrl(routeMatch.descriptor, routeMatch.movieId, safeParams);
     const upstreamStartedAt = now();
-    const resolvedRequestUpstreamTimeoutMs =
-      typeof resolveRequestUpstreamTimeoutMs === "function"
-        ? resolveRequestUpstreamTimeoutMs()
-        : undefined;
-    const effectiveUpstreamTimeoutMs =
-      Number.isFinite(requestUpstreamTimeoutMs) && requestUpstreamTimeoutMs > 0
-        ? requestUpstreamTimeoutMs
-        : Number.isFinite(resolvedRequestUpstreamTimeoutMs) && resolvedRequestUpstreamTimeoutMs > 0
-          ? resolvedRequestUpstreamTimeoutMs
-          : upstreamTimeoutMs;
+    const effectiveUpstreamTimeoutMs = resolveEffectiveUpstreamTimeoutMs(
+      requestUpstreamTimeoutMs,
+      resolveRequestUpstreamTimeoutMs,
+    );
 
     try {
       const response = await fetchImpl(upstreamUrl, {

@@ -15,6 +15,8 @@ resource "aws_iam_role" "lambda" {
   tags               = local.common_tags
 }
 
+data "aws_caller_identity" "current" {}
+
 data "aws_iam_policy_document" "lambda_permissions" {
   statement {
     sid = "WriteLambdaLogs"
@@ -32,6 +34,34 @@ data "aws_iam_policy_document" "lambda_permissions" {
     sid       = "ReadTmdbSecret"
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [var.tmdb_secret_arn]
+  }
+
+  dynamic "statement" {
+    for_each = local.pitch_enabled ? [1] : []
+
+    content {
+      sid       = "InvokePitchInferenceProfile"
+      actions   = ["bedrock:InvokeModel"]
+      resources = ["arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:inference-profile/${var.pitch_model_id}"]
+    }
+  }
+
+  # Cross-region profiles route to the foundation model in any member region,
+  # but only when the call goes through the profile above.
+  dynamic "statement" {
+    for_each = local.pitch_enabled ? [1] : []
+
+    content {
+      sid       = "InvokePitchFoundationModel"
+      actions   = ["bedrock:InvokeModel"]
+      resources = ["arn:aws:bedrock:*::foundation-model/${local.pitch_foundation_model_id}"]
+
+      condition {
+        test     = "StringEquals"
+        variable = "bedrock:InferenceProfileArn"
+        values   = ["arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:inference-profile/${var.pitch_model_id}"]
+      }
+    }
   }
 }
 
