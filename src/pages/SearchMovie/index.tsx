@@ -10,7 +10,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TextInputSubmitEditingEventData,
+  type TextInputInstance,
+  type TextInputSubmitEditingEvent,
   View,
 } from "react-native";
 
@@ -49,7 +50,7 @@ const SearchMovie = () => {
   const [inputText, setInputText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const hasUserScrollIntentRef = useRef(false);
 
   const {
@@ -106,7 +107,7 @@ const SearchMovie = () => {
               body: "Try a shorter or different title.",
             };
 
-  const handleSubmitEditing = (event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => {
+  const handleSubmitEditing = (event: TextInputSubmitEditingEvent) => {
     const query = event.nativeEvent.text;
 
     if (query.trim().length < 1) {

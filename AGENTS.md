@@ -167,7 +167,7 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
 
 ## Expo and TypeScript Maintenance
 
-- Use Node 22+; `npm run api` depends on `node --env-file` and built-in
+- Use Node 22.13+ (Expo SDK 58 minimum); `npm run api` depends on `node --env-file` and built-in
   `fetch`.
 - `tsconfig.json` currently keeps `baseUrl: "."` and
   `paths["@/*"] = ["src/*"]`. `ignoreDeprecations` is compiler-version
