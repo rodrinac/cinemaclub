@@ -15,8 +15,6 @@ resource "aws_iam_role" "lambda" {
   tags               = local.common_tags
 }
 
-data "aws_caller_identity" "current" {}
-
 data "aws_iam_policy_document" "lambda_permissions" {
   statement {
     sid = "WriteLambdaLogs"
@@ -42,7 +40,7 @@ data "aws_iam_policy_document" "lambda_permissions" {
     content {
       sid       = "InvokePitchInferenceProfile"
       actions   = ["bedrock:InvokeModel"]
-      resources = ["arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:inference-profile/${var.pitch_model_id}"]
+      resources = [local.pitch_inference_profile_arn]
     }
   }
 
@@ -59,7 +57,7 @@ data "aws_iam_policy_document" "lambda_permissions" {
       condition {
         test     = "StringEquals"
         variable = "bedrock:InferenceProfileArn"
-        values   = ["arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:inference-profile/${var.pitch_model_id}"]
+        values   = [local.pitch_inference_profile_arn]
       }
     }
   }
