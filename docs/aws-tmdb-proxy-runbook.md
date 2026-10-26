@@ -100,8 +100,13 @@ Why this matters:
 - Canonical routes:
   - `GET /health`
   - `GET /api/movies/now-playing`
-  - `GET /api/movies/popular`
-  - `GET /api/movies/upcoming`
+  - `GET /api/movies/popular` (not used by the app tabs)
+  - `GET /api/movies/top-rated` (discover, `vote_average.desc` with
+    `vote_count.gte=5000`; TMDB's own `top_rated` lets low-vote new releases
+    outrank the classics)
+  - `GET /api/movies/upcoming` (discover with a release-date floor of
+    tomorrow; with `region`, regional theatrical releases plus a one-year
+    primary-release floor to drop re-releases)
   - `GET /api/movies/:id`
   - `GET /api/search/movies?query=...`
   - `GET /api/genres`

@@ -79,7 +79,7 @@ const Home = () => {
   const movieListContentStyle = { paddingHorizontal: 6, paddingBottom: footerOffset };
 
   const [categoryKey, setCategoryKey] =
-    useState<keyof typeof DISCOVER_CATEGORY_BY_KEY>("POPULAR");
+    useState<keyof typeof DISCOVER_CATEGORY_BY_KEY>("NOW");
 
   const hasUserScrollIntentRef = useRef(false);
   const scrollY = useRef(new Animated.Value(0)).current;

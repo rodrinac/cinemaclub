@@ -8,12 +8,15 @@ import {
 } from "./retry";
 import {
   getDiscoverCategoryEndpoint,
+  isRegionalDiscoverCategory,
+  toTmdbRegion,
   type DiscoverCategoryKey,
 } from "./discover";
 import { resolveMoviesApiBaseUrl } from "./baseUrl";
 import type { TmdbMovieList } from "./models";
 
 const getLocale = () => getLocales()[0]?.languageTag || "en-US";
+const getRegion = () => toTmdbRegion(getLocales()[0]?.regionCode);
 
 const moviesApiBaseUrlResolution = resolveMoviesApiBaseUrl({
   envBaseUrl: process.env.EXPO_PUBLIC_MOVIES_API_URL,
@@ -46,11 +49,14 @@ export const getDiscoverMovies = (
   page: number,
   config?: AxiosRequestConfig,
 ): Promise<AxiosResponse<TmdbMovieList>> => {
+  const region = isRegionalDiscoverCategory(category) ? getRegion() : undefined;
+
   return api.get<TmdbMovieList>(getDiscoverCategoryEndpoint(category), {
     ...config,
     params: {
       ...(config?.params || {}),
       page,
+      ...(region ? { region } : {}),
     },
   });
 };

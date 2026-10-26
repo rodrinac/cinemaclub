@@ -20,7 +20,7 @@ export const FORBIDDEN_CORS_HEADER_NAMES = Object.freeze([
 const ENDPOINTS = Object.freeze({
   NOW_PLAYING: "movie/now_playing",
   POPULAR: "movie/popular",
-  UPCOMING: "movie/upcoming",
+  DISCOVER: "discover/movie",
   GENRES: "genre/movie/list",
   SEARCH: "search/movie",
   MOVIE: "movie",
@@ -32,22 +32,66 @@ const MOVIE_DETAIL_DESCRIPTOR = Object.freeze({
   canonicalPath: "/api/movies/:id",
 });
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const toTmdbDate = (timestampMs) => new Date(timestampMs).toISOString().slice(0, 10);
+
+const NOW_PLAYING_DESCRIPTOR = Object.freeze({
+  endpoint: ENDPOINTS.NOW_PLAYING,
+  policy: "regional",
+  canonicalPath: "/api/movies/now-playing",
+});
+
+// TMDB's own upcoming list counts any later release in any country, so movies
+// already in theaters show up there. Discover with a release-date floor keeps
+// the tab to films that are not out yet: in the client's region when it sends
+// one (theatrical releases), otherwise anywhere.
+const UPCOMING_DESCRIPTOR = Object.freeze({
+  endpoint: ENDPOINTS.DISCOVER,
+  policy: "regional",
+  canonicalPath: "/api/movies/upcoming",
+  buildUpstreamParams: (safeParams, nowMs) => {
+    const upstreamParams = new URLSearchParams(safeParams);
+    const tomorrow = toTmdbDate(nowMs + DAY_MS);
+
+    upstreamParams.set("sort_by", "popularity.desc");
+
+    if (upstreamParams.has("region")) {
+      upstreamParams.set("release_date.gte", tomorrow);
+      upstreamParams.set("with_release_type", "2|3");
+      // Regional re-releases of old films would otherwise count as upcoming.
+      upstreamParams.set("primary_release_date.gte", toTmdbDate(nowMs - 365 * DAY_MS));
+    } else {
+      upstreamParams.set("primary_release_date.gte", tomorrow);
+    }
+
+    return upstreamParams;
+  },
+});
+
+// TMDB's top_rated list lets low-vote new releases outrank the classics, so
+// rank by rating among films with a substantial vote count instead.
+const TOP_RATED_DESCRIPTOR = Object.freeze({
+  endpoint: ENDPOINTS.DISCOVER,
+  policy: "paged",
+  canonicalPath: "/api/movies/top-rated",
+  buildUpstreamParams: (safeParams) => {
+    const upstreamParams = new URLSearchParams(safeParams);
+    upstreamParams.set("sort_by", "vote_average.desc");
+    upstreamParams.set("vote_count.gte", "5000");
+    return upstreamParams;
+  },
+});
+
 const ROUTES = Object.freeze({
-  "/api/movies/now-playing": Object.freeze({
-    endpoint: ENDPOINTS.NOW_PLAYING,
-    policy: "paged",
-    canonicalPath: "/api/movies/now-playing",
-  }),
+  "/api/movies/now-playing": NOW_PLAYING_DESCRIPTOR,
   "/api/movies/popular": Object.freeze({
     endpoint: ENDPOINTS.POPULAR,
     policy: "paged",
     canonicalPath: "/api/movies/popular",
   }),
-  "/api/movies/upcoming": Object.freeze({
-    endpoint: ENDPOINTS.UPCOMING,
-    policy: "paged",
-    canonicalPath: "/api/movies/upcoming",
-  }),
+  "/api/movies/top-rated": TOP_RATED_DESCRIPTOR,
+  "/api/movies/upcoming": UPCOMING_DESCRIPTOR,
   "/api/genres": Object.freeze({
     endpoint: ENDPOINTS.GENRES,
     policy: "common",
@@ -58,21 +102,13 @@ const ROUTES = Object.freeze({
     policy: "search",
     canonicalPath: "/api/search/movies",
   }),
-  "/api/movie/now_playing": Object.freeze({
-    endpoint: ENDPOINTS.NOW_PLAYING,
-    policy: "paged",
-    canonicalPath: "/api/movies/now-playing",
-  }),
+  "/api/movie/now_playing": NOW_PLAYING_DESCRIPTOR,
   "/api/movie/popular": Object.freeze({
     endpoint: ENDPOINTS.POPULAR,
     policy: "paged",
     canonicalPath: "/api/movies/popular",
   }),
-  "/api/movie/upcoming": Object.freeze({
-    endpoint: ENDPOINTS.UPCOMING,
-    policy: "paged",
-    canonicalPath: "/api/movies/upcoming",
-  }),
+  "/api/movie/upcoming": UPCOMING_DESCRIPTOR,
   "/api/genre/movie/list": Object.freeze({
     endpoint: ENDPOINTS.GENRES,
     policy: "common",
@@ -91,6 +127,9 @@ const POLICIES = Object.freeze({
   }),
   paged: Object.freeze({
     allowedFields: new Set(["language", "include_adult", "page"]),
+  }),
+  regional: Object.freeze({
+    allowedFields: new Set(["language", "include_adult", "page", "region"]),
   }),
   detail: Object.freeze({
     allowedFields: new Set(["language", "include_adult", "append_to_response"]),
@@ -368,6 +407,8 @@ const validateLanguage = (value) => {
   return /^[a-zA-Z0-9]{2,8}(?:-[a-zA-Z0-9]{1,8})*$/.test(value);
 };
 
+const validateRegion = (value) => typeof value === "string" && /^[A-Z]{2}$/.test(value);
+
 const validateIncludeAdult = (value) => value === "true" || value === "false";
 
 const validatePage = (value) => {
@@ -434,6 +475,9 @@ export const validateQueryParams = (searchParams, policyName) => {
         break;
       case "include_adult":
         isValid = validateIncludeAdult(value);
+        break;
+      case "region":
+        isValid = validateRegion(value);
         break;
       case "page":
         isValid = validatePage(value);
@@ -699,7 +743,10 @@ export const createTmdbProxy = ({
       return jsonResponse(502, { error: "Unable to reach the movie service." }, corsHeaders);
     }
 
-    const upstreamUrl = buildTmdbUrl(routeMatch.descriptor, routeMatch.movieId, safeParams);
+    const upstreamParams = routeMatch.descriptor.buildUpstreamParams
+      ? routeMatch.descriptor.buildUpstreamParams(safeParams, now())
+      : safeParams;
+    const upstreamUrl = buildTmdbUrl(routeMatch.descriptor, routeMatch.movieId, upstreamParams);
     const upstreamStartedAt = now();
     const resolvedRequestUpstreamTimeoutMs =
       typeof resolveRequestUpstreamTimeoutMs === "function"
