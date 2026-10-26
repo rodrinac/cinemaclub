@@ -20,6 +20,7 @@ import {
   Image,
   Platform,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -103,7 +104,7 @@ const MovieDetail = ({ route }: Props) => {
   const playTrailerButtonRef = useRef<HTMLButtonElement | null>(null);
   const trailerCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const hasOpenedTrailerRef = useRef(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   const movieTrailer = useMemo(() => pickMovieTrailer(movie?.videos?.results), [movie]);
 
@@ -838,7 +839,7 @@ const styles = StyleSheet.create({
     fontSize: Theme.type.caption,
   },
   trailerPlayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 4,
     backgroundColor: Theme.colors.primaryDarker,
   },
@@ -846,7 +847,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   trailerLoading: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
     gap: 12,
@@ -858,7 +859,7 @@ const styles = StyleSheet.create({
     fontSize: Theme.type.meta,
   },
   trailerError: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
     gap: 4,
