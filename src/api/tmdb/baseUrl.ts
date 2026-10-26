@@ -102,3 +102,18 @@ export {
   getExpoHostName,
   LOCALHOST_PROXY_URL,
 };
+
+/**
+ * Share links point at the proxy's `/share/movie/:id` page (a sibling of `/api`), which
+ * serves server-rendered link-preview tags in the sharer's `lang` and redirects to the app.
+ */
+export const buildMovieShareUrl = (apiBaseUrl: string, movieId: number, language: string) => {
+  const url = new URL(apiBaseUrl);
+  const basePath = url.pathname.replace(/\/+$/, "").replace(/\/api$/, "");
+
+  url.pathname = `${basePath}/share/movie/${movieId}`;
+  url.search = new URLSearchParams({ lang: language }).toString();
+  url.hash = "";
+
+  return url.toString();
+};

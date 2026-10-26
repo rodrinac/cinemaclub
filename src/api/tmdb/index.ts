@@ -12,7 +12,7 @@ import {
   toTmdbRegion,
   type DiscoverCategoryKey,
 } from "./discover";
-import { resolveMoviesApiBaseUrl } from "./baseUrl";
+import { buildMovieShareUrl, resolveMoviesApiBaseUrl } from "./baseUrl";
 import type { TmdbMovieList } from "./models";
 
 const getLocale = () => getLocales()[0]?.languageTag || "en-US";
@@ -75,3 +75,5 @@ export default api;
 export * from "./models";
 export * from "./discover";
 export const getMoviesApiBaseUrl = () => moviesApiBaseUrlResolution.baseUrl;
+export const getMovieShareUrl = (movieId: number) =>
+  buildMovieShareUrl(moviesApiBaseUrlResolution.baseUrl, movieId, getLocale());

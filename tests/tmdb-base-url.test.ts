@@ -1,4 +1,5 @@
 import {
+  buildMovieShareUrl,
   LOCALHOST_PROXY_URL,
   resolveMoviesApiBaseUrl,
 } from "../src/api/tmdb/baseUrl";
@@ -55,5 +56,16 @@ describe("resolveMoviesApiBaseUrl", () => {
     });
 
     expect(resolution.baseUrl).toBe("https://abc123.execute-api.eu-west-1.amazonaws.com/prod/api");
+  });
+});
+
+describe("buildMovieShareUrl", () => {
+  it("points at the proxy share page next to /api with the sharer's language", () => {
+    expect(
+      buildMovieShareUrl("https://abc.execute-api.eu-west-1.amazonaws.com/prod/api", 687163, "pt-BR"),
+    ).toBe("https://abc.execute-api.eu-west-1.amazonaws.com/prod/share/movie/687163?lang=pt-BR");
+    expect(buildMovieShareUrl(`${LOCALHOST_PROXY_URL}/`, 42, "en-US")).toBe(
+      "http://localhost:3001/share/movie/42?lang=en-US",
+    );
   });
 });

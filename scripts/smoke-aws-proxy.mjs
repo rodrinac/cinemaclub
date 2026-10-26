@@ -107,6 +107,20 @@ const run = async () => {
       preflight.headers.get("access-control-allow-headers") === "Content-Type",
       "Preflight returned the wrong allowed headers",
     );
+
+    // Share pages redirect to the web app, whose origin defaults to the CORS origin.
+    const sharePage = await fetch(`${baseStageUrl.replace(/\/+$/, "")}/share/movie/550?lang=en-US`);
+    const sharePageHtml = await sharePage.text();
+    assert(sharePage.status === 200, `Share page returned ${sharePage.status}`);
+    assert(
+      sharePage.headers.get("content-type") === "text/html; charset=utf-8",
+      "Share page did not return HTML",
+    );
+    assert(/<meta property="og:title" content="[^"]+">/.test(sharePageHtml), "Share page has no og:title");
+    assert(
+      sharePageHtml.includes(`content="0;url=${corsAllowOrigin}/movie/550"`),
+      "Share page does not redirect to the web app",
+    );
   } else {
     assertNoCorsHeaders(health.response, "/health");
     assertNoCorsHeaders(firstPopular.response, "popular GET");

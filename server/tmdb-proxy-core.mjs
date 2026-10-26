@@ -1,3 +1,5 @@
+import { SHARE_PAGE_HEADERS, buildFallbackSharePage, buildMovieSharePage } from "./share-page.mjs";
+
 const TMDB_BASE_URL = new URL("https://api.themoviedb.org/3/");
 const TMDB_ORIGIN = TMDB_BASE_URL.origin;
 const TMDB_API_PATH_PREFIX = TMDB_BASE_URL.pathname;
@@ -45,7 +47,29 @@ const MOVIE_PITCH_DESCRIPTOR = Object.freeze({
   endpoint: ENDPOINTS.MOVIE,
   policy: "common",
   canonicalPath: "/api/movies/:id/pitch",
+  // Keywords, credits and certifications give the model hooks beyond the overview.
+  buildUpstreamParams: (safeParams) => {
+    const upstreamParams = new URLSearchParams(safeParams);
+    upstreamParams.set("append_to_response", "keywords,credits,release_dates");
+    return upstreamParams;
+  },
 });
+
+const MOVIE_SHARE_DESCRIPTOR = Object.freeze({
+  endpoint: ENDPOINTS.MOVIE,
+  policy: "share",
+  canonicalPath: "/share/movie/:id",
+  // `lang` is the sharer's language, so previews read in the language the link was sent in.
+  buildUpstreamParams: (safeParams) => {
+    const upstreamParams = new URLSearchParams();
+    if (safeParams.has("lang")) {
+      upstreamParams.set("language", safeParams.get("lang"));
+    }
+    return upstreamParams;
+  },
+});
+
+const DEFAULT_SHARE_LANGUAGE = "en-US";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -145,6 +169,9 @@ const POLICIES = Object.freeze({
   }),
   regional: Object.freeze({
     allowedFields: new Set(["language", "include_adult", "page", "region"]),
+  }),
+  share: Object.freeze({
+    allowedFields: new Set(["lang"]),
   }),
   detail: Object.freeze({
     allowedFields: new Set(["language", "include_adult", "append_to_response"]),
@@ -486,6 +513,7 @@ export const validateQueryParams = (searchParams, policyName) => {
 
     switch (key) {
       case "language":
+      case "lang":
         isValid = validateLanguage(value);
         break;
       case "include_adult":
@@ -538,6 +566,22 @@ const matchMovieIdRoute = (pathname) => {
   return movieId;
 };
 
+const matchMovieShareRoute = (pathname) => {
+  const match = pathname.match(/^\/share\/movie\/([0-9]+)$/);
+  if (!match) {
+    return undefined;
+  }
+
+  const idText = match[1];
+  const movieId = Number.parseInt(idText, 10);
+
+  if (!Number.isSafeInteger(movieId) || movieId < 0 || String(movieId) !== idText) {
+    return null;
+  }
+
+  return movieId;
+};
+
 const matchMoviePitchRoute = (pathname) => {
   const match = pathname.match(/^\/api\/movies\/([0-9]+)\/pitch$/);
   if (!match) {
@@ -560,6 +604,25 @@ export const matchRoute = (pathname) => {
       kind: "health",
       supportedPath: true,
       canonicalPath: "/health",
+    };
+  }
+
+  const shareMovieId = matchMovieShareRoute(pathname);
+  if (shareMovieId !== undefined) {
+    if (shareMovieId === null) {
+      return {
+        kind: "invalid-movie-id",
+        supportedPath: true,
+        canonicalPath: "/share/movie/:id",
+      };
+    }
+
+    return {
+      kind: "share",
+      supportedPath: true,
+      descriptor: MOVIE_SHARE_DESCRIPTOR,
+      movieId: shareMovieId,
+      canonicalPath: `/share/movie/${shareMovieId}`,
     };
   }
 
@@ -678,6 +741,7 @@ export const createTmdbProxy = ({
   generateMoviePitch = null,
   pitchCache = createResponseCache({ ttlMs: PITCH_CACHE_TTL_MS, now }),
   pitchRateLimitConfig = DEFAULT_PITCH_RATE_LIMIT,
+  shareAppOrigin = null,
 } = {}) => {
   if (typeof getToken !== "function") {
     throw new Error("A getToken function is required to create the TMDB proxy.");
@@ -755,7 +819,11 @@ export const createTmdbProxy = ({
     try {
       const token = await getToken();
       const response = await fetchImpl(
-        buildTmdbUrl(routeMatch.descriptor, routeMatch.movieId, safeParams),
+        buildTmdbUrl(
+          routeMatch.descriptor,
+          routeMatch.movieId,
+          routeMatch.descriptor.buildUpstreamParams(safeParams, now()),
+        ),
         {
           redirect: "error",
           signal: AbortSignal.timeout(Math.min(effectiveUpstreamTimeoutMs, PITCH_TMDB_TIMEOUT_MS)),
@@ -822,6 +890,106 @@ export const createTmdbProxy = ({
     });
   };
 
+  const handleShareRequest = async ({
+    routeMatch,
+    safeParams,
+    requestId,
+    clientKey,
+    effectiveUpstreamTimeoutMs,
+  }) => {
+    if (!shareAppOrigin) {
+      return jsonResponse(503, { error: "Share pages are unavailable." });
+    }
+
+    const language = safeParams.get("lang") ?? DEFAULT_SHARE_LANGUAGE;
+    const htmlResponse = (statusCode, body, headers = {}) => ({
+      statusCode,
+      headers: { ...SHARE_PAGE_HEADERS, ...headers },
+      body,
+    });
+    const logShare = (level, fields) =>
+      writeLog(log, level, {
+        kind: "movie_share_request",
+        requestId,
+        route: routeMatch.descriptor.canonicalPath,
+        ...fields,
+      });
+
+    const cacheKey = buildCacheKey(routeMatch.canonicalPath, safeParams);
+    const cachedPage = cache.get(cacheKey);
+
+    if (cachedPage) {
+      logShare("info", { status: 200, cache: "hit" });
+      return htmlResponse(200, cachedPage.html, { "Cache-Control": SUCCESS_CACHE_CONTROL });
+    }
+
+    if (rateLimiter) {
+      const rateLimitResult = rateLimiter.consume(clientKey);
+      if (!rateLimitResult.allowed) {
+        return rateLimitedResponse(rateLimitResult.retryAfter, {});
+      }
+    }
+
+    // Failures still render a page that redirects, so a person who taps a
+    // shared link always lands in the app even when the preview is generic.
+    const fallbackPage = (statusCode, redirectPath) =>
+      htmlResponse(
+        statusCode,
+        buildFallbackSharePage({ redirectPath, language, appOrigin: shareAppOrigin }),
+      );
+
+    let movie;
+    try {
+      const token = await getToken();
+      const response = await fetchImpl(
+        buildTmdbUrl(
+          routeMatch.descriptor,
+          routeMatch.movieId,
+          routeMatch.descriptor.buildUpstreamParams(safeParams, now()),
+        ),
+        {
+          redirect: "error",
+          signal: AbortSignal.timeout(effectiveUpstreamTimeoutMs),
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.status === 404) {
+        logShare("info", { status: 404, upstreamStatus: 404, cache: "miss" });
+        return fallbackPage(404, "/");
+      }
+
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`TMDB responded with status ${response.status}`);
+      }
+
+      movie = await parseJsonResponse(response);
+    } catch (error) {
+      writeLog(log, "error", {
+        kind: "movie_share_error",
+        requestId,
+        route: routeMatch.descriptor.canonicalPath,
+        reason: "upstream_failure",
+        message: error instanceof Error ? error.message : "Unknown upstream error",
+      });
+      return fallbackPage(502, `/movie/${routeMatch.movieId}`);
+    }
+
+    const html = buildMovieSharePage({
+      movie,
+      movieId: routeMatch.movieId,
+      language,
+      appOrigin: shareAppOrigin,
+    });
+    cache.set(cacheKey, { html });
+    logShare("info", { status: 200, cache: "miss" });
+
+    return htmlResponse(200, html, { "Cache-Control": SUCCESS_CACHE_CONTROL });
+  };
+
   return async ({
     method,
     pathname,
@@ -878,6 +1046,19 @@ export const createTmdbProxy = ({
       safeParams = validateQueryParams(searchParams, routeMatch.descriptor.policy);
     } catch (error) {
       return jsonResponse(400, { error: error.message || "Invalid query parameters." }, corsHeaders);
+    }
+
+    if (routeMatch.kind === "share") {
+      return handleShareRequest({
+        routeMatch,
+        safeParams,
+        requestId,
+        clientKey,
+        effectiveUpstreamTimeoutMs: resolveEffectiveUpstreamTimeoutMs(
+          requestUpstreamTimeoutMs,
+          resolveRequestUpstreamTimeoutMs,
+        ),
+      });
     }
 
     if (routeMatch.kind === "pitch") {

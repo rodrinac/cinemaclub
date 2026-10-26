@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createBedrockPitchGenerator, parsePitchToolInput } from "../server/movie-pitch.mjs";
+import {
+  buildPitchMovieFacts,
+  createBedrockPitchGenerator,
+  parsePitchToolInput,
+} from "../server/movie-pitch.mjs";
 import { createLambdaHandler, resolveApiGatewayClientKey } from "../server/tmdb-lambda.mjs";
 
 const createEvent = (overrides = {}) => ({
@@ -404,7 +408,7 @@ test("Lambda handler serves cached movie pitches built from TMDB details", async
   assert.equal(calls.generate.length, 1);
   assert.equal(
     String(calls.fetch[0][0]),
-    "https://api.themoviedb.org/3/movie/687163?language=pt-BR&include_adult=false",
+    "https://api.themoviedb.org/3/movie/687163?language=pt-BR&include_adult=false&append_to_response=keywords%2Ccredits%2Crelease_dates",
   );
   assert.equal(calls.fetch[0][1].redirect, "error");
   assert.equal(calls.generate[0].language, "pt-BR");
@@ -497,9 +501,61 @@ test("Bedrock pitch generator forces the pitch tool and sanitizes its output", a
     runtime_minutes: 156,
     tagline: null,
     overview: "A science teacher wakes up alone on a spaceship.",
+    keywords: [],
+    directors: [],
+    writers: [],
+    top_cast: [],
+    audience_rating: null,
+    certification: null,
   });
   assert.throws(() => parsePitchToolInput({ pitch: "x".repeat(401), moods: [] }), /too long/);
   assert.throws(() => parsePitchToolInput(undefined), /missing/);
+});
+
+test("Pitch facts carry keywords, credits, rating and the language's certification", () => {
+  const facts = buildPitchMovieFacts(
+    {
+      ...PITCH_MOVIE,
+      vote_average: 8.634,
+      vote_count: 8535,
+      keywords: { keywords: [{ name: "interspecies friendship" }, { name: "language barrier" }] },
+      credits: {
+        cast: [
+          { name: "Ryan Gosling", character: "Ryland Grace" },
+          { name: "Sandra Hüller", character: "Eva Stratt" },
+          { name: "James Ortiz", character: "Rocky (voice)" },
+          { name: "Lionel Boyce", character: "Carl" },
+        ],
+        crew: [
+          { name: "Phil Lord", job: "Director" },
+          { name: "Christopher Miller", job: "Director" },
+          { name: "Andy Weir", job: "Novel" },
+          { name: "Drew Goddard", job: "Screenplay" },
+          { name: "Greig Fraser", job: "Director of Photography" },
+        ],
+      },
+      release_dates: {
+        results: [
+          { iso_3166_1: "US", release_dates: [{ certification: "" }, { certification: "PG-13" }] },
+          { iso_3166_1: "BR", release_dates: [{ certification: "12" }] },
+        ],
+      },
+    },
+    "pt-BR",
+  );
+
+  assert.deepEqual(facts.keywords, ["interspecies friendship", "language barrier"]);
+  assert.deepEqual(facts.directors, ["Phil Lord", "Christopher Miller"]);
+  assert.deepEqual(facts.writers, ["Andy Weir (Novel)", "Drew Goddard (Screenplay)"]);
+  assert.deepEqual(facts.top_cast, [
+    "Ryan Gosling as Ryland Grace",
+    "Sandra Hüller as Eva Stratt",
+    "James Ortiz as Rocky (voice)",
+  ]);
+  assert.deepEqual(facts.audience_rating, { average_out_of_10: 8.6, votes: 8535 });
+  assert.equal(facts.certification, "12");
+  assert.equal(buildPitchMovieFacts({ ...PITCH_MOVIE, release_dates: { results: [{ iso_3166_1: "US", release_dates: [{ certification: "PG-13" }] }] } }, "fr").certification, "PG-13");
+  assert.equal(buildPitchMovieFacts({ ...PITCH_MOVIE, vote_average: 9, vote_count: 3 }, "en-US").audience_rating, null);
 });
 
 test("Lambda handler builds discover-backed Upcoming and Top Rated lists with server-fixed filters", async () => {
@@ -588,5 +644,117 @@ test("Lambda handler only accepts region on release-based lists and validates it
       )
     ).statusCode,
     400,
+  );
+});
+
+const SHARE_MOVIE = {
+  id: 687163,
+  title: 'Devoradores de "Estrelas" <script>alert(1)</script>',
+  release_date: "2026-03-15",
+  overview: `${"Um professor acorda numa nave. ".repeat(10)}Fim.`,
+  backdrop_path: "/backdrop123.jpg",
+  poster_path: "/poster123.jpg",
+};
+
+const createShareEvent = (overrides = {}) =>
+  createEvent({
+    path: "/share/movie/687163",
+    multiValueQueryStringParameters: { lang: ["pt-BR"] },
+    ...overrides,
+  });
+
+const createShareHandler = ({ env = {}, fetchImpl } = {}) => {
+  const calls = [];
+  const handler = createLambdaHandler({
+    env: createEnv({
+      TMDB_SECRET_ARN: "arn:aws:secretsmanager:region:account:secret:example",
+      CORS_ALLOW_ORIGIN: "https://cinemaclub.expo.app",
+      ...env,
+    }),
+    fetchImpl: async (...args) => {
+      calls.push(args);
+      return fetchImpl ? fetchImpl(...args) : new Response(JSON.stringify(SHARE_MOVIE), { status: 200 });
+    },
+    getToken: async () => "test-token",
+    logger: silentLogger,
+  });
+
+  return { handler, calls };
+};
+
+test("Lambda handler renders escaped, localized movie share pages that redirect to the web app", async () => {
+  const { handler, calls } = createShareHandler();
+
+  const first = await handler(createShareEvent());
+  const second = await handler(createShareEvent());
+
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.headers["Content-Type"], "text/html; charset=utf-8");
+  assert.equal(first.headers["Cache-Control"], "public, max-age=60");
+  assert.match(first.headers["Content-Security-Policy"], /default-src 'none'/);
+  assert.equal(second.body, first.body);
+  assert.equal(calls.length, 1);
+  assert.equal(String(calls[0][0]), "https://api.themoviedb.org/3/movie/687163?language=pt-BR");
+  assert.equal(calls[0][1].redirect, "error");
+
+  const html = first.body;
+  assert.ok(!html.includes("<script>"));
+  assert.match(html, /<html lang="pt-BR">/);
+  assert.match(
+    html,
+    /<meta property="og:title" content="Devoradores de &quot;Estrelas&quot; &lt;script&gt;alert\(1\)&lt;\/script&gt; \(2026\) • Cinema Club">/,
+  );
+  assert.match(html, /<meta property="og:image" content="https:\/\/image\.tmdb\.org\/t\/p\/w1280\/backdrop123\.jpg">/);
+  assert.match(html, /<meta property="og:locale" content="pt_BR">/);
+  assert.match(html, /<meta property="og:type" content="video\.movie">/);
+  assert.match(html, /<meta http-equiv="refresh" content="0;url=https:\/\/cinemaclub\.expo\.app\/movie\/687163">/);
+  const description = html.match(/<meta name="description" content="([^"]*)">/)[1];
+  assert.ok(description.length <= 200);
+  assert.ok(description.endsWith("…"));
+});
+
+test("Lambda handler share pages fall back to generic redirects and validate input", async () => {
+  const { handler: missing } = createShareHandler({
+    fetchImpl: async () => new Response("{}", { status: 404 }),
+  });
+  const { handler: failing } = createShareHandler({
+    fetchImpl: async () => new Response("{}", { status: 500 }),
+  });
+  const { handler: disabled } = createShareHandler({ env: { CORS_ALLOW_ORIGIN: undefined } });
+  const { handler: overridden, calls } = createShareHandler({
+    env: { SHARE_APP_ORIGIN: "http://localhost:8081" },
+  });
+
+  const notFound = await missing(createShareEvent());
+  assert.equal(notFound.statusCode, 404);
+  assert.match(notFound.body, /content="0;url=https:\/\/cinemaclub\.expo\.app\/"/);
+  assert.match(notFound.body, /<meta property="og:title" content="Cinema Club">/);
+
+  const upstreamFailure = await failing(createShareEvent());
+  assert.equal(upstreamFailure.statusCode, 502);
+  assert.match(upstreamFailure.body, /content="0;url=https:\/\/cinemaclub\.expo\.app\/movie\/687163"/);
+
+  assert.equal((await disabled(createShareEvent())).statusCode, 503);
+
+  const local = await overridden(createShareEvent({ multiValueQueryStringParameters: {} }));
+  assert.match(local.body, /content="0;url=http:\/\/localhost:8081\/movie\/687163"/);
+  assert.match(local.body, /<html lang="en-US">/);
+  assert.equal(String(calls[0][0]), "https://api.themoviedb.org/3/movie/687163");
+
+  for (const multiValueQueryStringParameters of [
+    { language: ["pt-BR"] },
+    { lang: ["pt BR"] },
+    { lang: ["pt-BR", "en-US"] },
+  ]) {
+    assert.equal(
+      (await overridden(createShareEvent({ multiValueQueryStringParameters }))).statusCode,
+      400,
+    );
+  }
+  assert.equal((await overridden(createShareEvent({ path: "/share/movie/0687163" }))).statusCode, 400);
+  assert.equal((await overridden(createShareEvent({ httpMethod: "POST" }))).statusCode, 405);
+  assert.throws(
+    () => createLambdaHandler({ env: createEnv({ SHARE_APP_ORIGIN: "https://cinemaclub.expo.app/app" }) }),
+    /without a path/,
   );
 });
