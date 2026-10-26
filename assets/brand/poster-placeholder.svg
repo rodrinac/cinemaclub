@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-label="No poster available">
+  <rect width="600" height="900" fill="#1A1B24"/>
+  <rect x="36" y="36" width="528" height="828" rx="24" fill="none" stroke="#252734" stroke-width="4"/>
+  <g transform="translate(140 290) scale(0.3125)">
+    <path d="M763.5 318A290 290 0 1 0 763.5 706" fill="none" stroke="#2C2E3D" stroke-width="112" stroke-linecap="round"/>
+    <path d="M488 392 L488 632 L696 512 Z" fill="#2C2E3D" stroke="#2C2E3D" stroke-width="36" stroke-linejoin="round"/>
+  </g>
+</svg>

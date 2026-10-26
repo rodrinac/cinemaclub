@@ -17,11 +17,11 @@ const MoviePitchCard: React.FC<Props> = ({ movieId }) => {
   return (
     <View style={styles.container} testID="movie-pitch" aria-live="polite">
       <View style={styles.header}>
-        <Ionicons name="sparkles" size={14} color={Theme.colors.gold} />
+        <Ionicons name="sparkles" size={14} color={Theme.colors.gold} aria-hidden />
         <Text style={styles.label}>WHY WATCH</Text>
       </View>
       {isPending ? (
-        <Text style={styles.placeholder}>Writing a quick pitch...</Text>
+        <Text style={styles.placeholder}>Writing a quick pitch…</Text>
       ) : (
         <>
           <Text style={styles.pitch} testID="movie-pitch-text">
@@ -30,9 +30,9 @@ const MoviePitchCard: React.FC<Props> = ({ movieId }) => {
           {pitch.moods.length > 0 && (
             <View style={styles.moods}>
               {pitch.moods.map((mood) => (
-                <Text key={mood} style={styles.mood}>
-                  {mood}
-                </Text>
+                <View key={mood} style={styles.mood}>
+                  <Text style={styles.moodLabel}>{mood}</Text>
+                </View>
               ))}
             </View>
           )}
@@ -45,14 +45,15 @@ const MoviePitchCard: React.FC<Props> = ({ movieId }) => {
 
 export default MoviePitchCard;
 
+// A pull-quote: a square gold rule on the left and no box, so the pitch reads as
+// editorial copy that is clearly set apart from the overview above it.
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16,
-    padding: 14,
-    gap: 8,
-    maxWidth: 760,
-    borderRadius: 12,
-    backgroundColor: Theme.colors.overlay,
+    width: "100%",
+    maxWidth: Theme.layout.readingMaxWidth,
+    gap: 12,
+    paddingLeft: 16,
+    paddingVertical: 4,
     borderLeftWidth: 3,
     borderLeftColor: Theme.colors.gold,
   },
@@ -63,34 +64,40 @@ const styles = StyleSheet.create({
   },
   label: {
     color: Theme.colors.gold,
-    fontWeight: "bold",
-    fontFamily: "RobotoCondensed_700Bold",
-    letterSpacing: 1,
-    fontSize: 12,
+    fontFamily: Theme.fonts.semibold,
+    fontSize: Theme.type.label,
+    letterSpacing: 1.5,
   },
   placeholder: {
     color: Theme.colors.textMuted,
-    fontStyle: "italic",
+    fontFamily: Theme.fonts.displayItalic,
+    fontSize: Theme.type.body,
   },
   pitch: {
-    color: Theme.colors.accent,
-    lineHeight: 20,
+    color: Theme.colors.text,
+    fontFamily: Theme.fonts.displayItalic,
+    fontSize: Theme.type.title,
+    lineHeight: 30,
   },
   moods: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
+    gap: 8,
   },
   mood: {
-    color: Theme.colors.accentLighter,
     backgroundColor: Theme.colors.surfaceAlt,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    fontSize: 12,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  moodLabel: {
+    color: Theme.colors.accentLighter,
+    fontFamily: Theme.fonts.medium,
+    fontSize: Theme.type.caption,
   },
   disclaimer: {
     color: Theme.colors.textMuted,
-    fontSize: 10,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.caption,
   },
 });

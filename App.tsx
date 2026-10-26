@@ -3,15 +3,12 @@ import { initDB } from "@/api/database";
 import { queryClient } from "@/api/queryClient";
 import Routes from "@/routes";
 import Theme from "@/theme";
-import { Roboto_400Regular, Roboto_500Medium } from "@expo-google-fonts/roboto";
-import {
-  RobotoCondensed_400Regular,
-  RobotoCondensed_700Bold,
-} from "@expo-google-fonts/roboto-condensed";
-import { Ubuntu_700Bold, useFonts } from "@expo-google-fonts/ubuntu";
+import { Fraunces_400Regular_Italic, Fraunces_600SemiBold } from "@expo-google-fonts/fraunces";
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from "@expo-google-fonts/inter";
 import { Ionicons } from "@expo/vector-icons";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { isRunningInExpoGo } from "expo";
+import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useRef } from "react";
 import { StatusBar, View } from "react-native";
@@ -29,11 +26,11 @@ if (!isRunningInExpoGo()) {
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    RobotoCondensed_400Regular,
-    RobotoCondensed_700Bold,
-    Roboto_400Regular,
-    Roboto_500Medium,
-    Ubuntu_700Bold,
+    Fraunces_600SemiBold,
+    Fraunces_400Regular_Italic,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
   });
   const hasInitializedRef = useRef(false);
 

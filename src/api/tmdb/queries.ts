@@ -7,7 +7,7 @@ export const movieDetailsQueryKey = (movieId: number) => ["movie-details", movie
 
 const fetchMovieDetails = async (movieId: number): Promise<TmdbMovie> => {
   const response = await api.get<TmdbMovie>(`movies/${movieId}`, {
-    params: { append_to_response: "videos" },
+    params: { append_to_response: "videos,credits" },
   });
 
   return response.data;

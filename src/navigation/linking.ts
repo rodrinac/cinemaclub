@@ -9,6 +9,7 @@ export const appLinkingConfig = {
   screens: {
     Home: "",
     SearchMovie: "search",
+    Saved: "saved",
     SearchFilters: "filters",
     Settings: "settings",
     PrivacyPolicy: "privacy-policy",
