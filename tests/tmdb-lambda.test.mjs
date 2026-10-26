@@ -494,13 +494,16 @@ test("Bedrock pitch generator forces the pitch tool and sanitizes its output", a
   assert.equal(inputs[0].modelId, "eu.anthropic.claude-haiku-4-5-20251001-v1:0");
   assert.deepEqual(inputs[0].toolConfig.toolChoice, { tool: { name: "submit_pitch" } });
   assert.match(inputs[0].system[0].text, /"en-US"/);
+  // Haiku otherwise pulls in outside knowledge such as "from the directors of The Lego Movie".
+  assert.match(inputs[0].system[0].text, /never add anything you know about the movie or its people from elsewhere/);
+  assert.match(inputs[0].system[0].text, /Never name other movies, shows, or works/);
+  assert.match(inputs[0].system[0].text, /never "from the directors of" another title/);
   assert.deepEqual(JSON.parse(inputs[0].messages[0].content[0].text), {
     title: "Project Hail Mary",
     release_year: "2026",
     genres: ["Science Fiction"],
     runtime_minutes: 156,
     tagline: null,
-    overview: "A science teacher wakes up alone on a spaceship.",
     keywords: [],
     directors: [],
     writers: [],
