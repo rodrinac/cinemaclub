@@ -228,6 +228,7 @@ const jsonResponse = (statusCode, payload, headers = {}) => {
     statusCode,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
       ...headers,
     },
     body: JSON.stringify(payload),
@@ -499,15 +500,17 @@ export const validateQueryParams = (searchParams, policyName) => {
   const seenKeys = new Set();
 
   for (const [key, value] of searchParams.entries()) {
+    // Keys are only echoed back once they are known to be on the allowlist,
+    // so error bodies never reflect arbitrary client input.
+    if (!policy.allowedFields.has(key)) {
+      throw new Error("Unknown parameter.");
+    }
+
     if (seenKeys.has(key)) {
       throw new Error(`Duplicate parameter: ${key}`);
     }
 
     seenKeys.add(key);
-
-    if (!policy.allowedFields.has(key)) {
-      throw new Error(`Unknown parameter: ${key}`);
-    }
 
     let isValid = false;
 

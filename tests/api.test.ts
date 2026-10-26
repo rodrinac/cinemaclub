@@ -72,6 +72,14 @@ describe("TMDB Proxy API Server (server/movies-api.mjs)", () => {
     expect(body.error).toContain("Unknown parameter");
   });
 
+  it("should not reflect unknown query parameter names in error bodies", async () => {
+    const res = await fetch(`${BASE_URL}/api/movies/now-playing?%3Cscript%3Ealert(1)%3C%2Fscript%3E=1`);
+    expect(res.status).toBe(400);
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    const text = await res.text();
+    expect(text).not.toContain("<script>");
+  });
+
   it("should return 400 for search query missing required query param", async () => {
     const res = await fetch(`${BASE_URL}/api/search/movies`);
     expect(res.status).toBe(400);
