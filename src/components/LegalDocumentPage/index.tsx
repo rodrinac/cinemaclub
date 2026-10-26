@@ -1,5 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import React from "react";
 import {
   KeyboardAvoidingView,
@@ -12,7 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import AnimatedPressable from "@/components/AnimatedPressable";
+import BackButton from "@/components/BackButton";
 import Theme from "@/theme";
 
 export type LegalSection = {
@@ -33,7 +31,6 @@ type Props = {
  * the rest of the app's screens.
  */
 const LegalDocumentPage: React.FC<Props> = ({ title, lastUpdated, sections, testID }) => {
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
@@ -46,9 +43,7 @@ const LegalDocumentPage: React.FC<Props> = ({ title, lastUpdated, sections, test
     >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.nav}>
-          <AnimatedPressable borderless onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
-          </AnimatedPressable>
+          <BackButton />
         </View>
         <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>{title}</Text>
         <Text style={styles.lastUpdated}>Last updated: {lastUpdated}</Text>

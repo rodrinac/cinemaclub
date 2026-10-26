@@ -1,11 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
-import * as database from "../../api/database";
 import type { TmdbMovie } from "../../api/tmdb";
 import { getMovieDetails } from "../../api/tmdb/movieDetailsCache";
 import AnimatedPressable from "../AnimatedPressable";
+import BookmarkButton from "../BookmarkButton";
 import Theme from "../../theme";
 
 type Props = {
@@ -13,16 +13,18 @@ type Props = {
   onPosterPress?: () => void;
 };
 
-const LOADING_TEXT = "Loading...";
+// Shown while credits load, and kept when they are unavailable.
+const PLACEHOLDER_TEXT = "—";
 
-const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
-  const [bookmarked, setBookmarked] = useState<boolean>();
-  const [actors, setActors] = useState(LOADING_TEXT);
-  const [directors, setDirectors] = useState(LOADING_TEXT);
-  const [runtime, setRuntime] = useState(LOADING_TEXT);
+const STAR_THRESHOLDS = [0, 2, 4, 6, 8];
+
+const HorizontalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
+  const [actors, setActors] = useState(PLACEHOLDER_TEXT);
+  const [directors, setDirectors] = useState(PLACEHOLDER_TEXT);
+  const [runtime, setRuntime] = useState<string>();
 
   const voteAverage = Math.floor(movie.vote_average);
-  const stars = [0, 2, 4, 6, 8].map((n) => voteAverage > n).map((v) => (v ? "⭐" : "☆"));
+  const ratingLabel = `Rated ${movie.vote_average?.toFixed(1) ?? "0.0"} out of 10`;
 
   useEffect(() => {
     let isActive = true;
@@ -40,7 +42,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
           .map((credit) => credit.name)
           .join(", ");
 
-        setActors(foundActors || LOADING_TEXT);
+        setActors(foundActors || PLACEHOLDER_TEXT);
 
         const foundDirectors = movieDetails.credits?.crew
           .filter((credit) => credit.department === "Directing")
@@ -48,7 +50,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
           .map((credit) => credit.name)
           .join(", ");
 
-        setDirectors(foundDirectors || LOADING_TEXT);
+        setDirectors(foundDirectors || PLACEHOLDER_TEXT);
 
         const hours = Math.floor(movieDetails.runtime / 60);
         const minutes = movieDetails.runtime % 60;
@@ -56,9 +58,9 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
         setRuntime(`${hours}h${minutes.toString().padStart(2, "0")}min`);
       } catch {
         if (isActive) {
-          setActors(LOADING_TEXT);
-          setDirectors(LOADING_TEXT);
-          setRuntime(LOADING_TEXT);
+          setActors(PLACEHOLDER_TEXT);
+          setDirectors(PLACEHOLDER_TEXT);
+          setRuntime(undefined);
         }
       }
     }
@@ -70,30 +72,20 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
     };
   }, [movie.id]);
 
-  const toggleBookmarked = useCallback(async () => {
-    if (bookmarked) {
-      await database.removeBookmark(movie);
-    } else {
-      await database.addBookmark(movie);
-    }
-
-    setBookmarked(!bookmarked);
-  }, [bookmarked, movie]);
-
-  useEffect(() => {
-    (async () => {
-      setBookmarked(await database.hasBookmark(movie));
-    })();
-  }, [movie]);
-
   const posterUrl = movie.poster_path
     ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
     : "https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg";
 
   return (
     <View style={styles.container}>
-      <AnimatedPressable contentStyle={styles.posterWrapper} onPress={onPosterPress}>
+      <AnimatedPressable
+        contentStyle={styles.posterWrapper}
+        onPress={onPosterPress}
+        accessibilityRole="button"
+        accessibilityLabel={movie.title}
+      >
         <Image
+          accessible={false}
           style={styles.poster}
           source={{ uri: posterUrl }}
           resizeMode="cover"
@@ -106,13 +98,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
             {movie.title}
           </Text>
 
-          <Ionicons
-            style={styles.bookmark}
-            name="bookmark"
-            color={bookmarked ? Theme.colors.warning : Theme.colors.accent}
-            size={18}
-            onPress={toggleBookmarked}
-          />
+          <BookmarkButton movie={movie} size={18} style={styles.bookmark} />
         </View>
         <View>
           <Text style={styles.actor} numberOfLines={1}>
@@ -123,10 +109,19 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
           </Text>
           <View style={styles.votesGroup}>
             <View style={styles.starsAndDuration}>
-              <Text style={styles.stars}>{stars}</Text>
-              <Text style={styles.duration}>{runtime}</Text>
+              <View style={styles.stars} accessible accessibilityLabel={ratingLabel}>
+                {STAR_THRESHOLDS.map((threshold) => (
+                  <Ionicons
+                    key={threshold}
+                    name={voteAverage > threshold ? "star" : "star-outline"}
+                    color={Theme.colors.gold}
+                    size={14}
+                  />
+                ))}
+              </View>
+              {runtime && <Text style={styles.duration}>{runtime}</Text>}
             </View>
-            <Text style={styles.voteAverage}>{movie.vote_average?.toFixed(1) ?? "0.0"}</Text>
+            <Text style={styles.voteAverage} accessibilityElementsHidden importantForAccessibility="no">{movie.vote_average?.toFixed(1) ?? "0.0"}</Text>
           </View>
         </View>
       </View>
@@ -134,7 +129,7 @@ const VerticalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
   );
 };
 
-export default VerticalMovieCard;
+export default HorizontalMovieCard;
 
 const styles = StyleSheet.create({
   container: {
@@ -150,7 +145,9 @@ const styles = StyleSheet.create({
     display: "flex",
     flexDirection: "row",
   },
-  bookmark: {},
+  bookmark: {
+    margin: -13,
+  },
   posterWrapper: {},
   poster: {
     width: 91,
@@ -181,7 +178,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stars: {
-    color: Theme.colors.accentLighter,
+    flexDirection: "row",
+    gap: 2,
   },
   voteAverage: {
     fontSize: 36,

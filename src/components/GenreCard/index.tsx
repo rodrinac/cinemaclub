@@ -37,17 +37,30 @@ const GenreCard: React.FC<Props> = ({ genre, filterMode }) => {
     fetchGenreFilter();
   }, [genre]);
 
+  // Shape, not just color, tells included and excluded genres apart.
+  const iconName = !selected
+    ? "circle"
+    : filterMode === "EXCLUDING"
+      ? "x-circle"
+      : "check-circle";
+  const actionLabel = filterMode === "EXCLUDING" ? "Exclude" : "Include";
+
   const handlePress = () => {
     (async () => await database.toggleGenreFilter(genre))();
-    console.log({ selected, genre, filterMode });
     setSelected(!selected);
   };
 
   return (
     <View style={styles.container}>
-      <AnimatedPressable contentStyle={styles.button} onPress={handlePress}>
+      <AnimatedPressable
+        contentStyle={styles.button}
+        onPress={handlePress}
+        accessibilityRole="checkbox"
+        accessibilityLabel={`${actionLabel} ${genre.name}`}
+        aria-checked={selected}
+      >
         <>
-          <Feather color={selected ? color : Theme.colors.accentLighter} name="circle" size={18} />
+          <Feather color={selected ? color : Theme.colors.accentLighter} name={iconName} size={18} />
           <Text style={[styles.title, { color: selected ? color : Theme.colors.accentLighter }]}>
             {genre.name}
           </Text>

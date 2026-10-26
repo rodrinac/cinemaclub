@@ -151,15 +151,17 @@ const Home = () => {
           <Animated.Text style={[styles.title, { fontSize: titleScale }]}>DISCOVER</Animated.Text>
         </Animated.View>
 
-        <View style={styles.menu}>
+        <View style={styles.menu} accessibilityRole="tablist">
           {DISCOVER_CATEGORIES.map((category) => {
             const isActive = categoryKey === category.key;
 
             return (
               <AnimatedPressable
                 key={category.key}
-                contentStyle={styles.menuItem}
+                contentStyle={[styles.menuItem, isActive ? styles.menuItemActive : null]}
                 onPress={() => onSelectCategory(category.key)}
+                accessibilityRole="tab"
+                aria-selected={isActive}
                 testID={category.testId}
               >
                 <Text style={[styles.menuItemText, isActive ? styles.menuItemTextActive : {}]}>
@@ -168,7 +170,6 @@ const Home = () => {
               </AnimatedPressable>
             );
           })}
-          <Text style={styles.menuItem}> </Text>
         </View>
       </View>
       <View style={[styles.main, Platform.OS === "web" ? styles.mainWeb : null]}>
@@ -308,7 +309,13 @@ const styles = StyleSheet.create({
     rowGap: 10,
   },
   menuItem: {
-    marginEnd: 12,
+    marginEnd: 16,
+    paddingVertical: 6,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  menuItemActive: {
+    borderBottomColor: Theme.colors.gold,
   },
   menuItemText: {
     color: Theme.colors.accentLighter,

@@ -1,6 +1,7 @@
-import { addBookmark, hasBookmark, removeBookmark } from "@/api/database";
 import { useMovieDetailsQuery } from "@/api/tmdb/queries";
 import AnimatedPressable from "@/components/AnimatedPressable";
+import BackButton from "@/components/BackButton";
+import BookmarkButton from "@/components/BookmarkButton";
 import FooterBar from "@/components/FooterBar";
 import MoviePitchCard from "@/components/MoviePitchCard";
 import Theme from "@/theme";
@@ -59,7 +60,6 @@ const MovieDetail = ({ route }: Props) => {
     : isMovieQueryError
       ? "Could not load this movie."
       : null;
-  const [bookmarked, setBookmarked] = useState<boolean>();
   const [isTrailerOpen, setIsTrailerOpen] = useState(false);
   const [isTrailerLoading, setIsTrailerLoading] = useState(false);
   const [trailerLoadError, setTrailerLoadError] = useState<string | null>(null);
@@ -89,12 +89,6 @@ const MovieDetail = ({ route }: Props) => {
   }, []);
 
   useEffect(() => {
-    (async () => {
-      setBookmarked(await hasBookmark({ id: movieId }));
-    })();
-  }, [movieId]);
-
-  useEffect(() => {
     if (Platform.OS !== "web") {
       return;
     }
@@ -119,16 +113,6 @@ const MovieDetail = ({ route }: Props) => {
       type: "video.movie",
     });
   }, [movie]);
-
-  const changeBookmarkStatus = async () => {
-    if (bookmarked) {
-      await removeBookmark(movie!);
-    } else {
-      await addBookmark(movie!);
-    }
-
-    setBookmarked(!bookmarked);
-  };
 
   function getReleaseYear(): number {
     const releaseDate = new Date(movie!.release_date);
@@ -354,20 +338,8 @@ const MovieDetail = ({ route }: Props) => {
           style={styles.linearGradient}
         />
         <View style={styles.nav}>
-          <AnimatedPressable
-            borderless
-            onPress={() => navigation.goBack()}
-            testID="movie-detail-back-button"
-          >
-            <Ionicons name="arrow-back" size={24} color={Theme.colors.accent} />
-          </AnimatedPressable>
-          <AnimatedPressable borderless onPress={changeBookmarkStatus}>
-            <Ionicons
-              name={bookmarked ? "bookmark" : "bookmark-outline"}
-              color={Theme.colors.accent}
-              size={24}
-            />
-          </AnimatedPressable>
+          <BackButton testID="movie-detail-back-button" />
+          <BookmarkButton movie={movie} size={24} style={{ margin: -10 }} />
         </View>
 
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>

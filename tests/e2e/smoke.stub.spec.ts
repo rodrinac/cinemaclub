@@ -246,7 +246,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
 
   test("updates URLs and supports deep links", async ({ page }) => {
     await page.goto("/search");
-    await expect(page.getByText("SEARCH")).toBeVisible();
+    await expect(page.getByText("SEARCH", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/search$/);
 
     await page.goto("/");
@@ -342,6 +342,48 @@ test.describe("Web App Smoke Tests (stub)", () => {
 
     await expect(page.getByTestId("movie-pitch-text")).toHaveText("A stubbed spoiler-free pitch.");
     await expect(page.getByTestId("movie-pitch").getByText("date night")).toBeVisible();
+  });
+
+  test("marks the selected discover tab for assistive tech", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByRole("tab", { name: "Now" })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "Top Rated" }).click();
+    await expect(page.getByRole("tab", { name: "Top Rated" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByRole("tab", { name: "Now" })).toHaveAttribute("aria-selected", "false");
+  });
+
+  test("labels poster and bookmark buttons with the movie title", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByRole("button", { name: "Spider-Verse Echo", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Save Spider-Verse Echo" }).click();
+    await expect(
+      page.getByRole("button", { name: "Remove Spider-Verse Echo from saved" }),
+    ).toBeVisible();
+  });
+
+  test("guides the user before searching and when nothing matches", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("footer-search").click();
+
+    await expect(page.getByTestId("search-empty-state")).toContainText("Find a movie");
+
+    await page.route("**://*/api/search/movies**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ page: 1, results: [], total_pages: 1, total_results: 0 }),
+      });
+    });
+    const searchInput = page.getByRole("textbox", { name: "Search movies" });
+    await searchInput.fill("zzzz");
+    await searchInput.press("Enter");
+
+    await expect(page.getByTestId("search-empty-state")).toContainText('No movies match "zzzz"');
   });
 
   test("prevents discover pagination runaway when no next page exists", async ({ page }) => {
