@@ -7,6 +7,7 @@ import {
   parseRateLimitConfig,
 } from "./tmdb-proxy-core.mjs";
 import { createBedrockPitchGenerator } from "./movie-pitch.mjs";
+import { parseShareAppOrigin } from "./share-page.mjs";
 
 const LAMBDA_UPSTREAM_TIMEOUT_MARGIN_MS = 2_000;
 
@@ -191,6 +192,8 @@ export const createLambdaHandler = ({
   generateMoviePitch,
 } = {}) => {
   const corsAllowOrigin = parseCorsAllowOrigin(env.CORS_ALLOW_ORIGIN);
+  // The CORS origin is the deployed web app, which is where share pages redirect.
+  const shareAppOrigin = parseShareAppOrigin(env.SHARE_APP_ORIGIN ?? corsAllowOrigin);
   const cacheMaxEntries = parseCacheMaxEntries(env.CACHE_MAX_ENTRIES);
   const rateLimitConfig = parseRateLimitConfig({
     rateLimitRps: env.RATE_LIMIT_RPS,
@@ -217,6 +220,7 @@ export const createLambdaHandler = ({
     corsAllowOrigin,
     rateLimitConfig,
     generateMoviePitch: resolvedPitchGenerator,
+    shareAppOrigin,
   });
 
   return async (event = {}, context = {}) => {
@@ -266,6 +270,7 @@ const buildHandlerSignature = (env) => {
     cacheMaxEntries: env.CACHE_MAX_ENTRIES ?? null,
     tmdbSecretArn: env.TMDB_SECRET_ARN ?? null,
     bedrockPitchModelId: env.BEDROCK_PITCH_MODEL_ID ?? null,
+    shareAppOrigin: env.SHARE_APP_ORIGIN ?? null,
   });
 };
 

@@ -114,6 +114,7 @@ Why this matters:
   - `GET /api/search/movies?query=...`
   - `GET /api/genres`
   - `GET /api/movies/:id/pitch` (no legacy alias)
+  - `GET /share/movie/:id?lang=...` (HTML link-preview page, see below)
 - Keep compatibility aliases unless every caller/test is migrated together:
   `/api/movie/*`, `/api/search/movie`, `/api/genre/movie/list`
 - Only successful TMDB responses are cached; keep
@@ -121,10 +122,36 @@ Why this matters:
 - 429 responses must include matching `Retry-After` and
   `parameters.retry_after`
 
+## Share pages (link previews)
+
+- The web app is a client-rendered SPA, so crawlers (WhatsApp, iMessage,
+  Slack, X, Facebook) only ever see the generic `index.html` tags. Shared
+  links therefore point at `<stage invoke url>/share/movie/:id?lang=<tag>`,
+  which renders the movie's title, overview and TMDB backdrop as Open Graph
+  and Twitter tags in the sharer's language, then `meta refresh`es people to
+  `<SHARE_APP_ORIGIN>/movie/:id`.
+- `SHARE_APP_ORIGIN` (Lambda env) defaults to `CORS_ALLOW_ORIGIN`, which is
+  the deployed web app, so no extra deploy variable is needed. Only `lang` is
+  accepted; it is mapped to TMDB `language` upstream.
+- Pages are cached like other successful responses
+  (`Cache-Control: public, max-age=60`) and served with
+  `Content-Security-Policy: default-src 'none'; img-src https:`. Every TMDB
+  string is HTML-escaped. TMDB `404` renders a generic page redirecting to `/`
+  (status `404`); upstream failures render a generic page redirecting to the
+  movie (status `502`), so a tapped link always lands in the app.
+- `og:url`/canonical are deliberately omitted: Facebook re-scrapes `og:url`,
+  and the app URL only has the generic tags. Links use the raw `execute-api`
+  host until a custom domain is set up.
+
 ## Movie pitches (Bedrock)
 
-- `GET /api/movies/:id/pitch` fetches TMDB details, then asks Bedrock for a
-  spoiler-free pitch through a forced `submit_pitch` tool call. Output is
+- `GET /api/movies/:id/pitch` fetches TMDB details with a server-fixed
+  `append_to_response=keywords,credits,release_dates`, then asks Bedrock for a
+  spoiler-free pitch through a forced `submit_pitch` tool call. The model gets
+  keywords, directors, writers, top cast, the audience rating (50+ votes only)
+  and the certification for the `language` region (US fallback), and is told
+  not to paraphrase the overview the app already shows. TMDB reviews are
+  deliberately excluded (spoilers, third-party text). Output is
   length-checked and stripped of control characters before it is returned.
 - Responses are cached per movie and `language` for 24 hours per warm
   container. Cache misses are always throttled per client (burst 5, one

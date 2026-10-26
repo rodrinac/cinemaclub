@@ -36,7 +36,6 @@ const MoviePitchCard: React.FC<Props> = ({ movieId }) => {
               ))}
             </View>
           )}
-          <Text style={styles.disclaimer}>AI-generated from the TMDB overview</Text>
         </>
       )}
     </View>
@@ -93,11 +92,6 @@ const styles = StyleSheet.create({
   moodLabel: {
     color: Theme.colors.accentLighter,
     fontFamily: Theme.fonts.medium,
-    fontSize: Theme.type.caption,
-  },
-  disclaimer: {
-    color: Theme.colors.textMuted,
-    fontFamily: Theme.fonts.body,
     fontSize: Theme.type.caption,
   },
 });

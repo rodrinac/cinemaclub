@@ -4,9 +4,11 @@ import AppShell from "@/components/AppShell";
 import BackButton from "@/components/BackButton";
 import BookmarkButton from "@/components/BookmarkButton";
 import MoviePitchCard from "@/components/MoviePitchCard";
+import ShareButton from "@/components/ShareButton";
 import Theme from "@/theme";
 import { BrandArt } from "@/theme/brandArt";
 import { useResponsiveLayout } from "@/theme/layout";
+import { pickMovieTrailer } from "@/utils/movieTrailer";
 import { updateWebSeoMetadata } from "@/utils/seoMeta";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, type StaticScreenProps } from "@react-navigation/native";
@@ -103,14 +105,7 @@ const MovieDetail = ({ route }: Props) => {
   const hasOpenedTrailerRef = useRef(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const movieTrailer = useMemo(() => {
-    const videos = movie?.videos?.results ?? [];
-
-    return videos
-      .filter((video) => video.type === "Teaser" || video.type === "Trailer")
-      .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
-      .find((video) => /youtube/i.test(video.site));
-  }, [movie]);
+  const movieTrailer = useMemo(() => pickMovieTrailer(movie?.videos?.results), [movie]);
 
   useEffect(() => {
     setStatusBarHidden(true, "slide");
@@ -555,12 +550,20 @@ const MovieDetail = ({ route }: Props) => {
         <View style={[styles.topBarInner, { paddingHorizontal: gutter }]}>
           <BackButton testID="movie-detail-back-button" />
           {!isWide && (
-            <BookmarkButton
-              movie={movie}
-              size={24}
-              style={styles.topBarBookmark}
-              testID="movie-detail-bookmark-button"
-            />
+            <View style={styles.topBarActions}>
+              <ShareButton
+                movie={movie}
+                size={22}
+                style={styles.topBarShare}
+                testID="movie-detail-share-button"
+              />
+              <BookmarkButton
+                movie={movie}
+                size={24}
+                style={styles.topBarBookmark}
+                testID="movie-detail-bookmark-button"
+              />
+            </View>
           )}
         </View>
       </View>
@@ -592,6 +595,12 @@ const MovieDetail = ({ route }: Props) => {
                 )}
                 <View style={styles.actions}>
                   {trailerButton && <View style={styles.actionPrimary}>{trailerButton}</View>}
+                  <ShareButton
+                    movie={movie}
+                    size={22}
+                    style={styles.saveButton}
+                    testID="movie-detail-share-button"
+                  />
                   <BookmarkButton
                     movie={movie}
                     size={24}
@@ -630,6 +639,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  topBarActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  topBarShare: {
+    marginVertical: -10,
   },
   // Pulls the 44pt touch target out so the icon lines up with the content edge.
   topBarBookmark: {
@@ -685,13 +702,14 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
   actionPrimary: {
     flex: 1,
   },
+  // Narrower than tall so "Watch trailer" still fits on one line beside share and save.
   saveButton: {
-    width: 52,
+    width: 48,
     height: 52,
     alignItems: "center",
     justifyContent: "center",
@@ -750,7 +768,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     minHeight: 52,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     borderRadius: 12,
     backgroundColor: Theme.colors.gold,
   },
@@ -769,8 +787,9 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingTop: 0,
     paddingBottom: 0,
-    paddingLeft: 20,
-    paddingRight: 20,
+    // Shares the 280px poster column with the share and save buttons.
+    paddingLeft: 12,
+    paddingRight: 12,
     borderWidth: 0,
     borderRadius: 12,
     backgroundColor: Theme.colors.gold,

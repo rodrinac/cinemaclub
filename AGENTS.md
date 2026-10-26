@@ -73,6 +73,13 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
   legacy aliases (`/api/movie/*`,
   `/api/search/movie`, `/api/genre/movie/list`) unless you update every
   caller/test in the same change.
+- `GET /share/movie/:id?lang=<BCP 47>` is the only non-JSON route: it serves
+  escaped, server-rendered Open Graph/Twitter tags (TMDB details in the
+  sharer's `lang`) for link-preview crawlers, then `meta refresh`es to
+  `<SHARE_APP_ORIGIN>/movie/:id`. `SHARE_APP_ORIGIN` defaults to
+  `CORS_ALLOW_ORIGIN`; with neither set the route is `503`. The app's Share
+  button builds these links from `EXPO_PUBLIC_MOVIES_API_URL` (sibling of
+  `/api`); the viewer's own locale still drives the app itself.
 - Keep the proxy read-only: GET only plus conditional `OPTIONS` preflight
   when CORS is configured. Unknown/duplicate query params and unsafe paths
   are `400`; unknown routes are `404`; upstream/network failures are `502`.

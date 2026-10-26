@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { parseShareAppOrigin } from "./share-page.mjs";
 import { createResponseCache, createTmdbProxy, parseCorsAllowOrigin, parseRateLimitConfig } from "./tmdb-proxy-core.mjs";
 
 const port = Number.parseInt(process.env.PORT || "3001", 10);
@@ -11,9 +12,11 @@ if (!token) {
 
 let corsAllowOrigin;
 let rateLimitConfig;
+let shareAppOrigin;
 
 try {
   corsAllowOrigin = parseCorsAllowOrigin(process.env.CORS_ALLOW_ORIGIN);
+  shareAppOrigin = parseShareAppOrigin(process.env.SHARE_APP_ORIGIN ?? corsAllowOrigin);
   rateLimitConfig = parseRateLimitConfig({
     rateLimitRps: process.env.RATE_LIMIT_RPS,
     rateLimitBurst: process.env.RATE_LIMIT_BURST,
@@ -28,6 +31,7 @@ const proxy = createTmdbProxy({
   cache: createResponseCache(),
   corsAllowOrigin,
   rateLimitConfig,
+  shareAppOrigin,
   log: console,
 });
 
