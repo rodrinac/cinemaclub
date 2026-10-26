@@ -4,9 +4,10 @@ import { Image, StyleSheet, Text, View } from "react-native";
 
 import type { TmdbMovie } from "../../api/tmdb";
 import { getMovieDetails } from "../../api/tmdb/movieDetailsCache";
+import Theme from "../../theme";
+import { BrandArt } from "@/theme/brandArt";
 import AnimatedPressable from "../AnimatedPressable";
 import BookmarkButton from "../BookmarkButton";
-import Theme from "../../theme";
 
 type Props = {
   movie: TmdbMovie;
@@ -18,13 +19,39 @@ const PLACEHOLDER_TEXT = "—";
 
 const STAR_THRESHOLDS = [0, 2, 4, 6, 8];
 
+const POSTER_WIDTH = 72;
+const POSTER_HEIGHT = (POSTER_WIDTH / 2) * 3;
+const BOOKMARK_SIZE = 20;
+// BookmarkButton pads its icon up to a 44pt touch target; pull that padding back
+// so the icon lines up with the rating below it.
+const BOOKMARK_PADDING = (44 - BOOKMARK_SIZE) / 2;
+
+const getReleaseYear = (releaseDate?: string) => {
+  const year = releaseDate?.slice(0, 4);
+
+  return year && /^\d{4}$/.test(year) ? year : undefined;
+};
+
+const formatRuntime = (totalMinutes?: number) => {
+  if (!totalMinutes || totalMinutes < 0) {
+    return undefined;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return hours > 0 ? `${hours}h${minutes.toString().padStart(2, "0")}min` : `${minutes}min`;
+};
+
 const HorizontalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
   const [actors, setActors] = useState(PLACEHOLDER_TEXT);
   const [directors, setDirectors] = useState(PLACEHOLDER_TEXT);
   const [runtime, setRuntime] = useState<string>();
 
   const voteAverage = Math.floor(movie.vote_average);
-  const ratingLabel = `Rated ${movie.vote_average?.toFixed(1) ?? "0.0"} out of 10`;
+  const ratingText = movie.vote_average?.toFixed(1) ?? "0.0";
+  const ratingLabel = `Rated ${ratingText} out of 10`;
+  const meta = [getReleaseYear(movie.release_date), runtime].filter(Boolean).join(" · ");
 
   useEffect(() => {
     let isActive = true;
@@ -52,10 +79,7 @@ const HorizontalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
 
         setDirectors(foundDirectors || PLACEHOLDER_TEXT);
 
-        const hours = Math.floor(movieDetails.runtime / 60);
-        const minutes = movieDetails.runtime % 60;
-
-        setRuntime(`${hours}h${minutes.toString().padStart(2, "0")}min`);
+        setRuntime(formatRuntime(movieDetails.runtime));
       } catch {
         if (isActive) {
           setActors(PLACEHOLDER_TEXT);
@@ -72,56 +96,70 @@ const HorizontalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
     };
   }, [movie.id]);
 
-  const posterUrl = movie.poster_path
-    ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
-    : "https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg";
+  const posterSource = movie.poster_path
+    ? { uri: `https://image.tmdb.org/t/p/w342${movie.poster_path}` }
+    : BrandArt.posterPlaceholder;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.row}>
       <AnimatedPressable
-        contentStyle={styles.posterWrapper}
+        borderless
+        style={styles.posterButton}
         onPress={onPosterPress}
         accessibilityRole="button"
         accessibilityLabel={movie.title}
+        testID={`movie-poster-${movie.id}`}
       >
         <Image
           accessible={false}
           style={styles.poster}
-          source={{ uri: posterUrl }}
+          source={posterSource}
           resizeMode="cover"
-          borderRadius={8}
         />
       </AnimatedPressable>
-      <View style={styles.movieDetails}>
-        <View style={styles.titleWrapper}>
-          <Text style={styles.movieTitle} numberOfLines={1}>
-            {movie.title}
+      {/*
+        Tapping the text opens the movie too, but the poster stays the one button
+        exposed to assistive tech (and the keyboard), so this one is skipped by both.
+      */}
+      <AnimatedPressable
+        borderless
+        style={styles.detailsButton}
+        contentStyle={styles.details}
+        onPress={onPosterPress}
+        accessible={false}
+        tabIndex={-1}
+      >
+        <Text style={styles.title} numberOfLines={2}>
+          {movie.title}
+        </Text>
+        {meta.length > 0 && <Text style={styles.meta}>{meta}</Text>}
+        <Text style={styles.credit} numberOfLines={1}>
+          With {actors}
+        </Text>
+        <Text style={styles.credit} numberOfLines={1}>
+          Directed by {directors}
+        </Text>
+      </AnimatedPressable>
+      <View style={styles.side}>
+        <BookmarkButton movie={movie} size={BOOKMARK_SIZE} style={styles.bookmark} />
+        <View style={styles.rating}>
+          <Text style={styles.score} aria-hidden>
+            {ratingText}
           </Text>
-
-          <BookmarkButton movie={movie} size={18} style={styles.bookmark} />
-        </View>
-        <View>
-          <Text style={styles.actor} numberOfLines={1}>
-            Actors: {actors}
-          </Text>
-          <Text style={styles.director} numberOfLines={1}>
-            Directors: {directors}
-          </Text>
-          <View style={styles.votesGroup}>
-            <View style={styles.starsAndDuration}>
-              <View style={styles.stars} accessible accessibilityLabel={ratingLabel}>
-                {STAR_THRESHOLDS.map((threshold) => (
-                  <Ionicons
-                    key={threshold}
-                    name={voteAverage > threshold ? "star" : "star-outline"}
-                    color={Theme.colors.gold}
-                    size={14}
-                  />
-                ))}
-              </View>
-              {runtime && <Text style={styles.duration}>{runtime}</Text>}
-            </View>
-            <Text style={styles.voteAverage} accessibilityElementsHidden importantForAccessibility="no">{movie.vote_average?.toFixed(1) ?? "0.0"}</Text>
+          <View
+            style={styles.stars}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={ratingLabel}
+          >
+            {STAR_THRESHOLDS.map((threshold) => (
+              <Ionicons
+                key={threshold}
+                name={voteAverage > threshold ? "star" : "star-outline"}
+                color={Theme.colors.gold}
+                size={12}
+              />
+            ))}
           </View>
         </View>
       </View>
@@ -132,62 +170,67 @@ const HorizontalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
 export default HorizontalMovieCard;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 8,
-    marginVertical: 8,
+  row: {
+    flexDirection: "row",
+    gap: 12,
+    paddingVertical: 14,
+  },
+  posterButton: {
+    alignSelf: "flex-start",
+    borderRadius: 8,
+  },
+  poster: {
+    width: POSTER_WIDTH,
+    height: POSTER_HEIGHT,
     borderRadius: 8,
     backgroundColor: Theme.colors.surface,
-    flexDirection: "row",
-    elevation: 2,
   },
-  titleWrapper: {
-    display: "flex",
-    flexDirection: "row",
-  },
-  bookmark: {
-    margin: -13,
-  },
-  posterWrapper: {},
-  poster: {
-    width: 91,
-    height: 136.5,
-  },
-  movieDetails: {
-    paddingHorizontal: 18,
-    justifyContent: "space-evenly",
+  detailsButton: {
     flex: 1,
+    minWidth: 0,
+    borderRadius: 8,
   },
-  movieTitle: {
-    color: Theme.colors.accent,
-    fontFamily: "RobotoCondensed_400Regular",
-    fontSize: 18,
-    flexGrow: 1,
+  details: {
+    gap: 3,
   },
-  actor: {
+  title: {
+    color: Theme.colors.text,
+    fontFamily: Theme.fonts.semibold,
+    fontSize: Theme.type.body,
+    lineHeight: 22,
+  },
+  meta: {
+    color: Theme.colors.textMuted,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.caption,
+    lineHeight: 18,
+  },
+  credit: {
     color: Theme.colors.accentLighter,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.caption,
+    lineHeight: 18,
   },
-  director: {
-    color: Theme.colors.accentLighter,
-  },
-  votesGroup: {
-    flexDirection: "row",
+  side: {
+    alignItems: "flex-end",
     justifyContent: "space-between",
   },
-  starsAndDuration: {
-    flex: 1,
+  bookmark: {
+    marginTop: -BOOKMARK_PADDING,
+    marginRight: -BOOKMARK_PADDING,
+  },
+  rating: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  score: {
+    color: Theme.colors.gold,
+    fontFamily: Theme.fonts.semibold,
+    fontSize: Theme.type.title,
+    fontVariant: ["tabular-nums"],
   },
   stars: {
     flexDirection: "row",
     gap: 2,
-  },
-  voteAverage: {
-    fontSize: 36,
-    fontFamily: "RobotoCondensed_400Regular",
-    color: Theme.colors.gold,
-    alignSelf: "flex-end",
-  },
-  duration: {
-    color: Theme.colors.accentLighter,
   },
 });

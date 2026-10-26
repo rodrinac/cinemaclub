@@ -23,7 +23,7 @@ test.describe("Web App Smoke Tests (live)", () => {
   test("resolves home loading into movies or error state", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("#root")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("DISCOVER", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
 
     await expect
       .poll(

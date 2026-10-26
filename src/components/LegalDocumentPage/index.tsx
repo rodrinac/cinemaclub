@@ -6,12 +6,11 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import BackButton from "@/components/BackButton";
+import PageHeader from "@/components/PageHeader";
 import Theme from "@/theme";
+import { useResponsiveLayout } from "@/theme/layout";
 
 export type LegalSection = {
   heading: string;
@@ -31,9 +30,7 @@ type Props = {
  * the rest of the app's screens.
  */
 const LegalDocumentPage: React.FC<Props> = ({ title, lastUpdated, sections, testID }) => {
-  const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
+  const { isCompact } = useResponsiveLayout();
 
   return (
     <KeyboardAvoidingView
@@ -41,14 +38,13 @@ const LegalDocumentPage: React.FC<Props> = ({ title, lastUpdated, sections, test
       style={{ flex: 1 }}
       testID={testID}
     >
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.nav}>
-          <BackButton />
-        </View>
-        <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>{title}</Text>
+      <PageHeader title={title} showBack>
         <Text style={styles.lastUpdated}>Last updated: {lastUpdated}</Text>
-      </View>
-      <ScrollView style={styles.main} contentContainerStyle={styles.content}>
+      </PageHeader>
+      <ScrollView
+        style={styles.main}
+        contentContainerStyle={[styles.content, { paddingHorizontal: isCompact ? 20 : 32 }]}
+      >
         {sections.map((section) => (
           <View key={section.heading} style={styles.section}>
             <Text style={styles.sectionHeading}>{section.heading}</Text>
@@ -63,48 +59,34 @@ const LegalDocumentPage: React.FC<Props> = ({ title, lastUpdated, sections, test
 export default LegalDocumentPage;
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 18,
-    backgroundColor: Theme.colors.primary,
-    elevation: 4,
-  },
-  nav: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  title: {
-    color: Theme.colors.accent,
-    fontSize: 32,
-    fontFamily: "RobotoCondensed_700Bold",
-    maxWidth: "100%",
-    marginTop: 16,
-  },
   lastUpdated: {
     color: Theme.colors.textMuted,
-    marginTop: 4,
-    marginBottom: 16,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.caption,
   },
   main: {
     flex: 1,
     backgroundColor: Theme.colors.background,
   },
   content: {
-    paddingHorizontal: 18,
-    paddingVertical: 20,
+    width: "100%",
+    maxWidth: Theme.layout.readingMaxWidth,
+    alignSelf: "center",
+    paddingVertical: 24,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sectionHeading: {
     color: Theme.colors.text,
-    fontFamily: "RobotoCondensed_700Bold",
-    fontSize: 18,
-    marginBottom: 6,
+    fontFamily: Theme.fonts.display,
+    fontSize: Theme.type.title,
+    marginBottom: 8,
   },
   sectionBody: {
     color: Theme.colors.accentLighter,
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.meta,
+    lineHeight: 24,
   },
 });

@@ -21,6 +21,10 @@
     ],
     "newArchEnabled": true,
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#12131A"
+      },
       "playStoreUrl": "https://play.google.com/store/apps/details?id=com.nu.production",
       "package": "com.anonymous.cinemaclub"
     },
@@ -37,11 +41,11 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#E3E8F5",
+          "backgroundColor": "#12131A",
           "image": "./assets/splash.png",
           "dark": {
             "image": "./assets/splash.png",
-            "backgroundColor": "#1c2646"
+            "backgroundColor": "#12131A"
           },
           "imageWidth": 216
         }

@@ -15,6 +15,7 @@
     "validate:eas:movies-api-url": "node scripts/verify-eas-public-movies-api-url.mjs",
     "eas-build-pre-install": "npm run validate:eas:movies-api-url",
     "lint": "eslint .",
+    "brand:assets": "node scripts/generate-brand-assets.mjs",
     "test": "jest",
     "test:ci": "npm run test:ci:stub",
     "test:ci:stub": "jest --ci && npm run test:e2e:stub",
@@ -26,9 +27,8 @@
     "prebuild:check": "expo prebuild --clean --no-install"
   },
   "dependencies": {
-    "@expo-google-fonts/roboto": "^0.1.0",
-    "@expo-google-fonts/roboto-condensed": "^0.1.0",
-    "@expo-google-fonts/ubuntu": "^0.1.0",
+    "@expo-google-fonts/fraunces": "^0.4.1",
+    "@expo-google-fonts/inter": "^0.4.2",
     "@expo/metro-runtime": "~5.0.5",
     "@react-navigation/native": "^7",
     "@react-navigation/stack": "^7",

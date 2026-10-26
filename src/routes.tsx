@@ -8,6 +8,7 @@ import Feedback from "./pages/Feedback";
 import Home from "./pages/Home";
 import MovieDetail from "./pages/MovieDetail";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Saved from "./pages/Saved";
 import SearchFilters from "./pages/SearchFilters";
 import SearchMovie from "./pages/SearchMovie";
 import Settings from "./pages/Settings";
@@ -31,6 +32,10 @@ const AppStack = createStackNavigator({
     SearchMovie: {
       screen: SearchMovie,
       linking: appLinkingConfig.screens.SearchMovie,
+    },
+    Saved: {
+      screen: Saved,
+      linking: appLinkingConfig.screens.Saved,
     },
     SearchFilters: {
       screen: SearchFilters,
@@ -61,6 +66,7 @@ const WEB_ROUTE_TITLES = {
   Home: "Cinema Club",
   MovieDetail: "Cinema Club • Movie",
   SearchMovie: "Cinema Club • Search",
+  Saved: "Cinema Club • Saved",
   SearchFilters: "Cinema Club • Filters",
   Settings: "Cinema Club • Settings",
   PrivacyPolicy: "Cinema Club • Privacy Policy",
@@ -72,6 +78,7 @@ const WEB_ROUTE_DESCRIPTIONS = {
   Home: "Discover now playing, top rated, and upcoming movies with Cinema Club.",
   MovieDetail: "Explore movie details, ratings, and overviews on Cinema Club.",
   SearchMovie: "Search thousands of movies by title on Cinema Club.",
+  Saved: "The movies you saved on Cinema Club.",
   SearchFilters: "Filter movie search results by genre, year, and rating on Cinema Club.",
   Settings: "Manage your Cinema Club app preferences.",
   PrivacyPolicy: "Read the Cinema Club privacy policy.",

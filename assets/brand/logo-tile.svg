@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Cinema Club">
+  <rect width="1024" height="1024" rx="224" fill="#12131A"/>
+  <path d="M763.5 318A290 290 0 1 0 763.5 706" fill="none" stroke="#D9A441" stroke-width="112" stroke-linecap="round"/>
+  <path d="M488 392 L488 632 L696 512 Z" fill="#ECEAE4" stroke="#ECEAE4" stroke-width="36" stroke-linejoin="round"/>
+</svg>

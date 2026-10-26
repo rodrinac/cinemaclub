@@ -1,5 +1,6 @@
 import {
   addBookmark,
+  getBookmarks,
   getGenreFilterMode,
   getGenreFilters,
   hasBookmark,
@@ -18,6 +19,15 @@ describe("Database API (MMKV-backed)", () => {
   });
 
   describe("Bookmarks", () => {
+    it("should list bookmarks most recently saved first", async () => {
+      await addBookmark({ id: 1, title: "First" } as any);
+      await addBookmark({ id: 2, title: "Second" } as any);
+      await addBookmark({ id: 3, title: "Third" } as any);
+      await removeBookmark({ id: 2, title: "Second" } as any);
+
+      expect(await getBookmarks()).toEqual([3, 1]);
+    });
+
     it("should add, check, and remove a movie bookmark", async () => {
       const movie = { id: 550, title: "Fight Club" } as any;
 

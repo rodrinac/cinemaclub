@@ -9,13 +9,12 @@ import {
   Text,
   TextInput,
   View,
-  useWindowDimensions,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
-import BackButton from "@/components/BackButton";
+import PageHeader from "@/components/PageHeader";
 import Theme from "@/theme";
+import { useResponsiveLayout } from "@/theme/layout";
 
 const RATING_LABELS = ["Poor", "Fair", "Good", "Great", "Excellent"];
 
@@ -33,9 +32,7 @@ async function submitFeedback(payload: { rating: number; message: string }): Pro
 
 const Feedback = () => {
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
+  const { isCompact } = useResponsiveLayout();
 
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState("");
@@ -57,13 +54,11 @@ const Feedback = () => {
       style={{ flex: 1 }}
       testID="feedback-page"
     >
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.nav}>
-          <BackButton />
-        </View>
-        <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>FEEDBACK</Text>
-      </View>
-      <ScrollView style={styles.main} contentContainerStyle={styles.content}>
+      <PageHeader title="Feedback" showBack />
+      <ScrollView
+        style={styles.main}
+        contentContainerStyle={[styles.content, { paddingHorizontal: isCompact ? 20 : 32 }]}
+      >
         {status === "submitted" ? (
           <View style={styles.confirmation} testID="feedback-confirmation">
             <Ionicons name="checkmark-circle" size={48} color={Theme.colors.gold} />
@@ -81,13 +76,16 @@ const Feedback = () => {
         ) : (
           <>
             <Text style={styles.sectionHeading}>How would you rate your experience?</Text>
-            <View style={styles.stars} testID="feedback-rating">
+            <View style={styles.stars} testID="feedback-rating" accessibilityRole="radiogroup">
               {[1, 2, 3, 4, 5].map((value) => (
                 <AnimatedPressable
                   key={value}
                   borderless
                   onPress={() => setRating(value)}
                   contentStyle={styles.star}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`${value} out of 5, ${RATING_LABELS[value - 1]}`}
+                  aria-checked={value === rating}
                 >
                   <Ionicons
                     name={value <= rating ? "star" : "star-outline"}
@@ -109,6 +107,7 @@ const Feedback = () => {
               onChangeText={setMessage}
               multiline
               numberOfLines={5}
+              accessibilityLabel="Feedback message"
               testID="feedback-message-input"
             />
 
@@ -119,7 +118,7 @@ const Feedback = () => {
               testID="feedback-submit-button"
             >
               <Text style={styles.submitButtonLabel}>
-                {status === "submitting" ? "Sending..." : "Send Feedback"}
+                {status === "submitting" ? "Sending…" : "Send feedback"}
               </Text>
             </AnimatedPressable>
           </>
@@ -132,36 +131,20 @@ const Feedback = () => {
 export default Feedback;
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 18,
-    backgroundColor: Theme.colors.primary,
-    elevation: 4,
-  },
-  nav: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  title: {
-    color: Theme.colors.accent,
-    fontSize: 32,
-    fontFamily: "RobotoCondensed_700Bold",
-    maxWidth: "100%",
-    marginTop: 16,
-    marginBottom: 16,
-  },
   main: {
     flex: 1,
     backgroundColor: Theme.colors.background,
   },
   content: {
-    paddingHorizontal: 18,
+    width: "100%",
+    maxWidth: Theme.layout.readingMaxWidth,
+    alignSelf: "center",
     paddingVertical: 24,
   },
   sectionHeading: {
     color: Theme.colors.text,
-    fontFamily: "RobotoCondensed_700Bold",
-    fontSize: 18,
+    fontFamily: Theme.fonts.display,
+    fontSize: Theme.type.title,
     marginBottom: 12,
     marginTop: 12,
   },
@@ -179,15 +162,19 @@ const styles = StyleSheet.create({
   },
   messageInput: {
     backgroundColor: Theme.colors.surface,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Theme.colors.border,
+    padding: 14,
     color: Theme.colors.text,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.body,
     minHeight: 120,
     textAlignVertical: "top",
   },
   submitButton: {
     backgroundColor: Theme.colors.gold,
-    borderRadius: 8,
+    borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 32,
     alignItems: "center",
@@ -197,9 +184,9 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   submitButtonLabel: {
-    color: Theme.colors.primaryDarker,
-    fontFamily: "RobotoCondensed_700Bold",
-    fontSize: 16,
+    color: Theme.colors.onGold,
+    fontFamily: Theme.fonts.semibold,
+    fontSize: Theme.type.body,
   },
   confirmation: {
     alignItems: "center",
@@ -207,8 +194,8 @@ const styles = StyleSheet.create({
   },
   confirmationTitle: {
     color: Theme.colors.text,
-    fontFamily: "RobotoCondensed_700Bold",
-    fontSize: 20,
+    fontFamily: Theme.fonts.display,
+    fontSize: Theme.type.display,
     marginTop: 16,
   },
   confirmationBody: {

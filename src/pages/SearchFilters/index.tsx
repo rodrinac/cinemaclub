@@ -1,31 +1,52 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import React, { useEffect, useState } from "react";
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
-import { SegmentedButtons } from "react-native-paper";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useEffect, useMemo, useState } from "react";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import * as database from "@/api/database";
-import api, { TmdbGenreList } from "@/api/tmdb";
+import api, { TmdbGenre, TmdbGenreList } from "@/api/tmdb";
 import AnimatedPressable from "@/components/AnimatedPressable";
-import BackButton from "@/components/BackButton";
+import AppShell from "@/components/AppShell";
 import GenreCard from "@/components/GenreCard";
+import PageHeader from "@/components/PageHeader";
 import Theme from "@/theme";
+import { useResponsiveLayout } from "@/theme/layout";
+
+type FilterModeOption = {
+  value: Exclude<database.GenreFilterMode, "UNDEFINED">;
+  label: string;
+  hint: string;
+};
+
+const FILTER_MODES: FilterModeOption[] = [
+  {
+    value: "INCLUDING",
+    label: "Include",
+    hint: "Show only movies in at least one of the genres you pick.",
+  },
+  {
+    value: "EXCLUDING",
+    label: "Exclude",
+    hint: "Hide movies in any of the genres you pick.",
+  },
+];
+
+const toRows = (genres: TmdbGenre[], columns: number) =>
+  Array.from({ length: Math.ceil(genres.length / columns) }, (_, index) =>
+    genres.slice(index * columns, (index + 1) * columns),
+  );
 
 const SearchFilters = () => {
-  const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
-  const numColumns = width >= 1200 ? 4 : width >= 768 || isLandscape ? 3 : 2;
+  const { isCompact, isWide, height } = useResponsiveLayout();
+  const columns = isWide ? 4 : isCompact ? 2 : 3;
+  // The stack card on web grows with its content and the body can't scroll, so the
+  // screen has to be pinned to the window for the genre grid to scroll by itself.
+  const screenWebStyle =
+    Platform.OS === "web"
+      ? {
+          overflow: "hidden" as const,
+          height,
+          maxHeight: height,
+        }
+      : null;
 
   const [genreList, setGenreList] = useState<TmdbGenreList | undefined>();
   const [filterMode, setFilterMode] = useState<database.GenreFilterMode>("INCLUDING");
@@ -59,102 +80,135 @@ const SearchFilters = () => {
     setFilterMode(newFilter);
   };
 
+  const rows = useMemo(() => toRows(genreList?.genres ?? [], columns), [genreList, columns]);
+  const activeMode = FILTER_MODES.find((mode) => mode.value === filterMode) ?? FILTER_MODES[0];
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1 }}
-    >
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.nav}>
-          <BackButton />
-          <AnimatedPressable borderless onPress={() => navigation.navigate("Settings")}>
-            <Ionicons name="options" color={Theme.colors.accent} size={24} />
-          </AnimatedPressable>
-        </View>
-        <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>FILTERS</Text>
-        <View style={styles.menu}>
-          <SegmentedButtons
-            value={filterMode}
-            onValueChange={(value) => onFilterModeChange(value as database.GenreFilterMode)}
-            style={styles.menuButtons}
-            theme={{
-              colors: {
-                secondaryContainer: Theme.colors.surfaceAlt,
-                onSecondaryContainer: Theme.colors.accent,
-              },
-            }}
-            buttons={[
-              {
-                value: "INCLUDING",
-                label: "Only these",
-                checkedColor: Theme.colors.accent,
-                uncheckedColor: Theme.colors.textMuted,
-                style: styles.segment,
-              },
-              {
-                value: "EXCLUDING",
-                label: "Without these",
-                checkedColor: Theme.colors.accent,
-                uncheckedColor: Theme.colors.textMuted,
-                style: styles.segment,
-              },
-            ]}
-          />
-        </View>
-      </View>
-      <View style={styles.main}>
-        {genreList && (
-          <FlatList
-            key={`filters-columns-${numColumns}`}
-            data={genreList.genres}
-            renderItem={({ item }) => <GenreCard genre={item} filterMode={filterMode} />}
-            keyExtractor={(item) => item.id.toString()}
-            numColumns={numColumns}
-            contentContainerStyle={styles.listContent}
-          />
-        )}
-      </View>
-    </KeyboardAvoidingView>
+    <View style={[styles.root, screenWebStyle]}>
+      <AppShell active="SearchMovie">
+        <PageHeader title="Filters" showBack>
+          <View style={styles.modeSection}>
+            <View
+              style={styles.segmented}
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Genre filter mode"
+            >
+              {FILTER_MODES.map((mode) => {
+                const isSelected = mode.value === activeMode.value;
+
+                return (
+                  <AnimatedPressable
+                    key={mode.value}
+                    borderless
+                    style={[styles.segment, isSelected ? styles.segmentSelected : null]}
+                    contentStyle={styles.segmentContent}
+                    onPress={() => onFilterModeChange(mode.value)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={mode.label}
+                    aria-checked={isSelected}
+                    testID={`filter-mode-${mode.value.toLowerCase()}`}
+                  >
+                    <Text
+                      style={[styles.segmentLabel, isSelected ? styles.segmentLabelSelected : null]}
+                    >
+                      {mode.label}
+                    </Text>
+                  </AnimatedPressable>
+                );
+              })}
+            </View>
+            <Text style={styles.hint}>{activeMode.hint}</Text>
+          </View>
+        </PageHeader>
+        <ScrollView
+          style={styles.main}
+          contentContainerStyle={[styles.gridContent, { paddingHorizontal: isCompact ? 20 : 32 }]}
+        >
+          {rows.map((row) => (
+            <View key={row[0].id} style={styles.gridRow}>
+              {row.map((genre) => (
+                <GenreCard key={genre.id} genre={genre} filterMode={filterMode} />
+              ))}
+              {Array.from({ length: columns - row.length }, (_, index) => (
+                <View key={`spacer-${index}`} style={styles.spacer} />
+              ))}
+            </View>
+          ))}
+        </ScrollView>
+      </AppShell>
+    </View>
   );
 };
 
 export default SearchFilters;
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 18,
-    backgroundColor: Theme.colors.primary,
-    elevation: 4,
+  root: {
+    flex: 1,
   },
-  nav: {
+  modeSection: {
+    gap: 8,
+  },
+  segmented: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  title: {
-    color: Theme.colors.accent,
-    fontSize: 32,
-    fontFamily: "RobotoCondensed_700Bold",
-    marginTop: 16,
-    maxWidth: "100%",
-  },
-  menu: {
-    paddingVertical: 16,
-  },
-  menuButtons: {
-    flexGrow: 1,
+    alignSelf: "flex-start",
+    width: "100%",
+    maxWidth: 360,
+    gap: 3,
+    padding: 3,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Theme.colors.border,
   },
   segment: {
-    borderColor: Theme.colors.surfaceAlt,
+    flex: 1,
+    borderRadius: 9,
+  },
+  segmentSelected: {
+    backgroundColor: Theme.colors.surfaceAlt,
+  },
+  segmentContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+  segmentLabel: {
+    color: Theme.colors.accentLighter,
+    fontFamily: Theme.fonts.medium,
+    fontSize: Theme.type.meta,
+  },
+  segmentLabelSelected: {
+    color: Theme.colors.gold,
+    fontFamily: Theme.fonts.semibold,
+  },
+  hint: {
+    color: Theme.colors.textMuted,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.caption,
+    lineHeight: 18,
   },
   main: {
     flex: 1,
-    justifyContent: "center",
+    minHeight: 0,
     backgroundColor: Theme.colors.background,
-    paddingHorizontal: 12,
-    paddingVertical: 16,
   },
-  listContent: {
-    rowGap: 4,
+  gridContent: {
+    width: "100%",
+    maxWidth: Theme.layout.contentMaxWidth,
+    alignSelf: "center",
+    paddingVertical: 16,
+    gap: 8,
+  },
+  gridRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  // Keeps the last row's cards as wide as the rest; same border box as a GenreCard.
+  spacer: {
+    flex: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Theme.colors.background,
   },
 });

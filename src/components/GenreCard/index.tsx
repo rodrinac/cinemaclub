@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import * as database from "@/api/database";
 import { TmdbGenre } from "@/api/tmdb";
@@ -13,7 +13,7 @@ type Props = {
 };
 
 const withoutTheseColor = Theme.colors.danger;
-const withTheseColor = Theme.colors.warning;
+const withTheseColor = Theme.colors.gold;
 
 const GenreCard: React.FC<Props> = ({ genre, filterMode }) => {
   const [selected, setSelected] = useState(false);
@@ -38,11 +38,7 @@ const GenreCard: React.FC<Props> = ({ genre, filterMode }) => {
   }, [genre]);
 
   // Shape, not just color, tells included and excluded genres apart.
-  const iconName = !selected
-    ? "circle"
-    : filterMode === "EXCLUDING"
-      ? "x-circle"
-      : "check-circle";
+  const iconName = !selected ? "circle" : filterMode === "EXCLUDING" ? "x-circle" : "check-circle";
   const actionLabel = filterMode === "EXCLUDING" ? "Exclude" : "Include";
 
   const handlePress = () => {
@@ -51,42 +47,54 @@ const GenreCard: React.FC<Props> = ({ genre, filterMode }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <AnimatedPressable
-        contentStyle={styles.button}
-        onPress={handlePress}
-        accessibilityRole="checkbox"
-        accessibilityLabel={`${actionLabel} ${genre.name}`}
-        aria-checked={selected}
-      >
-        <>
-          <Feather color={selected ? color : Theme.colors.accentLighter} name={iconName} size={18} />
-          <Text style={[styles.title, { color: selected ? color : Theme.colors.accentLighter }]}>
-            {genre.name}
-          </Text>
-        </>
-      </AnimatedPressable>
-    </View>
+    <AnimatedPressable
+      borderless
+      style={[
+        styles.card,
+        selected ? { backgroundColor: Theme.colors.surfaceAlt, borderColor: color } : null,
+      ]}
+      contentStyle={styles.content}
+      onPress={handlePress}
+      accessibilityRole="checkbox"
+      accessibilityLabel={`${actionLabel} ${genre.name}`}
+      aria-checked={selected}
+    >
+      <Feather color={selected ? color : Theme.colors.textMuted} name={iconName} size={18} />
+      <Text style={[styles.title, selected ? styles.titleSelected : null]} numberOfLines={2}>
+        {genre.name}
+      </Text>
+    </AnimatedPressable>
   );
 };
 
 export default GenreCard;
 
 const styles = StyleSheet.create({
-  container: {
+  card: {
     flex: 1,
-    backgroundColor: Theme.colors.surfaceAlt,
-    margin: 8,
-    borderRadius: 8,
+    minWidth: 0,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Theme.colors.border,
   },
-  button: {
+  content: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
+    gap: 10,
+    minHeight: 48,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   title: {
     flex: 1,
-    paddingHorizontal: 12,
-    fontSize: 18,
+    color: Theme.colors.accentLighter,
+    fontFamily: Theme.fonts.medium,
+    fontSize: Theme.type.meta,
+    lineHeight: 20,
+  },
+  titleSelected: {
+    color: Theme.colors.text,
   },
 });

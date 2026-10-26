@@ -170,7 +170,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
 
   test("renders discover page with movie cards", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("DISCOVER", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
     await expect(page.locator('[data-testid^="movie-poster-"]')).toHaveCount(3);
     await expect(page.getByTestId("movie-poster-2001")).toBeVisible();
   });
@@ -246,7 +246,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
 
   test("updates URLs and supports deep links", async ({ page }) => {
     await page.goto("/search");
-    await expect(page.getByText("SEARCH", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Search" })).toBeVisible();
     await expect(page).toHaveURL(/\/search$/);
 
     await page.goto("/");
@@ -254,7 +254,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page).toHaveURL(/\/search$/);
 
     await page.goto("/movie/1001");
-    await expect(page.getByText("METRO PULSE", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("movie-detail-title")).toHaveText("Metro Pulse");
     await expect(page.getByTestId("play-trailer-button")).toHaveCount(0);
     await expect(page).toHaveURL(/\/movie\/1001$/);
 
@@ -278,13 +278,12 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await expect(page).toHaveTitle("Cinema Club • Settings");
 
     await page.goto("/movie/1001");
-    await expect(page.getByText("METRO PULSE", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("movie-detail-title")).toHaveText("Metro Pulse");
     await expect(page).toHaveTitle("Cinema Club • Metro Pulse");
   });
 
-  test("responsive banner switches hero image at the 768px breakpoint", async ({ page }) => {
-    const mobileHeroUrl = "https://image.tmdb.org/t/p/w500/poster-2001.jpg";
-    const wideHeroUrl = "https://image.tmdb.org/t/p/w780/backdrop-2001.jpg";
+  test("hero band uses the backdrop at every width without refetching", async ({ page }) => {
+    const heroUrl = "https://image.tmdb.org/t/p/w780/backdrop-2001.jpg";
     const countMovieDetailRequests = () =>
       apiRequestUrls.filter((requestUrl) => {
         const url = new URL(requestUrl);
@@ -297,14 +296,12 @@ test.describe("Web App Smoke Tests (stub)", () => {
 
     await expect.poll(() => countMovieDetailRequests()).toBe(1);
     await expect
-      .poll(() => imageRequestUrls.filter((url) => url === mobileHeroUrl).length)
+      .poll(() => imageRequestUrls.filter((url) => url === heroUrl).length)
       .toBeGreaterThan(0);
 
     await page.setViewportSize({ width: 1024, height: 768 });
 
-    await expect
-      .poll(() => imageRequestUrls.filter((url) => url === wideHeroUrl).length)
-      .toBeGreaterThan(0);
+    await expect(page.getByTestId("movie-detail-poster")).toBeVisible();
     await expect.poll(() => countMovieDetailRequests()).toBe(1);
   });
 
@@ -363,6 +360,20 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await page.getByRole("button", { name: "Save Spider-Verse Echo" }).click();
     await expect(
       page.getByRole("button", { name: "Remove Spider-Verse Echo from saved" }),
+    ).toBeVisible();
+  });
+
+  test("lists saved movies on the Saved tab", async ({ page }) => {
+    await page.goto("/saved");
+    await expect(page.getByTestId("saved-empty-state")).toContainText("Save movies to watch later");
+
+    await page.goto("/");
+    await page.getByRole("button", { name: "Save Spider-Verse Echo" }).click();
+    await page.getByTestId("footer-saved").click();
+
+    await expect(page).toHaveURL(/\/saved$/);
+    await expect(
+      page.getByTestId("saved-movie-list").getByRole("button", { name: "Spider-Verse Echo", exact: true }),
     ).toBeVisible();
   });
 

@@ -1,35 +1,40 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  FlatList,
   KeyboardAvoidingView,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  FlatList,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TextInputSubmitEditingEventData,
   View,
-  useWindowDimensions,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import * as database from "@/api/database";
 import { TmdbMovie } from "@/api/tmdb";
 import { useSearchMoviesInfiniteQuery } from "@/api/tmdb/queries";
-import HorizontalMovieCard from "@/components/HorizontalMovieCard";
 import AnimatedPressable from "@/components/AnimatedPressable";
-import BackButton from "@/components/BackButton";
+import AppShell from "@/components/AppShell";
+import HorizontalMovieCard from "@/components/HorizontalMovieCard";
+import PageHeader from "@/components/PageHeader";
 import Theme from "@/theme";
+import { useResponsiveLayout } from "@/theme/layout";
 import { blurActiveElementBeforeNavigate } from "@/utils/focus";
+
+const RESULTS_MAX_WIDTH = 760;
+const CONTROL_HEIGHT = 48;
+
+const RowSeparator = () => <View style={styles.separator} />;
 
 const SearchMovie = () => {
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
+  const { isCompact, height } = useResponsiveLayout();
+  // The stack card on web grows with its content and the body can't scroll, so the
+  // screen has to be pinned to the window for the results list to scroll by itself.
   const screenWebStyle =
     Platform.OS === "web"
       ? {
@@ -41,8 +46,10 @@ const SearchMovie = () => {
 
   const [filter, setFilter] = useState<database.GenreFilterMode>("INCLUDING");
   const [genreFilters, setGenreFilters] = useState<number[]>();
+  const [inputText, setInputText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const inputRef = useRef<TextInput>(null);
   const hasUserScrollIntentRef = useRef(false);
 
   const {
@@ -77,20 +84,27 @@ const SearchMovie = () => {
     return filterMovieList(movieList?.results ?? []);
   }, [filterMovieList, movieList?.results]);
 
+  const activeFilterCount = genreFilters?.length ?? 0;
   const hiddenByFilters = (movieList?.results.length ?? 0) - movies.length;
   const emptyState = !searchQuery
     ? { title: "Find a movie", body: "Search by title, then tap a result for details." }
     : isFetching
       ? { title: "Searching…" }
       : isError
-        ? { title: "Search isn't available right now", body: "Check your connection and try again." }
+        ? {
+            title: "Search isn't available right now",
+            body: "Check your connection and try again.",
+          }
         : hiddenByFilters > 0
           ? {
               title: `Your genre filters hid all ${hiddenByFilters} results`,
               body: `for "${searchQuery}".`,
               showFiltersAction: true,
             }
-          : { title: `No movies match "${searchQuery}"`, body: "Try a shorter or different title." };
+          : {
+              title: `No movies match "${searchQuery}"`,
+              body: "Try a shorter or different title.",
+            };
 
   const handleSubmitEditing = (event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => {
     const query = event.nativeEvent.text;
@@ -101,6 +115,13 @@ const SearchMovie = () => {
 
     hasUserScrollIntentRef.current = false;
     setSearchQuery(query);
+  };
+
+  const handleClear = () => {
+    hasUserScrollIntentRef.current = false;
+    setInputText("");
+    setSearchQuery("");
+    inputRef.current?.focus();
   };
 
   const handleEndReached = useCallback(() => {
@@ -116,151 +137,236 @@ const SearchMovie = () => {
     navigation.navigate("MovieDetail", { movieId: movie.id });
   };
 
-  useEffect(() => {
-    async function fetchFilter() {
-      const _filter = (await database.getGenreFilterMode()) || "EXCLUDING";
-      setFilter(_filter);
-    }
+  const openFilters = () => {
+    blurActiveElementBeforeNavigate();
+    navigation.navigate("SearchFilters");
+  };
 
-    fetchFilter();
-  }, []);
+  // The filters are edited on their own screen, so re-read them whenever Search is shown.
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-  useEffect(() => {
-    const fetchGenreFilters = async () => {
-      const _genreFilters = await database.getGenreFilters();
-      setGenreFilters(_genreFilters);
-    };
+      async function fetchFilters() {
+        const [_filter, _genreFilters] = await Promise.all([
+          database.getGenreFilterMode(),
+          database.getGenreFilters(),
+        ]);
 
-    fetchGenreFilters();
-  }, [filter]);
+        if (isActive) {
+          setFilter(_filter || "EXCLUDING");
+          setGenreFilters(_genreFilters);
+        }
+      }
+
+      fetchFilters();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={[{ flex: 1 }, screenWebStyle]}
-    >
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.nav}>
-          <BackButton />
-          <AnimatedPressable
-            borderless
-            style={{ margin: -10 }}
-            contentStyle={{ padding: 10 }}
-            onPress={() => navigation.navigate("Settings")}
-            accessibilityRole="button"
-            accessibilityLabel="Open settings"
-          >
-            <Ionicons name="settings-outline" size={24} color={Theme.colors.accent} />
-          </AnimatedPressable>
-        </View>
-        <Text style={[styles.title, { fontSize: isLandscape ? 26 : 32 }]}>SEARCH</Text>
-        <View style={[styles.search, isLandscape ? styles.searchLandscape : null]}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search a movie"
-            accessibilityLabel="Search movies"
-            returnKeyType="search"
-            placeholderTextColor={Theme.colors.textMuted}
-            onSubmitEditing={handleSubmitEditing}
-            autoFocus
-          />
-          <AnimatedPressable
-            borderless
-            contentStyle={styles.searchFilter}
-            onPress={() => navigation.navigate("SearchFilters")}
-            accessibilityRole="button"
-            accessibilityLabel={
-              genreFilters?.length ? `Genre filters, ${genreFilters.length} active` : "Genre filters"
-            }
-          >
-            <Ionicons name="filter" color={Theme.colors.accentLighter} size={36} />
-          </AnimatedPressable>
-        </View>
-      </View>
-      <View style={styles.main}>
-        {movies.length === 0 && (
-          <View style={styles.emptyState} testID="search-empty-state" aria-live="polite">
-            <Ionicons name="film-outline" size={40} color={Theme.colors.textMuted} />
-            <Text style={styles.emptyTitle}>{emptyState.title}</Text>
-            {emptyState.body && <Text style={styles.emptyBody}>{emptyState.body}</Text>}
-            {emptyState.showFiltersAction && (
-              <AnimatedPressable
-                onPress={() => navigation.navigate("SearchFilters")}
-                accessibilityRole="button"
-                contentStyle={styles.emptyAction}
-              >
-                <Text style={styles.emptyActionText}>Edit genre filters</Text>
-              </AnimatedPressable>
+    <View style={[styles.root, screenWebStyle]}>
+      <AppShell active="SearchMovie">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.screen}
+        >
+          <PageHeader title="Search" maxWidth={RESULTS_MAX_WIDTH}>
+            <View style={styles.searchRow}>
+              <View style={styles.searchField}>
+                <TextInput
+                  ref={inputRef}
+                  style={styles.searchInput}
+                  value={inputText}
+                  onChangeText={setInputText}
+                  placeholder="Search a movie"
+                  accessibilityLabel="Search movies"
+                  returnKeyType="search"
+                  placeholderTextColor={Theme.colors.textMuted}
+                  onSubmitEditing={handleSubmitEditing}
+                  autoFocus
+                />
+                <View style={styles.searchIcon} pointerEvents="none">
+                  <Ionicons name="search" size={20} color={Theme.colors.textMuted} />
+                </View>
+                {inputText.length > 0 && (
+                  <AnimatedPressable
+                    borderless
+                    style={styles.clearButton}
+                    contentStyle={styles.centered}
+                    onPress={handleClear}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear search"
+                    testID="search-clear-button"
+                  >
+                    <Ionicons name="close" size={20} color={Theme.colors.accentLighter} />
+                  </AnimatedPressable>
+                )}
+              </View>
+              <View style={styles.filtersAnchor}>
+                <AnimatedPressable
+                  borderless
+                  style={styles.filtersButton}
+                  contentStyle={styles.centered}
+                  onPress={openFilters}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    activeFilterCount
+                      ? `Genre filters, ${activeFilterCount} active`
+                      : "Genre filters"
+                  }
+                  testID="search-filters-button"
+                >
+                  <Ionicons name="options-outline" color={Theme.colors.accentLighter} size={22} />
+                </AnimatedPressable>
+                {activeFilterCount > 0 && (
+                  <View style={styles.badge} pointerEvents="none">
+                    <Text style={styles.badgeText} aria-hidden>
+                      {activeFilterCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </PageHeader>
+          <View style={styles.main}>
+            {movies.length === 0 && (
+              <View style={styles.emptyState} testID="search-empty-state" aria-live="polite">
+                <Ionicons name="film-outline" size={40} color={Theme.colors.textMuted} />
+                <Text style={styles.emptyTitle}>{emptyState.title}</Text>
+                {emptyState.body && <Text style={styles.emptyBody}>{emptyState.body}</Text>}
+                {emptyState.showFiltersAction && (
+                  <AnimatedPressable
+                    onPress={openFilters}
+                    accessibilityRole="button"
+                    contentStyle={styles.emptyAction}
+                  >
+                    <Text style={styles.emptyActionText}>Edit genre filters</Text>
+                  </AnimatedPressable>
+                )}
+              </View>
+            )}
+            {movies.length > 0 && (
+              <FlatList
+                style={styles.movieList}
+                contentContainerStyle={[
+                  styles.movieListContent,
+                  { paddingHorizontal: isCompact ? 20 : 32 },
+                ]}
+                data={movies}
+                renderItem={({ item }) => (
+                  <HorizontalMovieCard movie={item} onPosterPress={() => goToMovieDetails(item)} />
+                )}
+                keyExtractor={(item) => item.id.toString()}
+                ItemSeparatorComponent={RowSeparator}
+                onEndReached={handleEndReached}
+                onEndReachedThreshold={0.2}
+                onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  if (event.nativeEvent.contentOffset.y > 0) {
+                    hasUserScrollIntentRef.current = true;
+                  }
+                }}
+                onScrollBeginDrag={() => {
+                  hasUserScrollIntentRef.current = true;
+                }}
+                scrollEventThrottle={16}
+              />
             )}
           </View>
-        )}
-        {movies.length > 0 && (
-          <FlatList
-            style={styles.movieList}
-            data={movies}
-            renderItem={({ item }) => (
-              <HorizontalMovieCard movie={item} onPosterPress={() => goToMovieDetails(item)} />
-            )}
-            keyExtractor={(item) => item.id.toString()}
-            onEndReached={handleEndReached}
-            onEndReachedThreshold={0.2}
-            onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
-              if (event.nativeEvent.contentOffset.y > 0) {
-                hasUserScrollIntentRef.current = true;
-              }
-            }}
-            onScrollBeginDrag={() => {
-              hasUserScrollIntentRef.current = true;
-            }}
-            scrollEventThrottle={16}
-          />
-        )}
-      </View>
-    </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </AppShell>
+    </View>
   );
 };
 
 export default SearchMovie;
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 18,
-    backgroundColor: Theme.colors.primary,
-    elevation: 2,
+  root: {
+    flex: 1,
   },
-  nav: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  screen: {
+    flex: 1,
+    minHeight: 0,
   },
-  title: {
-    color: Theme.colors.accent,
-    fontSize: 32,
-    fontFamily: "RobotoCondensed_700Bold",
-    marginTop: 16,
-    maxWidth: "100%",
-  },
-  search: {
+  searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 16,
     gap: 12,
   },
-  searchLandscape: {
-    marginTop: 12,
+  searchField: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: "center",
   },
   searchInput: {
-    flex: 1,
+    minHeight: CONTROL_HEIGHT,
+    paddingVertical: 12,
+    paddingLeft: 44,
+    paddingRight: 48,
     backgroundColor: Theme.colors.surface,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Theme.colors.border,
     color: Theme.colors.text,
-    fontSize: 18,
-    borderRadius: 8,
-    padding: 12,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.body,
   },
-  searchFilter: {
+  searchIcon: {
+    position: "absolute",
+    left: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+  },
+  clearButton: {
+    position: "absolute",
+    right: 2,
+    top: 2,
+    bottom: 2,
+    width: 44,
+    borderRadius: 22,
+  },
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filtersAnchor: {
+    width: CONTROL_HEIGHT,
+    height: CONTROL_HEIGHT,
+  },
+  filtersButton: {
+    width: CONTROL_HEIGHT,
+    height: CONTROL_HEIGHT,
     backgroundColor: Theme.colors.surface,
-    borderRadius: 8,
-    padding: 8,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Theme.colors.border,
+  },
+  badge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Theme.colors.background,
+    backgroundColor: Theme.colors.gold,
+  },
+  badgeText: {
+    color: Theme.colors.onGold,
+    fontFamily: Theme.fonts.semibold,
+    fontSize: Theme.type.label,
+    lineHeight: 14,
+    fontVariant: ["tabular-nums"],
   },
   main: {
     flex: 1,
@@ -268,9 +374,6 @@ const styles = StyleSheet.create({
     minHeight: 0,
     justifyContent: "center",
     backgroundColor: Theme.colors.background,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 12,
     ...(Platform.OS === "web" ? { overflow: "hidden" as const } : null),
   },
   movieList: {
@@ -278,32 +381,44 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minHeight: 0,
     width: "100%",
-    maxWidth: 760,
+    maxWidth: RESULTS_MAX_WIDTH,
     alignSelf: "center",
+  },
+  movieListContent: {
+    paddingBottom: 24,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Theme.colors.border,
   },
   emptyState: {
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 24,
+    paddingBottom: 32,
     maxWidth: 420,
     alignSelf: "center",
   },
   emptyTitle: {
-    color: Theme.colors.accent,
-    fontSize: 18,
-    fontWeight: "bold",
+    color: Theme.colors.text,
+    fontFamily: Theme.fonts.display,
+    fontSize: Theme.type.title,
     textAlign: "center",
   },
   emptyBody: {
     color: Theme.colors.textMuted,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.meta,
     textAlign: "center",
   },
   emptyAction: {
+    minHeight: 44,
+    justifyContent: "center",
     paddingHorizontal: 16,
-    paddingVertical: 10,
   },
   emptyActionText: {
     color: Theme.colors.gold,
-    fontWeight: "bold",
+    fontFamily: Theme.fonts.semibold,
+    fontSize: Theme.type.meta,
   },
 });

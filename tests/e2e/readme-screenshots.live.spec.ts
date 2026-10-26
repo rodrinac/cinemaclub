@@ -39,7 +39,7 @@ test.describe("README live mobile screenshots", () => {
   test("captures discover, search, and movie detail screens", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("#root")).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText("DISCOVER", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
     const posters = page.locator('[data-testid^="movie-poster-"]');
     await expect(posters.first()).toBeVisible({ timeout: 30000 });
 
@@ -47,7 +47,7 @@ test.describe("README live mobile screenshots", () => {
     await page.screenshot({ path: "showcase/screenshot_01.png", fullPage: false });
 
     await page.getByTestId("footer-search").click();
-    await expect(page.getByText("SEARCH", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Search" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Search movies" })).toBeVisible();
 
     await waitForSearchScreenshotReady(page);

@@ -49,6 +49,11 @@ const hasBookmark = async (movie: Pick<TmdbMovie, "id">): Promise<boolean> => {
   return bookmarks.includes(movie.id);
 };
 
+/** Bookmarked movie IDs, most recently saved first. */
+const getBookmarks = async (): Promise<number[]> => {
+  return readJsonArray<number>(BOOKMARKS_KEY).reverse();
+};
+
 const addBookmark = async (movie: TmdbMovie) => {
   const bookmarks = readJsonArray<number>(BOOKMARKS_KEY);
 
@@ -98,6 +103,7 @@ const setGenreFilterMode = async (mode: GenreFilterMode) => {
 
 export {
   addBookmark,
+  getBookmarks,
   getGenreFilterMode,
   getGenreFilters,
   hasBookmark,
