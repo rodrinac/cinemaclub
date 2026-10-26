@@ -149,9 +149,12 @@ Why this matters:
   `append_to_response=keywords,credits,release_dates`, then asks Bedrock for a
   spoiler-free pitch through a forced `submit_pitch` tool call. The model gets
   keywords, directors, writers, top cast, the audience rating (50+ votes only)
-  and the certification for the `language` region (US fallback), and is told
-  not to paraphrase the overview the app already shows. TMDB reviews are
-  deliberately excluded (spoilers, third-party text). Output is
+  and the certification for the `language` region (US fallback). The overview
+  is deliberately not sent: the app shows it above the pitch and Haiku tends
+  to paraphrase it. The prompt forbids outside knowledge (other titles such as
+  "from the directors of ...", awards, sales, unsupported praise); a live
+  check showed a general "use only the facts" rule was not enough. TMDB
+  reviews are deliberately excluded (spoilers, third-party text). Output is
   length-checked and stripped of control characters before it is returned.
 - Responses are cached per movie and `language` for 24 hours per warm
   container. Cache misses are always throttled per client (burst 5, one

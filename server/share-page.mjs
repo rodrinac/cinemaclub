@@ -31,6 +31,8 @@ const tmdbImageUrl = (size, path) =>
 
 const toOgLocale = (language) => language.replace("-", "_");
 
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
 export const SHARE_PAGE_HEADERS = Object.freeze({
   "Content-Type": "text/html; charset=utf-8",
   "Content-Security-Policy": "default-src 'none'; img-src https:",
@@ -50,13 +52,30 @@ export const parseShareAppOrigin = (value) => {
     throw new Error("Share app origin must be an absolute URL origin.");
   }
 
-  const isLocalhost = url.protocol === "http:" && url.hostname === "localhost";
+  const isLoopback = url.protocol === "http:" && LOOPBACK_HOSTNAMES.has(url.hostname);
 
-  if ((url.protocol !== "https:" && !isLocalhost) || url.origin !== trimmedValue.replace(/\/$/, "")) {
+  if ((url.protocol !== "https:" && !isLoopback) || url.origin !== trimmedValue.replace(/\/$/, "")) {
     throw new Error("Share app origin must be an https origin without a path.");
   }
 
   return url.origin;
+};
+
+/**
+ * An explicit SHARE_APP_ORIGIN must be valid. Falling back to the CORS origin is
+ * best-effort: an origin share pages cannot use disables them instead of
+ * failing the whole proxy at startup.
+ */
+export const resolveShareAppOrigin = ({ shareAppOrigin, corsAllowOrigin }) => {
+  if (shareAppOrigin != null) {
+    return parseShareAppOrigin(shareAppOrigin);
+  }
+
+  try {
+    return parseShareAppOrigin(corsAllowOrigin);
+  } catch {
+    return null;
+  }
 };
 
 const renderPage = ({ language, title, description, image, imageAlt, redirectUrl, type }) => {
