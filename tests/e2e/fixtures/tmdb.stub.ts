@@ -27,12 +27,12 @@ const makeMovie = (movie: Partial<TmdbMovie> & Pick<TmdbMovie, "id" | "title">):
   ...movie,
 });
 
-const nowPlayingMovies: TmdbMovie[] = [
+const topRatedMovies: TmdbMovie[] = [
   makeMovie({ id: 1001, title: "Metro Pulse", genre_ids: [28, 12], genres: [genres.genres[0], genres.genres[2]] }),
   makeMovie({ id: 1002, title: "Orbit Signal", genre_ids: [878], genres: [genres.genres[1]] }),
 ];
 
-const popularMovies: TmdbMovie[] = [
+const nowPlayingMovies: TmdbMovie[] = [
   makeMovie({
     id: 2001,
     title: "Spider-Verse Echo",
@@ -94,18 +94,18 @@ const makeList = (results: TmdbMovie[]): TmdbMovieList => ({
 });
 
 const lists = {
-  popular: makeList(popularMovies),
-  upcoming: makeList(upcomingMovies),
   nowPlaying: makeList(nowPlayingMovies),
+  topRated: makeList(topRatedMovies),
+  upcoming: makeList(upcomingMovies),
 };
 
 const detailById = Object.fromEntries(
-  [...popularMovies, ...upcomingMovies, ...nowPlayingMovies].map((movie) => [movie.id, movie]),
+  [...nowPlayingMovies, ...upcomingMovies, ...topRatedMovies].map((movie) => [movie.id, movie]),
 ) as Record<number, TmdbMovie>;
 
 export const tmdbStub = {
   genres,
   lists,
-  search: makeList(popularMovies.filter((movie) => /spider/i.test(movie.title))),
+  search: makeList(nowPlayingMovies.filter((movie) => /spider/i.test(movie.title))),
   detailById,
 };

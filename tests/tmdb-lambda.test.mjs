@@ -501,3 +501,92 @@ test("Bedrock pitch generator forces the pitch tool and sanitizes its output", a
   assert.throws(() => parsePitchToolInput({ pitch: "x".repeat(401), moods: [] }), /too long/);
   assert.throws(() => parsePitchToolInput(undefined), /missing/);
 });
+
+test("Lambda handler builds discover-backed Upcoming and Top Rated lists with server-fixed filters", async () => {
+  const calls = [];
+  const handler = createLambdaHandler({
+    env: createEnv({
+      TMDB_SECRET_ARN: "arn:aws:secretsmanager:region:account:secret:example",
+    }),
+    fetchImpl: async (url) => {
+      calls.push(new URL(String(url)));
+      return new Response(JSON.stringify({ results: [] }), { status: 200 });
+    },
+    getToken: async () => "test-token",
+    now: () => Date.parse("2026-10-26T12:00:00Z"),
+    logger: silentLogger,
+  });
+
+  const responses = await Promise.all([
+    handler(createEvent({ path: "/api/movies/upcoming" })),
+    handler(
+      createEvent({
+        path: "/api/movies/upcoming",
+        multiValueQueryStringParameters: { page: ["1"], language: ["pt-BR"], region: ["BR"] },
+      }),
+    ),
+    handler(createEvent({ path: "/api/movies/top-rated" })),
+    handler(
+      createEvent({
+        path: "/api/movies/now-playing",
+        multiValueQueryStringParameters: { page: ["1"], region: ["US"] },
+      }),
+    ),
+  ]);
+
+  assert.deepEqual(
+    responses.map((response) => response.statusCode),
+    [200, 200, 200, 200],
+  );
+
+  const [globalUpcoming, regionalUpcoming, topRated, nowPlaying] = calls;
+  assert.equal(globalUpcoming.pathname, "/3/discover/movie");
+  assert.equal(globalUpcoming.searchParams.get("primary_release_date.gte"), "2026-10-27");
+  assert.equal(globalUpcoming.searchParams.get("sort_by"), "popularity.desc");
+  assert.equal(globalUpcoming.searchParams.has("release_date.gte"), false);
+
+  assert.equal(regionalUpcoming.searchParams.get("region"), "BR");
+  assert.equal(regionalUpcoming.searchParams.get("release_date.gte"), "2026-10-27");
+  assert.equal(regionalUpcoming.searchParams.get("with_release_type"), "2|3");
+  assert.equal(regionalUpcoming.searchParams.get("primary_release_date.gte"), "2025-10-26");
+
+  assert.equal(topRated.pathname, "/3/discover/movie");
+  assert.equal(topRated.searchParams.get("sort_by"), "vote_average.desc");
+  assert.equal(topRated.searchParams.get("vote_count.gte"), "5000");
+
+  assert.equal(String(nowPlaying), "https://api.themoviedb.org/3/movie/now_playing?page=1&region=US");
+});
+
+test("Lambda handler only accepts region on release-based lists and validates its format", async () => {
+  const handler = createLambdaHandler({
+    env: createEnv({
+      TMDB_SECRET_ARN: "arn:aws:secretsmanager:region:account:secret:example",
+    }),
+    fetchImpl: async () => new Response(JSON.stringify({ results: [] }), { status: 200 }),
+    getToken: async () => "test-token",
+    logger: silentLogger,
+  });
+
+  const statusFor = async (path, region) =>
+    (
+      await handler(
+        createEvent({ path, multiValueQueryStringParameters: { page: ["1"], region: [region] } }),
+      )
+    ).statusCode;
+
+  assert.equal(await statusFor("/api/movies/now-playing", "br"), 400);
+  assert.equal(await statusFor("/api/movies/upcoming", "BRA"), 400);
+  assert.equal(await statusFor("/api/movies/top-rated", "BR"), 400);
+  assert.equal(await statusFor("/api/movies/popular", "BR"), 400);
+  assert.equal(
+    (
+      await handler(
+        createEvent({
+          path: "/api/movies/upcoming",
+          multiValueQueryStringParameters: { sort_by: ["revenue.desc"] },
+        }),
+      )
+    ).statusCode,
+    400,
+  );
+});

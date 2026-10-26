@@ -1,3 +1,4 @@
+import { isRegionalDiscoverCategory, toTmdbRegion } from "../src/api/tmdb/discover";
 import {
   DISCOVER_CATEGORIES,
   DISCOVER_CATEGORY_BY_KEY,
@@ -9,7 +10,7 @@ describe("Discover categories", () => {
 
     expect(endpoints).toEqual([
       "movies/now-playing",
-      "movies/popular",
+      "movies/top-rated",
       "movies/upcoming",
     ]);
     expect(new Set(endpoints).size).toBe(3);
@@ -17,7 +18,16 @@ describe("Discover categories", () => {
 
   it("should expose stable category keys for Home menu state", () => {
     expect(DISCOVER_CATEGORY_BY_KEY.NOW.label).toBe("Now");
-    expect(DISCOVER_CATEGORY_BY_KEY.POPULAR.label).toBe("Popular");
+    expect(DISCOVER_CATEGORY_BY_KEY.TOP_RATED.label).toBe("Top Rated");
     expect(DISCOVER_CATEGORY_BY_KEY.UPCOMING.label).toBe("Upcoming");
+  });
+
+  it("should send a region only for release-based lists and only when it is a valid country code", () => {
+    expect(isRegionalDiscoverCategory("NOW")).toBe(true);
+    expect(isRegionalDiscoverCategory("UPCOMING")).toBe(true);
+    expect(isRegionalDiscoverCategory("TOP_RATED")).toBe(false);
+    expect(toTmdbRegion("BR")).toBe("BR");
+    expect(toTmdbRegion("419")).toBeUndefined();
+    expect(toTmdbRegion(null)).toBeUndefined();
   });
 });

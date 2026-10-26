@@ -69,7 +69,7 @@ const WEB_ROUTE_TITLES = {
 } as const;
 
 const WEB_ROUTE_DESCRIPTIONS = {
-  Home: "Discover now playing, popular, and upcoming movies with Cinema Club.",
+  Home: "Discover now playing, top rated, and upcoming movies with Cinema Club.",
   MovieDetail: "Explore movie details, ratings, and overviews on Cinema Club.",
   SearchMovie: "Search thousands of movies by title on Cinema Club.",
   SearchFilters: "Filter movie search results by genre, year, and rating on Cinema Club.",

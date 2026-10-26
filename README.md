@@ -35,7 +35,7 @@ The local API defaults to **no CORS headers** and **no in-memory rate limiting**
 `npm run api` starts a small read-only API on port `3001`. The AWS deployment uses API Gateway REST API -> Node.js Lambda -> TMDB and keeps the same `/api` contract by setting `EXPO_PUBLIC_MOVIES_API_URL` to `<stage invoke url>/api`.
 
 - `GET /health`
-- `GET /api/movies/now-playing`, `/api/movies/popular`, `/api/movies/upcoming`
+- `GET /api/movies/now-playing`, `/api/movies/top-rated`, `/api/movies/upcoming`, `/api/movies/popular`
 - `GET /api/movies/:id`
 - `GET /api/search/movies?query=...`
 - `GET /api/genres`

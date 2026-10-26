@@ -66,10 +66,11 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
   `EXPO_PUBLIC_MOVIES_API_URL`. For AWS deploys, point it at
   `<stage invoke url>/api`, never directly at `api.themoviedb.org`.
 - Canonical routes are `GET /health`, `GET /api/movies/now-playing`,
-  `GET /api/movies/popular`, `GET /api/movies/upcoming`,
-  `GET /api/movies/:id`, `GET /api/search/movies?query=...`,
-  `GET /api/genres`, and `GET /api/movies/:id/pitch` (Bedrock-generated,
-  no legacy alias). Keep legacy aliases (`/api/movie/*`,
+  `GET /api/movies/popular`, `GET /api/movies/top-rated`,
+  `GET /api/movies/upcoming`, `GET /api/movies/:id`,
+  `GET /api/search/movies?query=...`, `GET /api/genres`, and
+  `GET /api/movies/:id/pitch` (Bedrock-generated, no legacy alias). Keep
+  legacy aliases (`/api/movie/*`,
   `/api/search/movie`, `/api/genre/movie/list`) unless you update every
   caller/test in the same change.
 - Keep the proxy read-only: GET only plus conditional `OPTIONS` preflight
@@ -78,6 +79,11 @@ npm run test:e2e:live -- tests/e2e/readme-screenshots.live.spec.ts
 - Outbound TMDB requests must be descriptor-built and pinned to
   `https://api.themoviedb.org/3/`, with `redirect: "error"`. Never forward
   inbound auth, cookies, or arbitrary headers upstream.
+- Home tabs are Now / Top Rated / Upcoming (Now is the default). Top Rated
+  and Upcoming are built on TMDB `discover/movie` with server-fixed filters
+  (`buildUpstreamParams` on the route descriptor); clients can only add
+  `region` (ISO 3166-1 alpha-2) on now-playing and upcoming. `popular` is no
+  longer used by the app but stays for the smoke test and other callers.
 - Cache only successful TMDB responses. Preserve
   `Cache-Control: public, max-age=60`.
 - Bedrock is the only other outbound call: the pitch route sends TMDB facts
