@@ -377,6 +377,56 @@ test.describe("Web App Smoke Tests (stub)", () => {
     ).toBeVisible();
   });
 
+  test("keeps loaded saved movies visible when one bookmark fails", async ({ page }) => {
+    const failingMoviePath = "/api/movies/2002";
+    await page.route(`**://*${failingMoviePath}**`, async (route) => {
+      const pathname = new URL(route.request().url()).pathname;
+      if (!pathname.endsWith(failingMoviePath)) {
+        await route.fallback();
+        return;
+      }
+
+      await route.fulfill({
+        status: 502,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Upstream failure" }),
+      });
+    });
+
+    await page.goto("/");
+    await page.getByRole("button", { name: "Save Spider-Verse Echo" }).click();
+    await page.getByRole("button", { name: "Save Neon Orbit" }).click();
+    await page.getByTestId("footer-saved").click();
+
+    const partialError = page.getByTestId("saved-partial-error");
+    await expect(page).toHaveURL(/\/saved$/);
+    await expect(partialError.getByRole("alert")).toContainText(
+      "1 saved movie couldn't be loaded",
+    );
+    await expect(partialError.getByRole("button", { name: "Retry" })).toBeVisible();
+    await expect(
+      page
+        .getByTestId("saved-movie-list")
+        .getByRole("button", { name: "Spider-Verse Echo", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Neon Orbit", exact: true })).toHaveCount(0);
+    await expect(page.getByText("Couldn't load your saved movies")).toHaveCount(0);
+
+    await page.getByRole("tab", { name: "Discover" }).click();
+    await expect(page.getByRole("button", { name: "Remove Neon Orbit from saved" })).toBeVisible();
+
+    await page.unroute(`**://*${failingMoviePath}**`);
+    await page.getByRole("tab", { name: "Saved" }).click();
+    await partialError.getByRole("button", { name: "Retry" }).click();
+
+    await expect(partialError).toHaveCount(0);
+    const savedList = page.getByTestId("saved-movie-list");
+    await expect(savedList.getByRole("button", { name: "Neon Orbit", exact: true })).toBeVisible();
+    await expect(
+      savedList.getByRole("button", { name: "Spider-Verse Echo", exact: true }),
+    ).toBeVisible();
+  });
+
   test("guides the user before searching and when nothing matches", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("footer-search").click();
