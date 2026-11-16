@@ -14,6 +14,7 @@ import VerticalMovieCard from "@/components/VerticalMovieCard";
 import Theme from "@/theme";
 import { getPosterColumns, useResponsiveLayout } from "@/theme/layout";
 import { blurActiveElementBeforeNavigate } from "@/utils/focus";
+import { savedMoviesLoadFailureMessage, settleInOrder } from "./loadSavedMovies";
 
 const Saved = () => {
   const navigation = useNavigation();
@@ -29,15 +30,21 @@ const Saved = () => {
   );
 
   const {
-    data: movies,
+    data: savedMovies,
     isPending,
     isError,
     refetch,
   } = useQuery({
     queryKey: ["saved-movies", savedIds],
-    queryFn: () => Promise.all((savedIds ?? []).map((movieId) => getMovieDetails(movieId))),
+    queryFn: () => settleInOrder((savedIds ?? []).map((movieId) => getMovieDetails(movieId))),
     enabled: (savedIds?.length ?? 0) > 0,
   });
+
+  const loadedMovies = savedMovies?.values ?? [];
+  const failedCount = savedMovies?.failedCount ?? 0;
+  // A transport error, or every bookmark failing, is the full-page error.
+  // Partial failures still render the movies that loaded.
+  const allFailed = isError || (savedMovies !== undefined && loadedMovies.length === 0);
 
   const openMovie = (movie: TmdbMovie) => {
     blurActiveElementBeforeNavigate();
@@ -72,7 +79,7 @@ const Saved = () => {
       );
     }
 
-    if (isError) {
+    if (allFailed) {
       return (
         <View style={styles.state}>
           <Text style={styles.stateTitle}>Couldn't load your saved movies</Text>
@@ -90,9 +97,32 @@ const Saved = () => {
     return (
       <FlatList
         key={`saved-columns-${columns}`}
-        data={movies}
+        data={loadedMovies}
         numColumns={columns}
         keyExtractor={(movie) => movie.id.toString()}
+        ListHeaderComponent={
+          failedCount > 0 ? (
+            <View style={styles.partialError} testID="saved-partial-error">
+              <Ionicons
+                name="alert-circle-outline"
+                size={18}
+                color={Theme.colors.danger}
+                accessible={false}
+              />
+              <Text style={styles.partialErrorText} accessibilityRole="alert">
+                {savedMoviesLoadFailureMessage(failedCount)}
+              </Text>
+              <AnimatedPressable
+                onPress={() => refetch()}
+                accessibilityRole="button"
+                accessibilityLabel="Retry"
+                contentStyle={styles.partialErrorAction}
+              >
+                <Text style={styles.stateActionText}>Retry</Text>
+              </AnimatedPressable>
+            </View>
+          ) : undefined
+        }
         renderItem={({ item }) => (
           <VerticalMovieCard movie={item} columns={columns} onPosterPress={() => openMovie(item)} />
         )}
@@ -155,5 +185,27 @@ const styles = StyleSheet.create({
     color: Theme.colors.gold,
     fontFamily: Theme.fonts.semibold,
     fontSize: Theme.type.meta,
+  },
+  partialError: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+    paddingLeft: 12,
+    paddingRight: 4,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: Theme.colors.surface,
+  },
+  partialErrorText: {
+    flex: 1,
+    color: Theme.colors.text,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.meta,
+    lineHeight: 20,
+  },
+  partialErrorAction: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
 });
