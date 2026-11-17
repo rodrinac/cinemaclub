@@ -7,3 +7,8 @@ updates:
     versioning-strategy: "increase-if-necessary" # Updates only package.json if needed
     ignore:
       - dependency-name: "*" # Prevents updating dependencies beyond the range in package.json
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
