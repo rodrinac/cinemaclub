@@ -10,6 +10,37 @@ permissions:
   contents: read
 
 jobs:
+  action-pins:
+    runs-on: ubuntu-latest
+    # Same skip rule as the rest of CI: version-bump-only commits/PRs add no value here.
+    if: >-
+      ${{
+        (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip version-bump]')) &&
+        (github.event_name != 'pull_request' || github.head_ref != 'chore/version-bump')
+      }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Require SHA-pinned GitHub Actions
+        run: |
+          set -euo pipefail
+          bad="$(
+            grep -REn '^\s*uses:\s*' .github/workflows --include='*.yml' --include='*.yaml' \
+              | grep -Ev '^\s*#' \
+              | grep -Ev 'uses:\s*\./' \
+              | grep -Ev 'uses:\s*docker://' \
+              | grep -Ev 'uses:\s*[^@[:space:]]+@[0-9a-f]{40}(\s|$|#)' \
+              || true
+          )"
+          if [ -n "$bad" ]; then
+            echo "Unpinned GitHub Actions uses: entries (must be a full 40-char commit SHA):"
+            echo "$bad"
+            exit 1
+          fi
+          echo "All remote workflow uses: entries are pinned to 40-char commit SHAs."
+
   ci:
     runs-on: ubuntu-latest
     # Skip pure version-bump commits/PRs: they only touch package.json/app.json
@@ -26,10 +57,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: npm
@@ -65,7 +96,7 @@ jobs:
 
       - name: Upload Playwright artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-stub-artifacts
           path: |
@@ -83,10 +114,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: 1.11.4
 
@@ -156,10 +187,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: npm
@@ -177,7 +208,7 @@ jobs:
 
       - name: Upload live Playwright artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-live-artifacts
           path: |
