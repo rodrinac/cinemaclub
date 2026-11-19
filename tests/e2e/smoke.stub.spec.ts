@@ -356,7 +356,9 @@ test.describe("Web App Smoke Tests (stub)", () => {
   test("labels poster and bookmark buttons with the movie title", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("button", { name: "Spider-Verse Echo", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Spider-Verse Echo", exact: true }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Save Spider-Verse Echo" }).click();
     await expect(
       page.getByRole("button", { name: "Remove Spider-Verse Echo from saved" }),
@@ -373,7 +375,9 @@ test.describe("Web App Smoke Tests (stub)", () => {
 
     await expect(page).toHaveURL(/\/saved$/);
     await expect(
-      page.getByTestId("saved-movie-list").getByRole("button", { name: "Spider-Verse Echo", exact: true }),
+      page
+        .getByTestId("saved-movie-list")
+        .getByRole("button", { name: "Spider-Verse Echo", exact: true }),
     ).toBeVisible();
   });
 
@@ -400,9 +404,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
 
     const partialError = page.getByTestId("saved-partial-error");
     await expect(page).toHaveURL(/\/saved$/);
-    await expect(partialError.getByRole("alert")).toContainText(
-      "1 saved movie couldn't be loaded",
-    );
+    await expect(partialError.getByRole("alert")).toContainText("1 saved movie couldn't be loaded");
     await expect(partialError.getByRole("button", { name: "Retry" })).toBeVisible();
     await expect(
       page
@@ -432,6 +434,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await page.getByTestId("footer-search").click();
 
     await expect(page.getByTestId("search-empty-state")).toContainText("Find a movie");
+    await expect(page.getByTestId("search-retry-button")).toHaveCount(0);
 
     await page.route("**://*/api/search/movies**", async (route) => {
       await route.fulfill({
@@ -445,6 +448,64 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await searchInput.press("Enter");
 
     await expect(page.getByTestId("search-empty-state")).toContainText('No movies match "zzzz"');
+    await expect(page.getByTestId("search-retry-button")).toHaveCount(0);
+
+    await page.unroute("**://*/api/search/movies**");
+    await page.getByTestId("search-filters-button").click();
+    await page.getByRole("checkbox", { name: "Include Sci-Fi" }).click();
+    await page.getByRole("button", { name: "Go back" }).click();
+    await searchInput.fill("spider");
+    await searchInput.press("Enter");
+
+    const filteredEmptyState = page.getByTestId("search-empty-state");
+    await expect(filteredEmptyState).toContainText("Your genre filters hid all 1 results");
+    await expect(
+      filteredEmptyState.getByRole("button", { name: "Edit genre filters" }),
+    ).toBeVisible();
+    await expect(page.getByTestId("search-retry-button")).toHaveCount(0);
+  });
+
+  test("lets the user retry a failed search", async ({ page }) => {
+    await page.goto("/search");
+    await expect(page.getByTestId("search-empty-state")).toContainText("Find a movie");
+    await expect(page.getByTestId("search-retry-button")).toHaveCount(0);
+
+    await page.route("**/api/search/movies**", async (route) => {
+      await route.fulfill({
+        status: 502,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Bad gateway" }),
+      });
+    });
+
+    const searchInput = page.getByRole("textbox", { name: "Search movies" });
+    await searchInput.fill("spider");
+    await searchInput.press("Enter");
+
+    const emptyState = page.getByTestId("search-empty-state");
+    await expect(emptyState).toContainText("Search isn't available right now");
+    await expect(emptyState).toContainText("Check your connection and try again.");
+    const retryButton = page.getByTestId("search-retry-button");
+    await expect(retryButton).toBeVisible();
+    await expect(retryButton).toHaveAccessibleName("Try again");
+
+    await page.unroute("**/api/search/movies**");
+    await page.route("**/api/search/movies**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(tmdbStub.search),
+      });
+    });
+
+    await retryButton.click();
+
+    await expect(
+      page.getByRole("button", { name: "Spider-Verse Echo", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByTestId("search-empty-state")).toHaveCount(0);
+    await expect(page.getByText("Search isn't available right now")).toHaveCount(0);
+    await expect(page.getByTestId("search-retry-button")).toHaveCount(0);
   });
 
   test("prevents discover pagination runaway when no next page exists", async ({ page }) => {
