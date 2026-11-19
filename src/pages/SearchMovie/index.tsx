@@ -60,6 +60,7 @@ const SearchMovie = () => {
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
+    refetch,
   } = useSearchMoviesInfiniteQuery(searchQuery);
 
   const filterMovieList = useCallback(
@@ -95,6 +96,7 @@ const SearchMovie = () => {
         ? {
             title: "Search isn't available right now",
             body: "Check your connection and try again.",
+            showRetryAction: true,
           }
         : hiddenByFilters > 0
           ? {
@@ -246,6 +248,16 @@ const SearchMovie = () => {
                     contentStyle={styles.emptyAction}
                   >
                     <Text style={styles.emptyActionText}>Edit genre filters</Text>
+                  </AnimatedPressable>
+                )}
+                {emptyState.showRetryAction && (
+                  <AnimatedPressable
+                    onPress={() => refetch()}
+                    accessibilityRole="button"
+                    contentStyle={styles.emptyAction}
+                    testID="search-retry-button"
+                  >
+                    <Text style={styles.emptyActionText}>Try again</Text>
                   </AnimatedPressable>
                 )}
               </View>
