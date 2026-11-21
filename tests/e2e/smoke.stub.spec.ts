@@ -2,11 +2,40 @@ import { expect, test, type Page } from "@playwright/test";
 import { placeholderSvg } from "./fixtures/poster-placeholder";
 import { tmdbStub } from "./fixtures/tmdb.stub";
 
+type CspViolation = {
+  blockedURI: string;
+  violatedDirective: string;
+  effectiveDirective: string;
+};
+
 const imageRoutes = [
   "**://image.tmdb.org/**",
   "**://www.themoviedb.org/assets/**",
   "**://www.google.com/**",
 ];
+
+const BARE_CSP_STAR_SOURCE = /(?:^|[\s;])\*(?:[\s;]|$)/;
+
+async function installCspViolationProbe(page: Page) {
+  await page.addInitScript(() => {
+    const target = window as Window & { __cspViolations?: CspViolation[] };
+    target.__cspViolations = [];
+    window.addEventListener("securitypolicyviolation", (event) => {
+      target.__cspViolations?.push({
+        blockedURI: event.blockedURI,
+        violatedDirective: event.violatedDirective,
+        effectiveDirective: event.effectiveDirective,
+      });
+    });
+  });
+}
+
+async function readCspViolations(page: Page) {
+  return page.evaluate(() => {
+    const target = window as Window & { __cspViolations?: CspViolation[] };
+    return target.__cspViolations ?? [];
+  });
+}
 
 const buildScrollableNowPlayingList = () => {
   const baseMovies = tmdbStub.lists.nowPlaying.results;
@@ -166,6 +195,51 @@ test.describe("Web App Smoke Tests (stub)", () => {
     apiRequestUrls = [];
     imageRequestUrls = [];
     await installStubRoutes(page, apiRequestPaths, apiRequestUrls, { imageRequestUrls });
+  });
+
+  test("exports a strict Content-Security-Policy and stays clean on main flows", async ({
+    page,
+  }) => {
+    await installCspViolationProbe(page);
+
+    await page.goto("/");
+    const cspContent = await page
+      .locator('meta[http-equiv="Content-Security-Policy"]')
+      .getAttribute("content");
+
+    expect(cspContent).toBeTruthy();
+    expect(cspContent).toMatch(/default-src\s+'self'/);
+    expect(cspContent).toMatch(/script-src\s+'self'(?:\s|;|$)/);
+    expect(cspContent).not.toMatch(/'unsafe-eval'/);
+    expect(cspContent).not.toMatch(BARE_CSP_STAR_SOURCE);
+    expect(cspContent).toMatch(/img-src[^;]*https:\/\/image\.tmdb\.org/);
+    expect(cspContent).toMatch(
+      /frame-src[^;]*https:\/\/www\.youtube\.com[^;]*https:\/\/www\.youtube-nocookie\.com/,
+    );
+    expect(cspContent).toMatch(/connect-src[^;]*https:\/\/\*\.execute-api\.eu-west-1\.amazonaws\.com/);
+
+    await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
+    await expect(page.getByTestId("movie-poster-2001")).toBeVisible();
+    const violations: CspViolation[] = [...(await readCspViolations(page))];
+
+    await page.goto("/search");
+    await expect(page.getByRole("heading", { name: "Search" })).toBeVisible();
+    violations.push(...(await readCspViolations(page)));
+
+    await page.goto("/saved");
+    await expect(page.getByTestId("saved-empty-state")).toBeVisible();
+    violations.push(...(await readCspViolations(page)));
+
+    await page.goto("/movie/2001");
+    await expect(page.getByTestId("movie-detail-title")).toBeVisible();
+    await expect(page.getByTestId("movie-pitch-text")).toHaveText("A stubbed spoiler-free pitch.");
+    await expect(page.getByTestId("play-trailer-button")).toBeVisible();
+    await page.getByTestId("play-trailer-button").click();
+    await expect(page.locator('iframe[title="Trailer"]')).toBeVisible();
+    await expect(page.getByTestId("trailer-player-loading")).toHaveCount(0);
+    violations.push(...(await readCspViolations(page)));
+
+    expect(violations).toEqual([]);
   });
 
   test("renders discover page with movie cards", async ({ page }) => {
