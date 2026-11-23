@@ -8,6 +8,10 @@ import { useResponsiveLayout } from "@/theme/layout";
 
 type Props = {
   title: string;
+  /** Muted line under the title. Omitted when empty. */
+  subtitle?: string;
+  /** testID for the subtitle text. */
+  subtitleTestID?: string;
   showBack?: boolean;
   /** Actions shown on the right of the title row. */
   actions?: React.ReactNode;
@@ -20,6 +24,8 @@ type Props = {
 
 const PageHeader: React.FC<Props> = ({
   title,
+  subtitle,
+  subtitleTestID,
   showBack = false,
   actions,
   children,
@@ -40,18 +46,25 @@ const PageHeader: React.FC<Props> = ({
             <BackButton />
           </View>
         )}
-        <View style={styles.titleRow}>
-          <Text
-            style={[
-              styles.title,
-              { fontSize: isWide ? Theme.type.displayLarge : Theme.type.display },
-            ]}
-            accessibilityRole="header"
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-          {actions && <View style={styles.actions}>{actions}</View>}
+        <View style={styles.heading}>
+          <View style={styles.titleRow}>
+            <Text
+              style={[
+                styles.title,
+                { fontSize: isWide ? Theme.type.displayLarge : Theme.type.display },
+              ]}
+              accessibilityRole="header"
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+            {actions && <View style={styles.actions}>{actions}</View>}
+          </View>
+          {subtitle ? (
+            <Text style={styles.subtitle} testID={subtitleTestID}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
         {children}
       </View>
@@ -76,11 +89,19 @@ const styles = StyleSheet.create({
   backRow: {
     flexDirection: "row",
   },
+  heading: {
+    gap: 4,
+  },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
+  },
+  subtitle: {
+    color: Theme.colors.textMuted,
+    fontFamily: Theme.fonts.body,
+    fontSize: Theme.type.caption,
   },
   title: {
     flexShrink: 1,

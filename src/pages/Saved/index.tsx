@@ -14,7 +14,7 @@ import VerticalMovieCard from "@/components/VerticalMovieCard";
 import Theme from "@/theme";
 import { getPosterColumns, useResponsiveLayout } from "@/theme/layout";
 import { blurActiveElementBeforeNavigate } from "@/utils/focus";
-import { savedMoviesLoadFailureMessage, settleInOrder } from "./loadSavedMovies";
+import { savedCountLabel, savedMoviesLoadFailureMessage, settleInOrder } from "./loadSavedMovies";
 
 const Saved = () => {
   const navigation = useNavigation();
@@ -40,6 +40,9 @@ const Saved = () => {
     enabled: (savedIds?.length ?? 0) > 0,
   });
 
+  // Count the bookmark ids, not the loaded cards, so the total is visible
+  // while details are still loading and still includes ones that failed.
+  const savedCountSubtitle = savedIds ? savedCountLabel(savedIds.length) : null;
   const loadedMovies = savedMovies?.values ?? [];
   const failedCount = savedMovies?.failedCount ?? 0;
   // A transport error, or every bookmark failing, is the full-page error.
@@ -135,7 +138,11 @@ const Saved = () => {
 
   return (
     <AppShell active="Saved">
-      <PageHeader title="Saved" />
+      <PageHeader
+        title="Saved"
+        subtitle={savedCountSubtitle ?? undefined}
+        subtitleTestID="saved-count"
+      />
       <View style={styles.main}>{renderBody()}</View>
     </AppShell>
   );

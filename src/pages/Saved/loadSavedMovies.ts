@@ -33,3 +33,14 @@ export const savedMoviesLoadFailureMessage = (failedCount: number): string => {
   const noun = failedCount === 1 ? "movie" : "movies";
   return `${failedCount} saved ${noun} couldn't be loaded`;
 };
+
+/**
+ * Header copy for how many bookmarks are kept. Zero stays silent so the
+ * empty state is the only message, and the count is the bookmark list
+ * itself, including movies whose details have not loaded.
+ */
+export const savedCountLabel = (count: number): string | null => {
+  if (count <= 0) return null;
+  const noun = count === 1 ? "movie" : "movies";
+  return `${count} ${noun} saved`;
+};
