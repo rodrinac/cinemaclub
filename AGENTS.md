@@ -17,6 +17,7 @@ npm run build:web
 npm run test
 npm run test:e2e:stub
 npm run test:e2e:live
+npm run audit:ci
 ```
 
 ## Refresh README screenshots (live mobile)
