@@ -442,12 +442,14 @@ test.describe("Web App Smoke Tests (stub)", () => {
   test("lists saved movies on the Saved tab", async ({ page }) => {
     await page.goto("/saved");
     await expect(page.getByTestId("saved-empty-state")).toContainText("Save movies to watch later");
+    await expect(page.getByTestId("saved-count")).toHaveCount(0);
 
     await page.goto("/");
     await page.getByRole("button", { name: "Save Spider-Verse Echo" }).click();
     await page.getByTestId("footer-saved").click();
 
     await expect(page).toHaveURL(/\/saved$/);
+    await expect(page.getByTestId("saved-count")).toHaveText("1 movie saved");
     await expect(
       page
         .getByTestId("saved-movie-list")
@@ -478,6 +480,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
 
     const partialError = page.getByTestId("saved-partial-error");
     await expect(page).toHaveURL(/\/saved$/);
+    await expect(page.getByTestId("saved-count")).toHaveText("2 movies saved");
     await expect(partialError.getByRole("alert")).toContainText("1 saved movie couldn't be loaded");
     await expect(partialError.getByRole("button", { name: "Retry" })).toBeVisible();
     await expect(

@@ -1,5 +1,6 @@
 import {
   partitionSettled,
+  savedCountLabel,
   savedMoviesLoadFailureMessage,
   settleInOrder,
 } from "../src/pages/Saved/loadSavedMovies";
@@ -77,6 +78,20 @@ describe("settleInOrder", () => {
       values: [],
       failedCount: 2,
     });
+  });
+});
+
+describe("savedCountLabel", () => {
+  it("stays silent when nothing is saved", () => {
+    expect(savedCountLabel(0)).toBeNull();
+  });
+
+  it("uses the singular copy for one movie", () => {
+    expect(savedCountLabel(1)).toBe("1 movie saved");
+  });
+
+  it("uses the plural copy for more than one movie", () => {
+    expect(savedCountLabel(3)).toBe("3 movies saved");
   });
 });
 
