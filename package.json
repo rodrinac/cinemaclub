@@ -15,6 +15,7 @@
     "validate:eas:movies-api-url": "node scripts/verify-eas-public-movies-api-url.mjs",
     "eas-build-pre-install": "npm run validate:eas:movies-api-url",
     "lint": "eslint .",
+    "audit:ci": "npm audit signatures && npm audit --omit=dev --audit-level=high",
     "brand:assets": "node scripts/generate-brand-assets.mjs",
     "test": "jest",
     "test:ci": "npm run test:ci:stub",
@@ -65,11 +66,12 @@
     "react-native-worklets": "0.13.0"
   },
   "overrides": {
-    "decode-uri-component": "^0.5.0",
+    "decode-uri-component": "^0.5.1",
     "postcss": "^8.5.28",
     "uuid": "^11.1.1",
     "compression": "^1.8.2",
-    "node-forge": "^1.4.3"
+    "node-forge": "^1.4.3",
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
