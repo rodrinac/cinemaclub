@@ -124,10 +124,12 @@ mod runtime {
             .set("Authorization", &format!("Bearer {token}"))
             .map_err(|e| e.to_string())?;
 
+        // workerd does not implement `redirect: "error"` (throws TypeError).
+        // Use `manual` and explicitly reject 3xx responses so redirects are never followed.
         let mut init = RequestInit::new();
         init.with_method(Method::Get)
             .with_headers(headers)
-            .with_redirect(RequestRedirect::Error);
+            .with_redirect(RequestRedirect::Manual);
 
         let outbound = Request::new_with_init(url.as_str(), &init).map_err(|e| e.to_string())?;
         let mut response = Fetch::Request(outbound)
@@ -135,6 +137,9 @@ mod runtime {
             .await
             .map_err(|e| e.to_string())?;
         let status = response.status_code();
+        if (300..400).contains(&status) {
+            return Err(format!("Refusing upstream redirect ({status})"));
+        }
         let text = response.text().await.map_err(|e| e.to_string())?;
         Ok((status, text))
     }
