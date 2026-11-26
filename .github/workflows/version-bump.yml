@@ -10,10 +10,10 @@ on:
       - "eas.json"
       - "package.json"
       - "package-lock.json"
-      - "infra/**"
+      - "worker/**"
       - "server/**"
       - "scripts/**"
-      - ".github/workflows/deploy-aws-proxy.yml"
+      - ".github/workflows/deploy.yml"
 
 permissions:
   contents: read
@@ -74,7 +74,7 @@ jobs:
 
           branch="chore/version-bump"
           git checkout -b "$branch"
-          git add package.json app.json
+          git add package.json package-lock.json app.json worker/Cargo.toml worker/Cargo.lock
           git commit -m "chore(release): bump version to v${{ steps.bump.outputs.version }} [skip version-bump]"
           git push origin "$branch" --force
 

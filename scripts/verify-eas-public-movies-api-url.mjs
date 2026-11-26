@@ -17,9 +17,9 @@ const fail = (reason) => {
       `EAS remote preview/release builds require EXPO_PUBLIC_MOVIES_API_URL: ${reason}`,
       "Local .env files are not uploaded to EAS Build workers.",
       "Set EXPO_PUBLIC_MOVIES_API_URL to your deployed Movies API proxy, for example:",
-      "  https://<api-id>.execute-api.<region>.amazonaws.com/<stage>/api",
+      "  https://<worker>.<subdomain>.workers.dev/api",
       "Then set it remotely with:",
-      "  eas env:set --environment production --name EXPO_PUBLIC_MOVIES_API_URL --value https://<stage invoke url>/api --visibility plaintext",
+      "  eas env:set --environment production --name EXPO_PUBLIC_MOVIES_API_URL --value https://<worker-host>/api --visibility plaintext",
     ].join("\n"),
   );
   process.exit(1);

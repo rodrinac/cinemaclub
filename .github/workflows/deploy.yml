@@ -1,0 +1,214 @@
+name: Deploy production
+
+# Cloudflare Workers Builds deploys the Worker on the release commit on main
+# (configured to watch package.json and run `npm run worker:deploy`).
+# This workflow publishes the Expo web app to EAS Hosting after a Release.
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  verify-release:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_branch == 'main') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      should_deploy: ${{ steps.gate.outputs.should_deploy }}
+    steps:
+      - name: Evaluate release gate
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "### 🚀 Manual Dispatch" >> "$GITHUB_STEP_SUMMARY"
+            echo "Workflow triggered manually via \`workflow_dispatch\`. Proceeding with deployment." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          head_sha="${{ github.event.workflow_run.head_sha }}"
+          version="$(gh api "repos/${{ github.repository }}/contents/package.json?ref=${head_sha}" --jq '.content' | base64 -d | jq -r '.version')"
+          tag="v${version}"
+
+          echo "Checking release status for tag ${tag} at commit ${head_sha}..."
+
+          release_info=""
+          if ! release_info="$(gh release view "$tag" --repo "${{ github.repository }}" --json tagName,targetCommitish 2>&1)"; then
+            echo "::warning::Failed to retrieve GitHub release for tag ${tag}: ${release_info}"
+            release_info=""
+          fi
+
+          if [ -z "$release_info" ]; then
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "### ⏭️ Deployment Skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "No GitHub release found for tag \`${tag}\`. Skipping deployment." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          target_commit="$(echo "$release_info" | jq -r '.targetCommitish // empty')"
+
+          if [ "$target_commit" = "$head_sha" ] || [ "$target_commit" = "main" ] || [ -z "$target_commit" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "### ✅ Release Verified" >> "$GITHUB_STEP_SUMMARY"
+            echo "Verified GitHub release for \`${tag}\` matching commit \`${head_sha}\`. Proceeding with deployment." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "### ⏭️ Deployment Skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "Release \`${tag}\` target (\`${target_commit}\`) does not match triggering commit \`${head_sha}\`. Skipping deployment." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  deploy-web:
+    needs: verify-release
+    if: ${{ needs.verify-release.outputs.should_deploy == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment: production
+    env:
+      MOVIES_API_URL: ${{ vars.MOVIES_API_URL }}
+      TMDB_PROXY_CORS_ALLOW_ORIGIN: ${{ vars.TMDB_PROXY_CORS_ALLOW_ORIGIN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Verify package.json and worker/Cargo.toml versions match
+        run: |
+          set -euo pipefail
+          pkg_version="$(node -p 'require("./package.json").version')"
+          crate_version="$(node -e '
+            const fs = require("node:fs");
+            const match = fs.readFileSync("worker/Cargo.toml", "utf8").match(/^version = "([^"]+)"/m);
+            if (!match) {
+              console.error("worker/Cargo.toml has no package version");
+              process.exit(1);
+            }
+            process.stdout.write(match[1]);
+          ')"
+          if [[ "${crate_version}" != "${pkg_version}" ]]; then
+            echo "worker/Cargo.toml version ${crate_version} does not match package.json ${pkg_version}." >&2
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@5273c2136bd09c2a341fe3340d3e767ce5a13015 # 9.0.2
+        with:
+          eas-version: 23.2.0
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Validate Movies API URL
+        id: resolve-movies-api-url
+        run: |
+          set -euo pipefail
+
+          movies_api_url="$(printf '%s' "${MOVIES_API_URL:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          cors_origin="$(printf '%s' "${TMDB_PROXY_CORS_ALLOW_ORIGIN:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+          if [ -z "$movies_api_url" ]; then
+            echo "MOVIES_API_URL is required for web deployment (e.g. https://<worker>.<subdomain>.workers.dev/api)" >&2
+            exit 1
+          fi
+
+          if [ -z "$cors_origin" ]; then
+            echo "TMDB_PROXY_CORS_ALLOW_ORIGIN is required for web deployment" >&2
+            exit 1
+          fi
+
+          case "$movies_api_url" in
+            https://*/api) ;;
+            *)
+              echo "MOVIES_API_URL must be an HTTPS URL ending in /api: $movies_api_url" >&2
+              exit 1
+              ;;
+          esac
+
+          printf 'movies_api_url=%s\n' "$movies_api_url" >> "$GITHUB_OUTPUT"
+          printf 'origin_url=%s\n' "${movies_api_url%/api}" >> "$GITHUB_OUTPUT"
+          printf 'cors_origin=%s\n' "$cors_origin" >> "$GITHUB_OUTPUT"
+
+      - name: Verify live Worker health and CORS
+        run: |
+          set -euo pipefail
+
+          health_response="$(
+            curl --fail-with-body --retry 6 --retry-all-errors --silent --show-error \
+              "${{ steps.resolve-movies-api-url.outputs.origin_url }}/health"
+          )"
+          printf '%s' "$health_response" | jq -e '.status == "ok"' >/dev/null
+
+          cors_headers="$(
+            curl --fail-with-body --silent --show-error \
+              --dump-header - \
+              --output /dev/null \
+              -H "Origin: ${{ steps.resolve-movies-api-url.outputs.cors_origin }}" \
+              "${{ steps.resolve-movies-api-url.outputs.movies_api_url }}/movies/now-playing"
+          )"
+          normalized_headers="$(printf '%s\n' "$cors_headers" | tr -d '\r')"
+
+          printf '%s\n' "$normalized_headers" |
+            grep -Fxi "Access-Control-Allow-Origin: ${{ steps.resolve-movies-api-url.outputs.cors_origin }}" >/dev/null
+          printf '%s\n' "$normalized_headers" | grep -Fxi "Vary: Origin" >/dev/null
+
+      - name: Sync EAS production Movies API URL
+        run: |
+          eas env:set production \
+            --name EXPO_PUBLIC_MOVIES_API_URL \
+            --value "${{ steps.resolve-movies-api-url.outputs.movies_api_url }}" \
+            --visibility plaintext \
+            --scope project \
+            --non-interactive
+
+      - name: Build Expo web export
+        run: npm run build:web:production
+
+      - name: Deploy Expo web export
+        id: deploy-expo-web
+        run: |
+          set -euo pipefail
+
+          deploy_json="$(
+            eas deploy \
+              --export-dir dist \
+              --environment production \
+              --prod \
+              --non-interactive \
+              --json
+          )"
+          printf '%s\n' "$deploy_json"
+
+          deployment_url="$(
+            DEPLOY_JSON="$deploy_json" node -e 'const data = JSON.parse(process.env.DEPLOY_JSON); const urls = []; const walk = (value) => { if (typeof value === "string") { if (/^https:\/\/[^\s]+\.expo\.app\/?$/.test(value)) { urls.push(value); } return; } if (Array.isArray(value)) { value.forEach(walk); return; } if (value && typeof value === "object") { Object.values(value).forEach(walk); } }; walk(data); const normalized = urls.map((value) => { try { const url = new URL(value); return `${url.origin}${url.pathname}`; } catch { return null; } }).filter(Boolean); const preferred = normalized.find((value) => !new URL(value).hostname.includes("--")) ?? normalized[0]; if (!preferred) { console.error("Unable to resolve Expo deployment URL from eas deploy output."); process.exit(1); } process.stdout.write(preferred);'
+          )"
+
+          printf 'deployment_url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deployed Expo web URL
+        run: |
+          curl --fail --retry 6 --retry-all-errors --silent --show-error --location \
+            "${{ steps.deploy-expo-web.outputs.deployment_url }}" >/dev/null

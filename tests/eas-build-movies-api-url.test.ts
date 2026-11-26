@@ -99,7 +99,7 @@ describe("verify-eas-public-movies-api-url", () => {
       EAS_BUILD_RUNNER: "eas-build",
       EAS_BUILD_PROFILE: "production",
       EXPO_PUBLIC_MOVIES_API_URL:
-        "https://abc123.execute-api.eu-west-1.amazonaws.com/prod/api",
+        "https://cinemaclub-tmdb-proxy.example.workers.dev/api",
     });
 
     expect(result.status).toBe(0);
