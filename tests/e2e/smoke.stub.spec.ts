@@ -216,7 +216,9 @@ test.describe("Web App Smoke Tests (stub)", () => {
     expect(cspContent).toMatch(
       /frame-src[^;]*https:\/\/www\.youtube\.com[^;]*https:\/\/www\.youtube-nocookie\.com/,
     );
-    expect(cspContent).toMatch(/connect-src[^;]*https:\/\/\*\.execute-api\.eu-west-1\.amazonaws\.com/);
+    expect(cspContent).toMatch(
+      /connect-src[^;]*https:\/\/\*\.execute-api\.eu-west-1\.amazonaws\.com/,
+    );
 
     await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
     await expect(page.getByTestId("movie-poster-2001")).toBeVisible();
@@ -404,6 +406,40 @@ test.describe("Web App Smoke Tests (stub)", () => {
     await page.getByTestId("trailer-player-close").click();
     await expect(player).toHaveCount(0);
     await expect(page.getByTestId("play-trailer-button")).toBeFocused();
+  });
+
+  test("shows a vote count when rated and an unrated state otherwise", async ({ page }) => {
+    await page.goto("/movie/1001");
+    const rated = page.getByTestId("movie-detail-rating");
+    await expect(rated).toContainText("7.5");
+    await expect(rated).toContainText("/10 TMDB");
+    await expect(rated).toContainText("1.2K votes");
+    await expect(rated).toHaveAccessibleName("Rated 7.5 out of 10 on TMDB, 1.2K votes");
+    await expect(rated).not.toContainText("0.0");
+
+    await page.goto("/movie/3003");
+    const unrated = page.getByTestId("movie-detail-rating");
+    await expect(page.getByTestId("movie-detail-title")).toHaveText("Glass Meridian");
+    await expect(unrated).toHaveText("Not rated yet");
+    await expect(unrated).toHaveAccessibleName("Not rated yet");
+    await expect(page.getByText("0.0")).toHaveCount(0);
+
+    await page.route("**://*/api/search/movies**", async (route) => {
+      const movie = tmdbStub.detailById[3003];
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ page: 1, results: [movie], total_pages: 1, total_results: 1 }),
+      });
+    });
+    await page.goto("/search");
+    const searchInput = page.getByRole("textbox", { name: "Search movies" });
+    await searchInput.fill("glass");
+    await searchInput.press("Enter");
+    await expect(page.getByTestId("movie-poster-3003")).toBeVisible();
+    await expect(page.getByText("NR", { exact: true })).toBeVisible();
+    await expect(page.getByText("0.0")).toHaveCount(0);
+    await expect(page.getByRole("img", { name: "Not rated yet" })).toBeVisible();
   });
 
   test("shows the AI pitch on the movie detail page", async ({ page }) => {

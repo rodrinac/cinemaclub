@@ -2,10 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
+import { BrandArt } from "@/theme/brandArt";
+import { isMovieRated } from "@/utils/movieRating";
 import type { TmdbMovie } from "../../api/tmdb";
 import { getMovieDetails } from "../../api/tmdb/movieDetailsCache";
 import Theme from "../../theme";
-import { BrandArt } from "@/theme/brandArt";
 import AnimatedPressable from "../AnimatedPressable";
 import BookmarkButton from "../BookmarkButton";
 
@@ -48,9 +49,9 @@ const HorizontalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
   const [directors, setDirectors] = useState(PLACEHOLDER_TEXT);
   const [runtime, setRuntime] = useState<string>();
 
-  const voteAverage = Math.floor(movie.vote_average);
-  const ratingText = movie.vote_average?.toFixed(1) ?? "0.0";
-  const ratingLabel = `Rated ${ratingText} out of 10`;
+  const movieIsRated = isMovieRated(movie);
+  const ratingText = movieIsRated ? movie.vote_average.toFixed(1) : "NR";
+  const ratingLabel = movieIsRated ? `Rated ${ratingText} out of 10` : "Not rated yet";
   const meta = [getReleaseYear(movie.release_date), runtime].filter(Boolean).join(" · ");
 
   useEffect(() => {
@@ -110,12 +111,7 @@ const HorizontalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
         accessibilityLabel={movie.title}
         testID={`movie-poster-${movie.id}`}
       >
-        <Image
-          accessible={false}
-          style={styles.poster}
-          source={posterSource}
-          resizeMode="cover"
-        />
+        <Image accessible={false} style={styles.poster} source={posterSource} resizeMode="cover" />
       </AnimatedPressable>
       {/*
         Tapping the text opens the movie too, but the poster stays the one button
@@ -142,25 +138,27 @@ const HorizontalMovieCard: React.FC<Props> = ({ movie, onPosterPress }) => {
       </AnimatedPressable>
       <View style={styles.side}>
         <BookmarkButton movie={movie} size={BOOKMARK_SIZE} style={styles.bookmark} />
-        <View style={styles.rating}>
+        <View
+          style={styles.rating}
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={ratingLabel}
+        >
           <Text style={styles.score} aria-hidden>
             {ratingText}
           </Text>
-          <View
-            style={styles.stars}
-            accessible
-            accessibilityRole="image"
-            accessibilityLabel={ratingLabel}
-          >
-            {STAR_THRESHOLDS.map((threshold) => (
-              <Ionicons
-                key={threshold}
-                name={voteAverage > threshold ? "star" : "star-outline"}
-                color={Theme.colors.gold}
-                size={12}
-              />
-            ))}
-          </View>
+          {movieIsRated ? (
+            <View style={styles.stars}>
+              {STAR_THRESHOLDS.map((threshold) => (
+                <Ionicons
+                  key={threshold}
+                  name={Math.floor(movie.vote_average) > threshold ? "star" : "star-outline"}
+                  color={Theme.colors.gold}
+                  size={12}
+                />
+              ))}
+            </View>
+          ) : null}
         </View>
       </View>
     </View>
