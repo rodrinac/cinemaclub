@@ -8,6 +8,7 @@ import ShareButton from "@/components/ShareButton";
 import Theme from "@/theme";
 import { BrandArt } from "@/theme/brandArt";
 import { useResponsiveLayout } from "@/theme/layout";
+import { formatVoteCount, isMovieRated } from "@/utils/movieRating";
 import { pickMovieTrailer } from "@/utils/movieTrailer";
 import { updateWebSeoMetadata } from "@/utils/seoMeta";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,11 +21,11 @@ import {
   Image,
   Platform,
   ScrollView,
-  type ScrollViewInstance,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  type ScrollViewInstance,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -377,6 +378,19 @@ const MovieDetail = ({ route }: Props) => {
     .filter((part): part is string => Boolean(part))
     .join(" · ");
 
+  const movieIsRated = isMovieRated(movie);
+  const ratingScore = Number.isFinite(movie.vote_average)
+    ? movie.vote_average.toFixed(1)
+    : undefined;
+  const voteCountText =
+    typeof movie.vote_count === "number" && movie.vote_count > 0
+      ? formatVoteCount(movie.vote_count)
+      : undefined;
+  const ratingLabel =
+    movieIsRated && ratingScore
+      ? `Rated ${ratingScore} out of 10 on TMDB${voteCountText ? `, ${voteCountText}` : ""}`
+      : "Not rated yet";
+
   const trailerButton = movieTrailer ? (
     Platform.OS === "web" ? (
       React.createElement(
@@ -503,9 +517,21 @@ const MovieDetail = ({ route }: Props) => {
           </Text>
         )}
       </View>
-      <Text style={styles.ratingValue} testID="movie-detail-rating">
-        {movie.vote_average.toFixed(1)}
-        <Text style={styles.ratingScale}> /10 TMDB</Text>
+      <Text
+        style={movieIsRated && ratingScore ? styles.ratingValue : styles.ratingScale}
+        testID="movie-detail-rating"
+        accessibilityLabel={ratingLabel}
+      >
+        {movieIsRated && ratingScore ? (
+          <>
+            {ratingScore}
+            <Text style={styles.ratingScale}>
+              {` /10 TMDB${voteCountText ? ` · ${voteCountText}` : ""}`}
+            </Text>
+          </>
+        ) : (
+          "Not rated yet"
+        )}
       </Text>
       {genres.length > 0 && (
         <View style={styles.chips} role="list" testID="movie-detail-genres">

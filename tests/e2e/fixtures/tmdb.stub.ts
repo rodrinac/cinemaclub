@@ -28,7 +28,13 @@ const makeMovie = (movie: Partial<TmdbMovie> & Pick<TmdbMovie, "id" | "title">):
 });
 
 const topRatedMovies: TmdbMovie[] = [
-  makeMovie({ id: 1001, title: "Metro Pulse", genre_ids: [28, 12], genres: [genres.genres[0], genres.genres[2]] }),
+  makeMovie({
+    id: 1001,
+    title: "Metro Pulse",
+    genre_ids: [28, 12],
+    genres: [genres.genres[0], genres.genres[2]],
+    vote_count: 1200,
+  }),
   makeMovie({ id: 1002, title: "Orbit Signal", genre_ids: [878], genres: [genres.genres[1]] }),
 ];
 
@@ -83,7 +89,22 @@ const nowPlayingMovies: TmdbMovie[] = [
 
 const upcomingMovies: TmdbMovie[] = [
   makeMovie({ id: 3001, title: "Parallel Drift", genre_ids: [12], genres: [genres.genres[2]] }),
-  makeMovie({ id: 3002, title: "Vault Horizon", genre_ids: [28, 878], genres: [genres.genres[0], genres.genres[1]] }),
+  makeMovie({
+    id: 3002,
+    title: "Vault Horizon",
+    genre_ids: [28, 878],
+    genres: [genres.genres[0], genres.genres[1]],
+  }),
+  makeMovie({
+    id: 3003,
+    title: "Glass Meridian",
+    overview: "An unreleased expedition film with no audience votes yet.",
+    release_date: "2027-04-16",
+    genre_ids: [12],
+    genres: [genres.genres[2]],
+    vote_average: 0,
+    vote_count: 0,
+  }),
 ];
 
 const makeList = (results: TmdbMovie[]): TmdbMovieList => ({
