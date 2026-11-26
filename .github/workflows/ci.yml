@@ -81,8 +81,9 @@ jobs:
         run: |
           node --check server/movies-api.mjs
           node --check server/tmdb-proxy-core.mjs
-          node --check server/tmdb-lambda.mjs
-          node --check scripts/smoke-aws-proxy.mjs
+          node --check server/share-page.mjs
+          node --check scripts/worker-deploy.mjs
+          node --check scripts/smoke-worker.mjs
 
       - name: Prebuild Check
         run: npm run prebuild:check
@@ -93,9 +94,7 @@ jobs:
       - name: Run Test Suite & Smoke Tests
         env:
           TMDB_API_TOKEN: "dummy_token_for_ci"
-        run: |
-          node --test tests/tmdb-lambda.test.mjs
-          npm run test:ci
+        run: npm run test:ci
 
       - name: Upload Playwright artifacts on failure
         if: failure()
@@ -107,63 +106,64 @@ jobs:
             test-results
           if-no-files-found: ignore
 
-  infrastructure:
+  worker:
     runs-on: ubuntu-latest
     if: >-
       ${{
         (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip version-bump]')) &&
         (github.event_name != 'pull_request' || github.head_ref != 'chore/version-bump')
       }}
+    env:
+      WRANGLER_SEND_METRICS: "false"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          terraform_version: 1.11.4
+          node-version: 24
+          cache: npm
 
-      - name: Terraform format check
-        run: terraform -chdir=infra fmt -check
+      - name: Cache Rust toolchain and Cargo artifacts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            worker/target
+            ~/.cargo/bin/worker-build
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: worker-cargo-0.9.0-${{ runner.os }}-${{ hashFiles('worker/Cargo.lock') }}
+          restore-keys: |
+            worker-cargo-0.9.0-${{ runner.os }}-
 
-      - name: Terraform validate
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Install Rust wasm target and worker-build
         run: |
-          terraform -chdir=infra init -backend=false
-          terraform -chdir=infra validate
+          set -euo pipefail
+          rustup target add wasm32-unknown-unknown
+          if ! command -v worker-build >/dev/null 2>&1 || [ "$(worker-build --version)" != "0.9.0" ]; then
+            cargo install worker-build --version 0.9.0 --locked --force
+          fi
 
-      - name: Terraform plan packaging check
-        env:
-          AWS_ACCESS_KEY_ID: dummy
-          AWS_SECRET_ACCESS_KEY: dummy
-          AWS_DEFAULT_REGION: eu-west-1
+      - name: Check Worker Rust crate
+        working-directory: worker
         run: |
-          # The real backend is S3 (partial config, filled in via -backend-config
-          # in the deploy workflow). This packaging-only check never touches real
-          # state, so it swaps in a throwaway local backend to avoid needing
-          # real backend credentials/config here.
-          cat > infra/override.tf <<'EOF'
-          terraform {
-            backend "local" {}
-          }
-          EOF
-          trap 'rm -f infra/override.tf infra/terraform.tfstate' EXIT
+          cargo fmt --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo clippy --locked --target wasm32-unknown-unknown -- -D warnings
+          cargo test --locked
 
-          terraform -chdir=infra init -reconfigure -input=false
-          terraform -chdir=infra plan -input=false -lock=false -refresh=false \
-            -var='service_name=cinemaclub-tmdb-proxy' \
-            -var='api_stage_name=prod' \
-            -var='aws_region=eu-west-1' \
-            -var='tmdb_secret_arn=arn:aws:secretsmanager:REGION:ACCOUNT:secret:example' \
-            -var='log_retention_days=14' \
-            -var='rate_limit_rps=5' \
-            -var='rate_limit_burst=5' \
-            -var='skip_aws_provider_validation=true'
+      - name: Dry-run Worker deploy
+        run: npm run worker:deploy -- --dry-run --outdir ../build/worker-dry-run
 
   live-e2e-gate:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
-    needs: [ci, infrastructure]
+    needs: [ci, worker]
     outputs:
       has_tmdb_token: ${{ steps.token-check.outputs.has_tmdb_token }}
 

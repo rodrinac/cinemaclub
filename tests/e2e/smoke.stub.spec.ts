@@ -216,9 +216,7 @@ test.describe("Web App Smoke Tests (stub)", () => {
     expect(cspContent).toMatch(
       /frame-src[^;]*https:\/\/www\.youtube\.com[^;]*https:\/\/www\.youtube-nocookie\.com/,
     );
-    expect(cspContent).toMatch(
-      /connect-src[^;]*https:\/\/\*\.execute-api\.eu-west-1\.amazonaws\.com/,
-    );
+    expect(cspContent).toMatch(/connect-src[^;]*https:\/\/\*\.workers\.dev/);
 
     await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
     await expect(page.getByTestId("movie-poster-2001")).toBeVisible();

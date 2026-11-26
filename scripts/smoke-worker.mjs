@@ -1,12 +1,15 @@
 import { FORBIDDEN_CORS_HEADER_NAMES, SUCCESS_CACHE_CONTROL } from "../server/tmdb-proxy-core.mjs";
 
-const baseStageUrl = process.env.SMOKE_STAGE_URL?.trim();
-if (!baseStageUrl) {
-  throw new Error("SMOKE_STAGE_URL is required.");
+const baseUrl = process.env.SMOKE_API_ORIGIN?.trim();
+const corsAllowOrigin = process.env.SMOKE_CORS_ALLOW_ORIGIN?.trim() || "";
+
+if (!baseUrl) {
+  console.error("SMOKE_API_ORIGIN is required.");
+  process.exit(1);
 }
 
-const apiBaseUrl = `${baseStageUrl.replace(/\/+$/, "")}/api`;
-const corsAllowOrigin = process.env.SMOKE_CORS_ALLOW_ORIGIN?.trim() || null;
+const normalizedOrigin = baseUrl.replace(/\/+$/, "");
+const apiBaseUrl = `${normalizedOrigin}/api`;
 
 const assert = (condition, message) => {
   if (!condition) {
@@ -14,21 +17,24 @@ const assert = (condition, message) => {
   }
 };
 
-const readBody = async (response) => {
+const fetchJson = async (url, options = {}) => {
+  const response = await fetch(url, options);
   const text = await response.text();
-  return text ? JSON.parse(text) : null;
-};
+  let body = null;
 
-const fetchJson = async (path, init) => {
-  const response = await fetch(path, init);
-  const body = await readBody(response).catch(() => null);
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = text;
+  }
+
   return { response, body };
 };
 
 const assertNoCorsHeaders = (response, label) => {
   for (const headerName of FORBIDDEN_CORS_HEADER_NAMES) {
     assert(
-      response.headers.get(headerName) == null,
+      !response.headers.has(headerName),
       `${label} unexpectedly included ${headerName}`,
     );
   }
@@ -37,13 +43,13 @@ const assertNoCorsHeaders = (response, label) => {
 const assertCorsHeaders = (response, label) => {
   assert(
     response.headers.get("access-control-allow-origin") === corsAllowOrigin,
-    `${label} did not include the configured origin`,
+    `${label} did not return the configured origin`,
   );
   assert(response.headers.get("vary") === "Origin", `${label} did not include Vary: Origin`);
 };
 
 const run = async () => {
-  const health = await fetchJson(`${baseStageUrl}/health`);
+  const health = await fetchJson(`${normalizedOrigin}/health`);
   assert(health.response.status === 200, `GET /health returned ${health.response.status}`);
   assert(health.body?.status === "ok", "GET /health did not return { status: 'ok' }");
 
@@ -72,12 +78,12 @@ const run = async () => {
   });
   assert(invalidQuery.response.status === 400, `Invalid query returned ${invalidQuery.response.status}`);
 
-  const invalidPath = await fetchJson(`${baseStageUrl}/api/..%2f..%2fetc/passwd`, {
+  const invalidPath = await fetchJson(`${normalizedOrigin}/api/..%2f..%2fetc/passwd`, {
     headers: corsAllowOrigin ? { Origin: corsAllowOrigin } : {},
   });
   assert(invalidPath.response.status === 400, `Invalid path returned ${invalidPath.response.status}`);
 
-  const invalidMethod = await fetchJson(`${baseStageUrl}/health`, {
+  const invalidMethod = await fetchJson(`${normalizedOrigin}/health`, {
     method: "POST",
     headers: corsAllowOrigin ? { Origin: corsAllowOrigin } : {},
   });
@@ -108,8 +114,7 @@ const run = async () => {
       "Preflight returned the wrong allowed headers",
     );
 
-    // Share pages redirect to the web app, whose origin defaults to the CORS origin.
-    const sharePage = await fetch(`${baseStageUrl.replace(/\/+$/, "")}/share/movie/550?lang=en-US`);
+    const sharePage = await fetch(`${normalizedOrigin}/share/movie/550?lang=en-US`);
     const sharePageHtml = await sharePage.text();
     assert(sharePage.status === 200, `Share page returned ${sharePage.status}`);
     assert(
@@ -128,10 +133,6 @@ const run = async () => {
     assertNoCorsHeaders(invalidMethod.response, "invalid method response");
   }
 
-  // Hosted rate limiting (API Gateway stage/method throttling) is intentionally not exercised
-  // here: it's enforced by a distributed, best-effort token bucket rather than an exact
-  // per-millisecond counter, which made burst-triggering assertions flaky in CI. We still
-  // sanity-check that a normal handful of requests succeeds without being throttled.
   const results = await Promise.all(
     Array.from({ length: 6 }, (_, index) =>
       fetchJson(`${apiBaseUrl}/movies/popular?page=${index + 30}&language=en-US`, {
@@ -145,7 +146,7 @@ const run = async () => {
     "Received an unexpected 429 for a normal request burst",
   );
 
-  console.log("AWS proxy smoke tests passed.");
+  console.log("Cloudflare Worker smoke tests passed.");
 };
 
 await run();

@@ -30,14 +30,13 @@ playwright-report/
 .env.local
 .env.*.local
 
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-!infra/terraform.tfvars.example
-*.tfplan
-infra/build/
+# Cloudflare Worker / Rust build artifacts
+build/
+.wrangler/
+worker/.wrangler/
+worker/.dev.vars
+worker/build/
+worker/target/
 
 # Git worktrees
 .worktrees/

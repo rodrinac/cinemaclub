@@ -1,0 +1,44 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "cinemaclub-tmdb-proxy",
+  "main": "build/index.js",
+  "compatibility_date": "2026-10-01",
+  // The API lives on <name>.<account subdomain>.workers.dev until a custom
+  // domain is attached. The GitHub `production` var MOVIES_API_URL must point
+  // at that host plus /api. See docs/cloudflare-worker-runbook.md.
+  "workers_dev": true,
+  "preview_urls": false,
+  // `npm run worker:deploy` compiles first. Workers Builds ignores this
+  // command, so the script sets CINEMACLUB_SKIP_WORKER_BUILD for the deploy
+  // it spawns. `wrangler dev` leaves the variable unset and still compiles.
+  "build": {
+    "command": "if [ -n \"$CINEMACLUB_SKIP_WORKER_BUILD\" ]; then exit 0; fi; exec worker-build --release"
+  },
+  "vars": {
+    // Exactly one origin, never "*" or a list. Share pages redirect here too.
+    "CORS_ALLOW_ORIGIN": "https://cinemaclub.expo.app"
+  },
+  // Movie pitches via Workers AI. Override the model with a PITCH_MODEL var.
+  "ai": {
+    "binding": "AI"
+  },
+  // Per client IP (CF-Connecting-IP). Periods must match the
+  // *_PERIOD_SECONDS constants in worker/src/lib.rs. Namespace IDs are
+  // account-wide, so keep them distinct from other Workers on the account.
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "2001",
+      "simple": { "limit": 50, "period": 10 }
+    },
+    {
+      // Only pitch cache misses spend this budget: each one is a model call.
+      "name": "PITCH_RATE_LIMITER",
+      "namespace_id": "2002",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

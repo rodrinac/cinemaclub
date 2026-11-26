@@ -8,6 +8,15 @@ updates:
     ignore:
       - dependency-name: "*" # Prevents updating dependencies beyond the range in package.json
 
+  - package-ecosystem: "cargo"
+    directory: "/worker"
+    schedule:
+      interval: "weekly"
+    groups:
+      worker-cargo:
+        patterns:
+          - "*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

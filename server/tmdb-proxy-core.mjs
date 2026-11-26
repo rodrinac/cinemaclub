@@ -7,9 +7,10 @@ const DEFAULT_CACHE_TTL_MS = 60_000;
 export const DEFAULT_CACHE_MAX_ENTRIES = 100;
 export const DEFAULT_UPSTREAM_TIMEOUT_MS = 10_000;
 export const PITCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-// Keeps the TMDB lookup plus the Bedrock call inside the 10s Lambda ceiling.
+// Keeps the pitch route responsive: the TMDB lookup gets a short budget so the
+// model call has most of the client's patience.
 const PITCH_TMDB_TIMEOUT_MS = 3_000;
-// Pitches cost a Bedrock call per cache miss, so they are always throttled per
+// Pitches cost a model call per cache miss, so they are always throttled per
 // client, independently of the optional proxy-wide rate limit.
 export const DEFAULT_PITCH_RATE_LIMIT = Object.freeze({
   refillRatePerSecond: 0.2,
@@ -744,14 +745,22 @@ export const createTmdbProxy = ({
   generateMoviePitch = null,
   pitchCache = createResponseCache({ ttlMs: PITCH_CACHE_TTL_MS, now }),
   pitchRateLimitConfig = DEFAULT_PITCH_RATE_LIMIT,
+  // Limiters expose `consume(clientKey)` returning `{ allowed, retryAfter }`,
+  // sync or async, so a hosted limiter can replace the in-memory buckets.
+  rateLimiter: injectedRateLimiter = null,
+  pitchRateLimiter: injectedPitchRateLimiter = null,
   shareAppOrigin = null,
+  version = null,
 } = {}) => {
   if (typeof getToken !== "function") {
     throw new Error("A getToken function is required to create the TMDB proxy.");
   }
 
-  const rateLimiter = rateLimitConfig ? createRateLimiter({ ...rateLimitConfig, now }) : null;
-  const pitchRateLimiter = createRateLimiter({ ...pitchRateLimitConfig, now });
+  const rateLimiter =
+    injectedRateLimiter ?? (rateLimitConfig ? createRateLimiter({ ...rateLimitConfig, now }) : null);
+  const pitchRateLimiter =
+    injectedPitchRateLimiter ?? createRateLimiter({ ...pitchRateLimitConfig, now });
+  const healthBody = version ? { status: "ok", version } : { status: "ok" };
 
   const rateLimitedResponse = (retryAfter, corsHeaders) =>
     jsonResponse(
@@ -812,7 +821,7 @@ export const createTmdbProxy = ({
     }
 
     for (const limiter of [rateLimiter, pitchRateLimiter]) {
-      const rateLimitResult = limiter?.consume(clientKey);
+      const rateLimitResult = await limiter?.consume(clientKey);
       if (rateLimitResult && !rateLimitResult.allowed) {
         return rateLimitedResponse(rateLimitResult.retryAfter, corsHeaders);
       }
@@ -927,7 +936,7 @@ export const createTmdbProxy = ({
     }
 
     if (rateLimiter) {
-      const rateLimitResult = rateLimiter.consume(clientKey);
+      const rateLimitResult = await rateLimiter.consume(clientKey);
       if (!rateLimitResult.allowed) {
         return rateLimitedResponse(rateLimitResult.retryAfter, {});
       }
@@ -1037,7 +1046,7 @@ export const createTmdbProxy = ({
     }
 
     if (routeMatch.kind === "health") {
-      return jsonResponse(200, { status: "ok" }, corsHeaders);
+      return jsonResponse(200, healthBody, corsHeaders);
     }
 
     if (routeMatch.kind === "invalid-movie-id") {
@@ -1084,7 +1093,7 @@ export const createTmdbProxy = ({
     if (cachedResponse) {
       writeLog(log, "info", {
         kind: "tmdb_proxy_request",
-        source: normalizedHeaders["x-amzn-trace-id"] ? "lambda" : "local",
+        source: normalizedHeaders["cf-ray"] ? "worker" : "local",
         requestId,
         route: routeMatch.canonicalPath,
         method,
@@ -1099,7 +1108,7 @@ export const createTmdbProxy = ({
     }
 
     if (rateLimiter) {
-      const rateLimitResult = rateLimiter.consume(clientKey);
+      const rateLimitResult = await rateLimiter.consume(clientKey);
       if (!rateLimitResult.allowed) {
         return rateLimitedResponse(rateLimitResult.retryAfter, corsHeaders);
       }
@@ -1152,7 +1161,7 @@ export const createTmdbProxy = ({
 
       writeLog(log, "info", {
         kind: "tmdb_proxy_request",
-        source: normalizedHeaders["x-amzn-trace-id"] ? "lambda" : "local",
+        source: normalizedHeaders["cf-ray"] ? "worker" : "local",
         requestId,
         route: routeMatch.canonicalPath,
         method,

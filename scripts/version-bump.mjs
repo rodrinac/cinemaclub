@@ -12,13 +12,16 @@
  * release-worthy commits were found since the last tag.
  */
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
 const REPO_ROOT = process.cwd();
 const PACKAGE_JSON_PATH = path.join(REPO_ROOT, "package.json");
+const PACKAGE_LOCK_PATH = path.join(REPO_ROOT, "package-lock.json");
 const APP_JSON_PATH = path.join(REPO_ROOT, "app.json");
+const WORKER_CARGO_TOML_PATH = path.join(REPO_ROOT, "worker", "Cargo.toml");
+const WORKER_CARGO_LOCK_PATH = path.join(REPO_ROOT, "worker", "Cargo.lock");
 
 const CONVENTIONAL_COMMIT_PATTERN = /^(\w+)(\([^)]*\))?(!)?:\s*(.+)$/;
 const BREAKING_CHANGE_PATTERN = /^BREAKING CHANGE:\s*/m;
@@ -97,10 +100,28 @@ const bumpVersion = (version, bump) => {
 };
 
 const updateJsonFile = (filePath, updater) => {
+  if (!existsSync(filePath)) return;
   const contents = readFileSync(filePath, "utf8");
   const data = JSON.parse(contents);
   updater(data);
   writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`);
+};
+
+const updateCargoToml = (filePath, nextVersion) => {
+  if (!existsSync(filePath)) return;
+  const contents = readFileSync(filePath, "utf8");
+  const updated = contents.replace(/^version = "[^"]+"/m, `version = "${nextVersion}"`);
+  writeFileSync(filePath, updated);
+};
+
+const updateCargoLock = (filePath, nextVersion) => {
+  if (!existsSync(filePath)) return;
+  const contents = readFileSync(filePath, "utf8");
+  const updated = contents.replace(
+    /(\[\[package\]\]\r?\nname = "cinemaclub-worker"\r?\nversion = ")[^"]+(")/,
+    `$1${nextVersion}$2`,
+  );
+  writeFileSync(filePath, updated);
 };
 
 const main = () => {
@@ -122,9 +143,17 @@ const main = () => {
   updateJsonFile(PACKAGE_JSON_PATH, (data) => {
     data.version = nextVersion;
   });
+  updateJsonFile(PACKAGE_LOCK_PATH, (data) => {
+    data.version = nextVersion;
+    if (data.packages && data.packages[""]) {
+      data.packages[""].version = nextVersion;
+    }
+  });
   updateJsonFile(APP_JSON_PATH, (data) => {
     data.expo.version = nextVersion;
   });
+  updateCargoToml(WORKER_CARGO_TOML_PATH, nextVersion);
+  updateCargoLock(WORKER_CARGO_LOCK_PATH, nextVersion);
 
   console.error(`Bumping version: ${currentVersion} -> ${nextVersion} (${bump})`);
   process.stdout.write(nextVersion);

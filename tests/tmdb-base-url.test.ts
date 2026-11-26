@@ -48,22 +48,22 @@ describe("resolveMoviesApiBaseUrl", () => {
     expect(resolution.baseUrl).toBe("http://192.168.1.99:3001/api");
   });
 
-  it("normalizes deployed API Gateway stage URLs to /api", () => {
+  it("normalizes deployed Worker URLs to /api", () => {
     const resolution = resolveMoviesApiBaseUrl({
-      envBaseUrl: "https://abc123.execute-api.eu-west-1.amazonaws.com/prod",
+      envBaseUrl: "https://cinemaclub-tmdb-proxy.example.workers.dev",
       expoHostUri: null,
       isWeb: true,
     });
 
-    expect(resolution.baseUrl).toBe("https://abc123.execute-api.eu-west-1.amazonaws.com/prod/api");
+    expect(resolution.baseUrl).toBe("https://cinemaclub-tmdb-proxy.example.workers.dev/api");
   });
 });
 
 describe("buildMovieShareUrl", () => {
   it("points at the proxy share page next to /api with the sharer's language", () => {
     expect(
-      buildMovieShareUrl("https://abc.execute-api.eu-west-1.amazonaws.com/prod/api", 687163, "pt-BR"),
-    ).toBe("https://abc.execute-api.eu-west-1.amazonaws.com/prod/share/movie/687163?lang=pt-BR");
+      buildMovieShareUrl("https://cinemaclub-tmdb-proxy.example.workers.dev/api", 687163, "pt-BR"),
+    ).toBe("https://cinemaclub-tmdb-proxy.example.workers.dev/share/movie/687163?lang=pt-BR");
     expect(buildMovieShareUrl(`${LOCALHOST_PROXY_URL}/`, 42, "en-US")).toBe(
       "http://localhost:3001/share/movie/42?lang=en-US",
     );
