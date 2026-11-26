@@ -41,7 +41,7 @@ Required `production` environment secret:
 
 Required `production` environment vars:
 
-- `MOVIES_API_URL` — the Worker's `/api` base URL (e.g. `https://cinemaclub-tmdb-proxy.<account-subdomain>.workers.dev/api`)
+- `MOVIES_API_URL` — the Worker's `/api` base URL (e.g. `https://cinemaclub.<account-subdomain>.workers.dev/api`)
 - `TMDB_PROXY_CORS_ALLOW_ORIGIN` — exact deployed web origin (e.g. `https://cinemaclub.expo.app`)
 
 ## Runtime behavior to preserve

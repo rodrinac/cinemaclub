@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
-  "name": "cinemaclub-tmdb-proxy",
+  "name": "cinemaclub",
   "main": "build/index.js",
   "compatibility_date": "2026-10-01",
   // The API lives on <name>.<account subdomain>.workers.dev until a custom
